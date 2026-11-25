@@ -1,6 +1,6 @@
 # Alpha Hive: Six-Bot AI Trading Team (simulation)
 
-**Live demo:** https://yogibear1323.github.io/six-bot-trading-terminal/
+**Live demo:** https://yogibear1323.github.io/alpha-hive/
 
 > Educational simulation. Single runs use fictional example data; the demo session reads free public
 > prices. It places no real orders, connects to no trading

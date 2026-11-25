@@ -1,4 +1,6 @@
-# Six-Bot AI Trading Team (Grok) — Simulation Only
+# Alpha Hive: Six-Bot AI Trading Team (Grok) — Simulation Only
+
+**Live demo:** https://yogibear1323.github.io/alpha-hive/ · source: https://github.com/yogibear1323/alpha-hive
 
 > **Educational simulation only. Not financial advice.** This project cannot predict markets,
 > guarantee profits, verify every online claim, or replace professional advice. It contains **no
