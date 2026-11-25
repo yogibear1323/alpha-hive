@@ -86,24 +86,66 @@ Optional: keep the install separate from the rest of your computer with a virtua
 python web/app.py
 ```
 
-Then open <http://127.0.0.1:8642> in your browser. You get the "AI trading floor": pick a packet, press
-**Run the six bots**, and watch each bot's panel light up and stream its log lines, the Charts bot draw
-the price bars, the Sentiment gauge swing, the Risk shield show APPROVE / REDUCE / REJECT with the size
-cap, and a full-screen reveal of the final call. Each panel has an expandable JSON view, and the run
-history lists past reports you can click to reopen. It uses the same
-`agents/` code as `run_demo.py` (mock unless you switch to Grok). It only listens on your own computer.
-Stop it with Ctrl+C. Use `python web/app.py --port 9000` if 8642 is busy.
+Then open <http://127.0.0.1:8642> in your browser. You get **Alpha Hive**, a honeycomb of six hexagonal
+bot panels: pick a packet, press **Run the six bots**, and watch each bot's panel light up and stream its
+log lines. Worker-bee particles fly between panels and swarm into the Risk gate and then Decision. The
+Scout runs a hex-pulse scan, the Charts bot draws the price bars, and the Sentiment gauge swings. The Risk
+shield shows APPROVE / REDUCE / REJECT with the size cap. The final call gets a full-screen reveal with a
+countdown, an amber glitch and a hexagon burst. Each panel has an expandable JSON view, and the run
+history lists past reports you can click to reopen. It uses the same `agents/` code as `run_demo.py`
+(mock unless you switch to Grok). It only listens on your own computer. Stop it with Ctrl+C. Use
+`python web/app.py --port 9000` if 8642 is busy. The **Motion** button in the header switches to
+reduced motion, and the page starts that way when your device asks for less motion.
 
-**Demo session (virtual balance).** Switch Mission control to **Demo session**, set a starting virtual
-balance (default $10,000), an optional trade size (max allowed by Risk, a fixed $ amount, or % of
-balance), the number of rounds, and a seed. Each round generates a fictional ticker from the seed and
-runs it through the same six-bot pipeline. A `BUY — SIMULATION ONLY` call opens a virtual position
-capped at the Risk bot's max simulated size, with a stop set so the loss never exceeds the Risk bot's
-max simulated loss and a target at twice that distance. A seeded fictional price path then plays out on
-the chart until it hits the stop or target or runs out of time. WAIT and SKIP rounds change nothing.
-You get a running P&L line, a balance counter, a per-round ledger, an equity curve, and a final summary
-(start vs end, total P&L and %, win rate, best and worst round, max drawdown). Virtual balance ·
-fictional price paths · not a backtest or prediction. Add `?session` to the address to open in this mode.
+**Pausing bots.** Every bot panel has an **ON/OFF** switch. A change takes effect on the next round, even
+while a session is running:
+- A paused Scout, News, Sentiment or Charts bot is skipped. Its input counts as missing/neutral (it still
+  passes the schema check), and its panel says PAUSED.
+- Pausing Risk blocks all trades: every call becomes `SKIP` with the reason "Risk paused".
+- Pausing Decision means no new trades.
+
+**Demo session (virtual balance, live public prices).** Switch Mission control to **Demo session**.
+
+Settings:
+- A starting virtual balance (default $10,000).
+- An optional trade size: the most Risk allows, a fixed $ amount, or a % of the balance.
+- The coins to cycle through: BTC, ETH, SOL.
+- Rounds: **0 = run continuously until you press Stop**.
+- A trade window in seconds (default 60).
+
+How a round works:
+- Each round loads **real public candles** for the next coin. These are free endpoints that need no key
+  and no sign-in.
+  - **Coinbase Exchange** is the primary feed.
+  - **Kraken** is the automatic fallback.
+- The six bots analyse those candles: 6 hourly bars for trend/levels and the last 30 one-minute bars
+  for the intraday check. News and forum inputs stay empty, so Sentiment is neutral.
+- A `BUY — SIMULATION ONLY` call opens a virtual position. Its size is capped by the Risk bot.
+  - Entry is a fresh live price.
+  - The stop is about 1.5× the recent one-minute range below entry. It is never wider than the Risk
+    bot's max simulated loss.
+  - The target is twice the stop distance above entry.
+- Live prices are then polled every 3 seconds for the trade window.
+  - The first poll at or below the stop closes the trade at the stop (a loss).
+  - The first poll at or above the target closes it at the target (a win).
+  - If neither is hit, the trade closes at the last live price.
+- P&L is `size × (exit ÷ entry − 1)`. WAIT and SKIP rounds change nothing.
+
+What you see:
+- A balance counter, a running P&L line and the coin being traded.
+- A per-round ledger that shows which feed priced each row.
+- An equity curve and a summary.
+- A header chip showing the feed and when it last updated (LIVE / STALE).
+- A Running/Stopped indicator.
+
+**Stop** halts at once. Any open virtual trade is marked to the last live price, and the balance, equity
+curve, ledger and summary freeze. **Resume** carries on from the frozen balance. **Reset** starts over.
+
+If both feeds fail, the session keeps going on fictional price paths, labelled
+**Offline: simulated prices**. You can also pick the fictional seeded paths on purpose in the Prices
+menu. The label reads: Virtual balance · live public prices from <source> · no real orders · not
+financial advice. Add `?session` to the address to open in this mode, or `?offline` to force the
+simulated prices.
 
 **No server at all?** Double-click `web/static-demo.html` (add `?fast` to the address for a quick run). It runs the same flow in your browser
 using the mock logic and the sample data (past runs are kept in that browser only). After changing

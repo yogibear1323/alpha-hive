@@ -1,8 +1,9 @@
-# Six-Bot AI Trading Floor (simulation)
+# Alpha Hive: Six-Bot AI Trading Team (simulation)
 
 **Live demo:** https://yogibear1323.github.io/six-bot-trading-terminal/
 
-> Educational simulation with fictional example data. It places no real orders, connects to no trading
+> Educational simulation. Single runs use fictional example data; the demo session reads free public
+> prices. It places no real orders, connects to no trading
 > account, and is not financial advice.
 
 `index.html` is a single, self-contained page (no external files or CDNs, so it works offline). Pick a
@@ -12,15 +13,25 @@ must review every result.
 
 - **EXMP sample:** Risk reduces the simulated size to $100, and the call is WAIT.
 - **EXMQ missing price:** Risk rejects, the Decision Bot does not run, and the call is SKIP.
-- **Demo session:** a virtual balance (default $10,000) runs several seeded rounds of fictional tickers
-  through the same pipeline. BUY calls open a virtual position capped by the Risk bot and play out a
-  fictional price path; WAIT and SKIP change nothing. It ends with a summary of P&L, win rate, and max
-  drawdown. Virtual balance · fictional price paths · not a backtest or prediction.
+- **Demo session:** a virtual balance (default $10,000) trades BTC, ETH and SOL.
+  - Prices are **live public prices**: Coinbase Exchange first, then Kraken. No keys, no sign-in, no
+    real orders.
+  - Each round, the bots analyse real candles. A BUY call opens a virtual position capped by the Risk
+    bot, and it closes at the stop, the target, or the last live price when the window ends.
+  - It runs continuously until you press **Stop**. Stop freezes the figures; **Resume** continues from
+    the frozen balance.
+  - If the feeds are unreachable, it switches to fictional paths labelled "Offline: simulated prices".
+  - Virtual balance · live public prices · no real orders · not financial advice.
+- **Bot switches:** pause any bot from its panel.
+  - A paused analyst counts as neutral.
+  - A paused Risk gate turns every call into SKIP ("Risk paused").
+  - A paused Decision bot makes no new trades.
 
-The page animates the run: particles orbit the working bot and stream along glowing lines into the Risk
-gate and then Decision, Scout has a radar sweep, candlesticks and price paths draw in, and the final call
-arrives with a countdown, shockwave and glitch effect. The **Motion** button in the header switches to
-reduced motion, and the page starts that way when your device asks for less motion.
+The page uses the Alpha Hive look: amber and honey on charcoal, a honeycomb of hexagonal bot panels, and
+worker-bee particles that fly along shared flight paths and swarm into the Risk gate and Decision. Scout
+runs a hex-pulse scan, and the final call arrives with a countdown, an amber glitch and a hexagon burst.
+The **Motion** button in the header switches to reduced motion, and the page starts that way when your
+device asks for less motion.
 
 The rest of this repository is the full Python project the page mirrors: six bots, schema checks with one
 retry, a Risk gate enforced in code, an offline mock, an optional Grok (xAI) provider, a Flask browser
