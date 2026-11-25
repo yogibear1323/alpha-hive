@@ -1,0 +1,18 @@
+{
+  "_note": "Human-owned limits. The bots read this file; no code ever writes to it. Copy to risk-rules.json to customise.",
+  "max_position_pct_of_balance": 2.0,
+  "max_loss_pct_per_trade": 0.5,
+  "max_daily_loss_pct": 2.0,
+  "min_liquidity_usd": 1000000,
+  "reject_if_any": [
+    "no_price_data",
+    "liquidity_below_minimum",
+    "data_quality_poor",
+    "chart_data_unknown"
+  ],
+  "reduce_if_any": [
+    "unverified_claims",
+    "possible_hype",
+    "incomplete_chart_data"
+  ]
+}

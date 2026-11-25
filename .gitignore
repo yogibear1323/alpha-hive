@@ -1,0 +1,17 @@
+# secrets
+.env
+# local copies of the example settings
+config.json
+risk-rules.json
+# run output
+reports/*
+!reports/.gitkeep
+logs/*
+!logs/.gitkeep
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.zip

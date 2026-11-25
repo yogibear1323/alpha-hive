@@ -1,0 +1,12 @@
+{
+  "model": "grok-4.7",
+  "temperature": 0.2,
+  "max_output_tokens": 1200,
+  "api_base": "https://api.x.ai/v1",
+  "request_timeout_seconds": 60,
+  "reports_dir": "reports",
+  "logs_dir": "logs",
+  "simulation": {
+    "starting_balance_usd": 10000
+  }
+}

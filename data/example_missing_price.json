@@ -1,0 +1,72 @@
+{
+  "_label": "EXAMPLE DATA - fictional ticker EXMQ with the price removed, to show the safe path (Charts unknown, Risk reject, SKIP). Not a real market.",
+  "market": "EXMQ",
+  "name": "Example Missing-Price Corp (fictional)",
+  "asset_type": "equity",
+  "as_of": "2026-10-06",
+  "currency": "USD",
+  "volume": {
+    "today": 2300000,
+    "avg_30d": 1000000
+  },
+  "avg_daily_dollar_volume_usd": 38500000,
+  "daily_bars": [
+    {
+      "date": "2026-09-29",
+      "open": 38.6,
+      "high": 39.1,
+      "low": 38.2,
+      "close": 38.9,
+      "volume": 950000
+    },
+    {
+      "date": "2026-09-30",
+      "open": 38.9,
+      "high": 39.4,
+      "low": 38.55,
+      "close": 39.2,
+      "volume": 1010000
+    },
+    {
+      "date": "2026-10-01",
+      "open": 39.2,
+      "high": 39.6,
+      "low": 38.7,
+      "close": 38.95,
+      "volume": 980000
+    },
+    {
+      "date": "2026-10-02",
+      "open": 38.95,
+      "high": 39.3,
+      "low": 38.4,
+      "close": 38.82,
+      "volume": 1040000
+    },
+    {
+      "date": "2026-10-05",
+      "open": 38.82,
+      "high": 42.15,
+      "low": 38.8,
+      "close": 40.1,
+      "volume": 2300000
+    }
+  ],
+  "intraday_bars": [],
+  "headlines": [
+    {
+      "source": "Example Business Wire (fictional)",
+      "date": "2026-10-05",
+      "title": "Example Corp reports quarterly revenue up 12% year over year",
+      "kind": "reported",
+      "tone": "positive"
+    }
+  ],
+  "forum_posts": [
+    {
+      "source": "ExampleTraders forum (fictional)",
+      "date": "2026-10-05",
+      "text": "Revenue beat looks real but I am waiting for the earnings call before adding."
+    }
+  ]
+}
