@@ -12,6 +12,10 @@ must review every result.
 
 - **EXMP sample:** Risk reduces the simulated size to $100, and the call is WAIT.
 - **EXMQ missing price:** Risk rejects, the Decision Bot does not run, and the call is SKIP.
+- **Demo session:** a virtual balance (default $10,000) runs several seeded rounds of fictional tickers
+  through the same pipeline. BUY calls open a virtual position capped by the Risk bot and play out a
+  fictional price path; WAIT and SKIP change nothing. It ends with a summary of P&L, win rate, and max
+  drawdown. Virtual balance · fictional price paths · not a backtest or prediction.
 
 The rest of this repository is the full Python project the page mirrors: six bots, schema checks with one
 retry, a Risk gate enforced in code, an offline mock, an optional Grok (xAI) provider, a Flask browser

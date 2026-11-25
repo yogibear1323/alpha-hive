@@ -46,7 +46,12 @@ def render_page(boot: dict) -> str:
 @app.get("/")
 def index():
     provider = os.environ.get("MODEL_PROVIDER", "MOCK").strip().upper() or "MOCK"
-    boot = {"mode": "server", "provider": provider, "model": load_config().get("model")}
+    config = load_config()
+    rules = {k: v for k, v in load_risk_rules().items() if not k.startswith("_")}
+    boot = {"mode": "server", "provider": provider, "model": config.get("model"),
+            # demo sessions run the offline mock engine in the browser with these human rules
+            "static": {"markets": [], "rules": rules,
+                       "balance": config["simulation"]["starting_balance_usd"]}}
     return Response(render_page(boot), mimetype="text/html")
 
 

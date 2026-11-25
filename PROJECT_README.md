@@ -94,6 +94,17 @@ history lists past reports you can click to reopen. It uses the same
 `agents/` code as `run_demo.py` (mock unless you switch to Grok). It only listens on your own computer.
 Stop it with Ctrl+C. Use `python web/app.py --port 9000` if 8642 is busy.
 
+**Demo session (virtual balance).** Switch Mission control to **Demo session**, set a starting virtual
+balance (default $10,000), an optional trade size (max allowed by Risk, a fixed $ amount, or % of
+balance), the number of rounds, and a seed. Each round generates a fictional ticker from the seed and
+runs it through the same six-bot pipeline. A `BUY — SIMULATION ONLY` call opens a virtual position
+capped at the Risk bot's max simulated size, with a stop set so the loss never exceeds the Risk bot's
+max simulated loss and a target at twice that distance. A seeded fictional price path then plays out on
+the chart until it hits the stop or target or runs out of time. WAIT and SKIP rounds change nothing.
+You get a running P&L line, a balance counter, a per-round ledger, an equity curve, and a final summary
+(start vs end, total P&L and %, win rate, best and worst round, max drawdown). Virtual balance ·
+fictional price paths · not a backtest or prediction. Add `?session` to the address to open in this mode.
+
 **No server at all?** Double-click `web/static-demo.html` (add `?fast` to the address for a quick run). It runs the same flow in your browser
 using the mock logic and the sample data (past runs are kept in that browser only). After changing
 the data files or risk rules, rebuild it with `python web/build_static.py`.
