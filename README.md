@@ -17,6 +17,11 @@ must review every result.
   fictional price path; WAIT and SKIP change nothing. It ends with a summary of P&L, win rate, and max
   drawdown. Virtual balance · fictional price paths · not a backtest or prediction.
 
+The page animates the run: particles orbit the working bot and stream along glowing lines into the Risk
+gate and then Decision, Scout has a radar sweep, candlesticks and price paths draw in, and the final call
+arrives with a countdown, shockwave and glitch effect. The **Motion** button in the header switches to
+reduced motion, and the page starts that way when your device asks for less motion.
+
 The rest of this repository is the full Python project the page mirrors: six bots, schema checks with one
 retry, a Risk gate enforced in code, an offline mock, an optional Grok (xAI) provider, a Flask browser
 UI, and 11 safety tests. See [PROJECT_README.md](PROJECT_README.md) for setup on Mac, Linux, and Windows:
