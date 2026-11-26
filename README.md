@@ -88,3 +88,19 @@ python run_demo.py        # terminal run
 python -m pytest -q       # 12 safety tests
 python web/app.py         # browser UI at http://127.0.0.1:8642
 ```
+
+## Broker bridge (Crucial Markets · TradeLocker) — demo first
+
+The public site is **simulation only**. For people running Alpha Hive on their own computer, `bridge/` adds a
+small local FastAPI service that can mirror Risk-approved LONG/SHORT calls to a **Crucial Markets TradeLocker
+demo account**, with the round's stop and target as one SL and one TP, inside hard limits enforced by the bridge
+(risk per trade, position size, 1:30 leverage cap, daily loss stop, max open positions, kill switch). Risk stays
+the guard: a reject or reduce never reaches the broker. LIVE is off by default and needs an env flag, a restart
+and a confirm in the terminal. Credentials stay in `bridge/.env` on your machine (git-ignored), never in the
+browser, this repo or GitHub Pages. In the terminal, **Broker: Crucial demo** only works when the page and the
+bridge both run on `localhost`.
+
+Caveats: Crucial Markets is **unregulated** (South Africa / Saint Lucia), withdrawals are **crypto only**, and
+leveraged CFDs can lose money fast. Test on demo before any real money. Not financial advice. Setup steps are in
+`PROJECT_README.md`, section 9.
+

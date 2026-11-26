@@ -58,6 +58,14 @@ main{max-width:1320px;margin:0 auto;padding:18px 20px 90px}
 .btn.ghost{background:transparent;color:var(--cyan);box-shadow:none}
 .btn:disabled{opacity:.4;cursor:default;filter:none}
 .label{color:var(--mute);font-size:12px;margin-top:10px}
+.broker{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;padding:8px 10px;border:1px dashed var(--line);border-radius:10px;font:12px var(--mono);color:var(--text)}
+.broker label{font:700 11px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--text)}
+.broker select,.broker input[type=url],.broker input[type=password]{background:#0f0d0a;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:12px var(--mono);min-width:0;max-width:100%}
+.broker input[type=url]{width:200px}.broker input[type=password]{width:150px}
+.broker select:disabled,.broker input:disabled,.broker button:disabled{opacity:.6;cursor:not-allowed}
+.broker .bstat{color:var(--mute)}.broker .bstat.ok{color:#8fe388}.broker .bstat.err{color:#ff8a80}.broker .bstat.warn{color:#ffd84d}
+.broker .livearm{color:#ff8a80;display:inline-flex;gap:6px;align-items:center}.broker .livearm[hidden]{display:none}
+.broker .bnote{flex-basis:100%;color:var(--mute);font:12px/1.45 var(--sans,inherit)}
 .pipeline{display:flex;align-items:center;gap:0;margin-top:14px;flex-wrap:wrap;row-gap:8px}
 .node{font:700 10px var(--mono);letter-spacing:1px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;color:var(--mute);transition:.3s}
 .link{flex:1 1 10px;min-width:10px;height:2px;background:var(--line);transition:.3s}
@@ -481,6 +489,16 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
         <div class="coins" id="coins"><span class="clbl">Tokens · tap to include · × to remove</span><span id="tokChips"></span>
           <span class="tokadd"><input id="tokIn" type="text" maxlength="12" placeholder="Add token, e.g. LTC" aria-label="Add token symbol" autocomplete="off"><button class="btn ghost sm" id="tokAddBtn">Add token</button><button class="btn ghost sm" id="tokMajors">Add all majors</button></span>
           <span class="tokmsg" id="tokMsg" role="status"></span><span class="tradeline" id="tradeLine">Bots trade: —</span></div>
+        <div class="broker" id="brokerBox" role="group" aria-labelledby="brokerLbl">
+          <label id="brokerLbl" for="brokerSel">Broker</label>
+          <select id="brokerSel"><option value="sim">Simulation</option><option value="demo">Crucial demo</option></select>
+          <input id="bridgeUrl" type="url" value="http://127.0.0.1:8765" spellcheck="false" aria-label="Bridge URL (must be localhost)">
+          <input id="bridgeTok" type="password" placeholder="Bridge token" autocomplete="off" aria-label="Bridge token from bridge/.env">
+          <button class="btn ghost sm" id="bridgeConnect">Connect</button>
+          <span class="bstat" id="brokerStat" role="status" aria-live="polite">Simulation · no broker</span>
+          <label class="livearm" id="liveRow" hidden><input type="checkbox" id="liveArm"> Arm LIVE · real money</label>
+          <div class="bnote" id="brokerNote">Simulation is the default. “Crucial demo” mirrors each live-price LONG/SHORT to your Crucial TradeLocker <b>demo</b> account through the local bridge, only after Risk approves; the bridge applies its own hard limits.</div>
+        </div>
         <div class="label" id="sessHelp">Live rounds read real recent candles for each selected token. The ♛ Queen goes <b class="dir long">▲ LONG</b> (BUY) when the analysts expect a rise and <b class="dir short">▼ SHORT</b> (SELL/SHORT) when charts, sentiment and news are bearish, only after the Risk gate fully approves; a “reduce” becomes WAIT and never flips direction. Each trade risks the effective % of the <b>current</b> balance: the average of the active bots’ risk settings, never above the Risk bot’s %. Notional size = risk $ ÷ stop distance, capped at balance × <b>virtual leverage</b> and the optional max position cap, so a stop-out loses about the risk $; margin used = notional ÷ leverage. Longs: stop below, target above; shorts: stop above, target below, P&amp;L = size × (1 − exit/entry). Virtual margin call: a loss can never exceed the balance; the trade closes at the balance limit and later rounds SKIP. Live prices are polled every 3 s for the trade window. Virtual leverage · simulation only, no real orders.</div>
         <div class="actions" id="sessControls"><button class="btn" id="startSess">▶ Run demo session</button><button class="btn stop" id="stopSess" disabled>■ Stop</button><button class="btn ghost" id="resetSess">Reset</button><button class="btn ghost" id="sumBtn" disabled>Summary</button></div>
       </div>
@@ -1307,6 +1325,45 @@ window.G6_TIMER=TT;
 function whyOf(how){ return /margin/.test(how)?"MARGIN CALL":/stop hit/.test(how)?"STOP HIT":/target/.test(how)?"TARGET HIT":/user/.test(how)?"STOPPED BY USER":"WINDOW ENDED"; }
 function sleepStop(ms){ return new Promise(res=>{ const t0=Date.now(); const iv=setInterval(()=>{ if(sessionStop||Date.now()-t0>=ms){ clearInterval(iv); res(); } },50); }); }
 let S=null, sessState="idle";
+// ---- Broker bridge (local only). Credentials live in bridge/.env; this page only holds the bridge token. ----
+const Broker=(()=>{ const st={mode:"sim",ok:false,status:null};
+  const PUBLIC=/(^|\.)github\.io$/i.test(location.hostname)||!/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  const LIVE_PHRASE="I UNDERSTAND THIS IS REAL MONEY";
+  const isLocal=u=>{ try{ const x=new URL(u); return x.protocol==="http:"&&/^(localhost|127\.0\.0\.1)$/.test(x.hostname); }catch(e){ return false; } };
+  function show(txt,cls){ const e=$("brokerStat"); if(e){ e.textContent=txt; e.className="bstat "+(cls||""); } }
+  async function call(path,opt={}){ const u=($("bridgeUrl").value||"").replace(/\/+$/,"");
+    if(!isLocal(u)) throw new Error("bridge URL must be http://127.0.0.1 or http://localhost");
+    const r=await fetch(u+path,{...opt,headers:{"Content-Type":"application/json","X-Bridge-Token":$("bridgeTok").value||""}});
+    let j={}; try{ j=await r.json(); }catch(e){}
+    if(!r.ok){ const d=j.detail; throw new Error(typeof d==="string"?d:(d&&d.reason)||("HTTP "+r.status)); } return j; }
+  async function connect(){ if(PUBLIC) return; show("connecting…","warn");
+    try{ const s=await call("/status"); st.status=s; st.ok=!!s.connected;
+      $("liveRow").hidden=!(s.backend==="live"&&s.live_allowed); $("liveArm").checked=!!s.live_armed;
+      if(!s.credentials_set){ show("bridge up · credentials not set in bridge/.env","warn"); st.ok=false; }
+      else if(!s.connected){ show("bridge up · broker login failed: "+(s.last_error||"unknown"),"err"); }
+      else { const a=s.account||{}; show(`Crucial ${s.backend==="live"?"LIVE backend":"demo"} · acct ${a.id} · ${money(+a.balance||0)} · ${s.mode}${s.kill_switch?" · KILL SWITCH ON":""}`, s.kill_switch?"err":"ok"); }
+    }catch(e){ st.ok=false; show("not connected · "+e.message,"err"); } }
+  function init(){ const sel=$("brokerSel"); if(!sel) return;
+    if(PUBLIC){ ["brokerSel","bridgeUrl","bridgeTok","bridgeConnect"].forEach(id=>$(id).disabled=true);
+      $("brokerNote").innerHTML="Public site: <b>simulation only</b>. To mirror trades to a Crucial TradeLocker demo account, run the terminal locally (<code>python web/app.py</code>) and start the bridge (<code>python -m bridge</code>); see the README."; show("Simulation · public site",""); return; }
+    sel.addEventListener("change",()=>{ st.mode=sel.value; if(st.mode==="sim"){ st.ok=false; show("Simulation · no broker",""); } else connect(); });
+    $("bridgeConnect").addEventListener("click",()=>{ sel.value="demo"; st.mode="demo"; connect(); });
+    $("liveArm").addEventListener("change",async e=>{ const on=e.target.checked;
+      if(on && !confirm("Arm LIVE trading on your real Crucial account? Real money is at risk. Only continue after testing on demo.")){ e.target.checked=false; return; }
+      try{ await call("/mode",{method:"POST",body:JSON.stringify(on?{mode:"LIVE",confirm:LIVE_PHRASE}:{mode:"DEMO"})}); }catch(err){ e.target.checked=false; show("LIVE not armed · "+err.message,"err"); return; }
+      connect(); }); }
+  async function mirror(o){ if(st.mode!=="demo"||!st.ok) return null;
+    if(o.risk!=="approve") return null;   // the guard's verdict is checked here and again, independently, by the bridge
+    try{ const j=await call("/orders",{method:"POST",body:JSON.stringify({symbol:o.coin,side:o.dir>0?"buy":"sell",stop:o.stop,target:o.target,
+        entry_ref:o.entry,risk_pct:o.pct,risk:{status:o.risk},queen:{call:o.call},client_ref:"terminal-round-"+o.r})});
+      const p=j.plan||{}; show(`${j.mode} order · ${p.instrument} ${p.side} ${p.lots} lot · SL ${p.stop} · TP ${p.target} · risk ${money(p.risk_usd||0)}`,"ok"); return j;
+    }catch(e){ show("broker: no order · "+e.message,"warn"); return null; } }
+  async function close(pid,why){ if(!pid) return; try{ await call(`/positions/${encodeURIComponent(pid)}?reason=${encodeURIComponent(why||"")}`,{method:"DELETE"}); show("broker position closed · "+(why||""),"ok"); }
+    catch(e){ show("broker close: "+e.message+" (it may already have hit SL/TP)","warn"); } }
+  return {init,connect,mirror,close,active:()=>st.mode==="demo"&&st.ok,public:PUBLIC};
+})();
+window.G6_BROKER=Broker;
+
 function sessLabel(){ const live=$("inFeed").value==="live";
   const txt = !live ? "Virtual balance · fictional price paths · not a backtest or prediction"
     : Feed.offline ? "Virtual balance · Offline: simulated prices (live feed unavailable) · no real orders · not financial advice"
@@ -1400,7 +1457,10 @@ async function runLoop(){
         const stop=e0-dir*dist, sz=riskSize(S.bal,rk.pct,e0,stop,cap,lev); size=sz.size; riskUsd=sz.riskUsd; margin=sz.margin;
         const rinfo=`risk ${fmtPct(rk.pct)} · ${money(riskUsd)} · ${lev}x · notional ${money(size)} · margin ${money(margin)}${sz.capped?" (capped)":""}`;
         const t={entry:e0,stop,target:e0+dir*2*dist,path:[e0],maxSteps:20,dir};
-        if(size>0){ setPosDir(call,"open"); setDirChip(call,pkt.market,"position open"); HIVE.tradeOpen(call); const o=await playLive(t,pkt._live.coin,size,r,lim,callCls,call,pkt,rinfo,S.bal); entry=e0; exit=o.exit; pnl=o.pnl; mcall=o.mc; result=o.how+(sz.capped?" · size capped":""); }
+        if(size>0){ setPosDir(call,"open"); setDirChip(call,pkt.market,"position open"); HIVE.tradeOpen(call);
+          const bro=Broker.active()?await Broker.mirror({coin:pkt._live.coin,dir,stop,target:t.target,entry:e0,pct:rk.pct,risk:risk.status,call,r}):null;
+          const o=await playLive(t,pkt._live.coin,size,r,lim,callCls,call,pkt,rinfo,S.bal); entry=e0; exit=o.exit; pnl=o.pnl; mcall=o.mc; result=o.how+(sz.capped?" · size capped":"");
+          if(bro&&bro.position_id&&!/stop hit|target/.test(o.how)) await Broker.close(bro.position_id,o.how); }
       } else {
         const sup=(rep.outputs.charts.support_levels||[])[0], res=(rep.outputs.charts.resistance_levels||[])[0], e0=pkt.price.last, stop=planStop(e0,sup,dir,res);
         const sz=riskSize(S.bal,rk.pct,e0,stop,cap,lev); size=sz.size; riskUsd=sz.riskUsd; margin=sz.margin;
@@ -1475,7 +1535,7 @@ async function showSummary(start,end,rows,trades,wins,seed){
     if(p>=1) break; await sleep(30); }
 }
 $("closeSum").onclick=()=>$("summary").classList.remove("show");
-$("startSess").onclick=runLoop;
+$("startSess").onclick=runLoop; Broker.init();
 $("stopSess").onclick=stopSession;
 $("resetSess").onclick=resetSession;
 $("sumBtn").onclick=()=>{ if(S&&S.rows.length) showSummary(S.start,S.bal,S.rows,S.trades,S.wins,S.feed==="live"?"live public prices from "+(Feed.source||"Coinbase Exchange"):"seed "+S.seed); };

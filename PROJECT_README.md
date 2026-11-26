@@ -277,7 +277,8 @@ retried once; a second failure stops the run safely with `SKIP`.
 python -m pytest -q
 ```
 
-Expected: `18 passed`. The tests check that the Queen and all five bots load, the sample data is valid, every output
+Expected: `31 passed` with the bridge's packages installed (`pip install -r bridge/requirements.txt`);
+without them the 13 bridge tests are skipped and you get `18 passed, 1 skipped`. The tests check that the Queen and all five bots load, the sample data is valid, every output
 matches its shape, missing data leads to a safe result, a Risk rejection stops the run, the Queen (Decision)
 can't bypass Risk, a short needs full Risk approval (a reduce becomes WAIT), the planted instruction stays data, there is no order code, bad output is retried
 once and then stops, secrets never reach logs or reports, and the program refuses to run if
@@ -305,7 +306,9 @@ prompts/     one .txt per bot
 data/        sample_market.json  ← PRACTICE DATA (fictional ticker EXMP; used by tests and the "Practice (fictional)" option)
 reports/     report-<time>.json (one per run)
 logs/        run-<time>.log (one per run)
-tests/       test_workflow.py (12 safety tests)
+tests/       test_workflow.py (18 safety tests)  test_bridge.py (13 bridge tests, TradeLocker mocked)
+bridge/      the ONLY broker code: settings.py (.env + limits)  tradelocker.py (REST client)  guard.py (kill switch,
+             daily loss stop)  sizing.py  levels.py  server.py (FastAPI)  hive_link.py (Queen -> bridge)  check.py
 web/         app.py (browser UI)  templates/index.html  static-demo.html  build_static.py
 ```
 
@@ -322,3 +325,69 @@ web/         app.py (browser UI)  templates/index.html  static-demo.html  build_
 This system is **not** self-improving and must never rewrite its own prompts, code, or risk settings.
 Any future connection to a real trading account would need your explicit approval and a separate,
 reviewed project.
+
+## 9. Broker bridge: Crucial Markets (TradeLocker), demo first
+
+> **Read this first.** Crucial Markets is an **unregulated** broker (registered in South Africa /
+> Saint Lucia, not with the SEC, CFTC, FCA or ASIC). Withdrawals are **crypto only**. CFDs with leverage
+> can lose money fast. Run everything on a **demo** account first, for long enough to trust it, before any
+> real money. Nothing here is financial advice.
+
+The hive itself stays a simulation: `agents/`, `run_demo.py` and the Flask UI contain no order code (a test
+checks this). Everything that can reach a broker lives in **`bridge/`**, a small local FastAPI service between
+the terminal and a Crucial TradeLocker account (public API: <https://public-api.tradelocker.com>).
+
+| Mode | What happens | How to get it |
+|---|---|---|
+| **SIM** (default) | Virtual balance, nothing leaves the browser. The public GitHub Pages site is always SIM. | Nothing to do. |
+| **DEMO** | Each live-price LONG/SHORT that **Risk approved** is mirrored to your Crucial TradeLocker *demo* account, with the round's stop (1.5 × ATR) and target (2 × stop distance) as one SL and one TP. | Run the bridge (below) and pick **Broker: Crucial demo** in a locally running terminal. |
+| **LIVE** | Same, on a real-money account. Off by default. | `TRADELOCKER_ENV=live` **and** `ALPHA_HIVE_ALLOW_LIVE=1` in `bridge/.env`, a restart, then tick **Arm LIVE** in the terminal and confirm. Disarmed again on every restart. |
+
+**The guard still rules.** The bridge only accepts an order whose Risk verdict is `approve` and whose side
+matches the Queen's call; a `reject` or `reduce` never reaches the broker (checked in the terminal, in
+`bridge/hive_link.py`, and again by the bridge server). The Queen cannot bypass it.
+
+**Hard limits, enforced in the bridge** (set in `bridge/.env`; they can be tightened, and code ceilings stop
+them being loosened past 2% risk, 10% daily loss, 5 positions or 1:30 leverage):
+
+| Limit | Default | Effect |
+|---|---|---|
+| `MAX_RISK_PCT_PER_TRADE` | 0.5% | Risk $ = balance × min(the round's risk %, this). Size = risk $ ÷ stop distance. |
+| `MAX_POSITION_USD`, `MAX_POSITION_PCT_OF_BALANCE` | $2,000, 20% | Notional cap. |
+| `ACCOUNT_MAX_LEVERAGE` | 30 | Notional ≤ balance × 30 (Crucial's ~1:30). The terminal's virtual leverage is ignored: CFD margin is the broker's. |
+| `DAILY_LOSS_STOP_PCT` | 2% | Once the day's loss (vs the first equity seen that UTC day) hits this, new orders stop until the next UTC day. |
+| `MAX_OPEN_POSITIONS` | 1 | No new order while this many are open. |
+| Kill switch | off | `POST /kill` (optionally closing all positions) or `KILL_SWITCH=1`. It can only be released on the machine: `python -m bridge release-kill`. |
+
+Lots are rounded **down** to the instrument's lot step; an order below the minimum lot is refused, never
+rounded up. On a small account that means some instruments can't be traded at these limits (for example, a
+$500 demo can't open 0.01 lot of BTCUSD, about $600 notional, under a $100 cap; ETHUSD works).
+
+### Set it up
+
+1. **Create a free demo account** at Crucial Markets (crucialmarkets.com) and open it in TradeLocker. Note the
+   email, password and the **server** name shown on the TradeLocker login screen.
+2. **Install the bridge's packages** (in the same virtual environment): `pip install -r bridge/requirements.txt`
+3. **Fill in `bridge/.env`**: `cp bridge/.env.example bridge/.env`, then set `TRADELOCKER_EMAIL`,
+   `TRADELOCKER_PASSWORD`, `TRADELOCKER_SERVER`, leave `TRADELOCKER_ENV=demo`, and set `BRIDGE_TOKEN` to a long
+   random string (`python -c "import secrets;print(secrets.token_urlsafe(24))"`). Values in the process
+   environment win over the file. `bridge/.env` is git-ignored; credentials never go to the browser, the repo or
+   GitHub Pages.
+4. **Test the connection (read-only, no orders):** `python -m bridge check` logs in, lists the account (id,
+   accNum, balance) and looks up BTCUSD, ETHUSD and US30 with their lot sizes.
+5. **Run the bridge:** `python -m bridge` (listens on `http://127.0.0.1:8765` only).
+6. **Connect the terminal:** run it locally (`python web/app.py`, then open <http://127.0.0.1:8642/?session>),
+   set **Broker** to **Crucial demo**, keep the bridge URL `http://127.0.0.1:8765`, paste the `BRIDGE_TOKEN` and
+   press **Connect**. The status shows the account and balance. Then run a session on **Live public prices**:
+   approved LONG/SHORT calls are mirrored to the demo account; if the trade window ends before SL or TP, the
+   bridge closes the position too.
+
+The bridge accepts browser calls only from `http://localhost` / `http://127.0.0.1` pages and every call needs
+the token, so the public site (and any other website) can't reach it. Every order, block and close is
+appended to `bridge/state/orders.jsonl` (no secrets). You can also route a Python round:
+`bridge.hive_link.run_and_route(packet, provider, BridgeHTTP(url, token), symbol="ETH", dry_run=True)`.
+
+Bridge API (all except `/health` need `X-Bridge-Token`): `GET /status`, `GET /instruments`, `GET /account`,
+`GET /positions`, `POST /orders` (`dry_run: true` sizes without placing), `PATCH /positions/{id}` (SL/TP),
+`DELETE /positions/{id}`, `POST /kill`, `POST /mode` (`DEMO`, or `LIVE` with the confirm phrase).
+
