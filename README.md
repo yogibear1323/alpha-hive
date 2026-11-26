@@ -16,8 +16,10 @@ hive's guard and answers to no one:** the Queen cannot override or bypass a Risk
 no call; a reduce turns a long or short into WAIT). The Python project enforces this in `agents/queen.py` and refuses any
 config that sets `hierarchy.queen_can_overrule_guard`.
 
-**Videos:** the homepage shows a 36 s sizzle (vertical cut on phones) and a 76 s "How the hive trades" explainer, both
-labelled *Simulation · demo funds*. They were recorded before the Queen redesign, so the boss bot appears as "Decision" in them.
+**Videos:** the homepage shows a 37 s narrated sizzle (vertical cut on phones) and an 89 s narrated "How the hive trades"
+explainer, both labelled *Simulation · demo funds* and recorded on the Queen design (crowned Queen bee, central gold chamber,
+workers reporting back, Risk as the guard). The sizzle autoplays muted on loop (not under reduced motion); press **Sound on**
+or use the controls to hear it. Narration is neural TTS; the music and sound effects are synthesized, with no samples.
 
 - **Live coins (default):** single runs fetch real hourly and one-minute candles for the selected coin.
 - **Ticker tape:** live USD prices and 24h change for your token list, refreshed every 10 s, marked LIVE;
