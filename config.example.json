@@ -8,5 +8,17 @@
   "logs_dir": "logs",
   "simulation": {
     "starting_balance_usd": 10000
+  },
+  "hierarchy": {
+    "queen": "decision",
+    "scout": "scout",
+    "workers": [
+      "news",
+      "sentiment",
+      "charts"
+    ],
+    "guard": "risk",
+    "queen_can_overrule_guard": false,
+    "_note": "Risk is the hive's guard and answers to no one. queen_can_overrule_guard must stay false; any other value is refused."
   }
 }

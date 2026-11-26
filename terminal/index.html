@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Alpha Hive — a six-bot AI trading team. An educational simulation on live public prices with a virtual balance. No real orders.">
+<meta name="description" content="Alpha Hive — a six-bot AI trading hive led by a Queen bot, with an independent Risk guard. An educational simulation on live public prices with a virtual balance. No real orders.">
 <link rel="icon" href="data:,">
 <title>Alpha Hive · Six-Bot AI Trading Team · Simulation</title>
 <style>
@@ -425,6 +425,15 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
 .node{background:rgba(18,14,9,.78);color:#d8ccb1}
 .node.work{background:rgba(70,50,14,.92)} .node.ok{background:rgba(22,40,20,.9)} .node.no{background:rgba(48,18,16,.9)}
 .tok{background:rgba(18,14,9,.72)} .tok.on{background:rgba(62,45,14,.9)} .tok .tk,.tok .tx{color:#d8ccb1} .tok.on .tk{color:var(--cyan)}
+
+/* ---- queen hierarchy ---- */
+.bot.queen{box-shadow:0 0 0 2px rgba(255,216,77,.55),0 0 34px rgba(255,182,39,.28)}
+.bot.queen .name{color:#ffd84d}
+.rolenote{margin:8px 0 2px;padding:6px 9px;font:600 11.5px/1.45 var(--mono);border-radius:6px;background:rgba(18,14,9,.88);color:#f4e6c4;border-left:3px solid #ffd84d}
+.rolenote b{color:#ffd84d}
+.rolenote.guard{border-left-color:#8fe388}
+.node.qn{color:#ffd84d;border-color:#ffd84d;background:rgba(40,28,8,.92)}
+.pipenote{margin-top:8px;padding:6px 10px;font:600 11.5px/1.5 var(--mono);color:#e9dcbc;background:rgba(18,14,9,.85);border:1px solid rgba(255,216,77,.35);border-radius:6px}
 </style>
 </head>
 <body>
@@ -435,7 +444,7 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
   <div class="bar">
     <div class="brand">
       <svg class="logo" viewBox="0 0 40 40" fill="none" stroke="#ffb627" stroke-width="2"><polygon points="20,2 36,11 36,29 20,38 4,29 4,11"/><polygon points="20,11 27,15 27,23 20,27 13,23 13,15" stroke="#ff8c42" stroke-width="1.6"/><circle cx="20" cy="19" r="2.4" fill="#ffd84d" stroke="none"/></svg>
-      <div><h1>Alpha <span>Hive</span></h1><small>SIX-BOT AI TRADING TEAM · SCOUT · NEWS · SENTIMENT · CHARTS · RISK · DECISION</small></div>
+      <div><h1>Alpha <span>Hive</span></h1><small>A QUEEN-LED SIX-BOT HIVE · ♛ QUEEN · SCOUT · NEWS · SENTIMENT · CHARTS · 🛡 RISK GUARD</small></div>
     </div>
     <div class="chips"><span class="chip sim">Simulation only</span><span class="chip live" id="modeChip">Offline mock</span><span class="chip run" id="runChip">● Idle</span><span class="chip dir" id="dirChip" aria-live="polite">◇ no call yet</span><span class="chip guard" id="guardChip" hidden>⚠ Balance unavailable · trading disabled</span><span class="chip feed" id="feedChip">Feed: —</span><a class="chip motion" id="homeLink" href="../" hidden>⌂ Home</a><button class="chip motion" id="motionBtn" title="Toggle animations">Motion: full</button></div>
   </div>
@@ -472,10 +481,11 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
         <div class="coins" id="coins"><span class="clbl">Tokens · tap to include · × to remove</span><span id="tokChips"></span>
           <span class="tokadd"><input id="tokIn" type="text" maxlength="12" placeholder="Add token, e.g. LTC" aria-label="Add token symbol" autocomplete="off"><button class="btn ghost sm" id="tokAddBtn">Add token</button><button class="btn ghost sm" id="tokMajors">Add all majors</button></span>
           <span class="tokmsg" id="tokMsg" role="status"></span><span class="tradeline" id="tradeLine">Bots trade: —</span></div>
-        <div class="label" id="sessHelp">Live rounds read real recent candles for each selected token. Decision goes <b class="dir long">▲ LONG</b> (BUY) when the analysts expect a rise and <b class="dir short">▼ SHORT</b> (SELL/SHORT) when charts, sentiment and news are bearish, only after the Risk gate fully approves; a “reduce” becomes WAIT and never flips direction. Each trade risks the effective % of the <b>current</b> balance: the average of the active bots’ risk settings, never above the Risk bot’s %. Notional size = risk $ ÷ stop distance, capped at balance × <b>virtual leverage</b> and the optional max position cap, so a stop-out loses about the risk $; margin used = notional ÷ leverage. Longs: stop below, target above; shorts: stop above, target below, P&amp;L = size × (1 − exit/entry). Virtual margin call: a loss can never exceed the balance; the trade closes at the balance limit and later rounds SKIP. Live prices are polled every 3 s for the trade window. Virtual leverage · simulation only, no real orders.</div>
+        <div class="label" id="sessHelp">Live rounds read real recent candles for each selected token. The ♛ Queen goes <b class="dir long">▲ LONG</b> (BUY) when the analysts expect a rise and <b class="dir short">▼ SHORT</b> (SELL/SHORT) when charts, sentiment and news are bearish, only after the Risk gate fully approves; a “reduce” becomes WAIT and never flips direction. Each trade risks the effective % of the <b>current</b> balance: the average of the active bots’ risk settings, never above the Risk bot’s %. Notional size = risk $ ÷ stop distance, capped at balance × <b>virtual leverage</b> and the optional max position cap, so a stop-out loses about the risk $; margin used = notional ÷ leverage. Longs: stop below, target above; shorts: stop above, target below, P&amp;L = size × (1 − exit/entry). Virtual margin call: a loss can never exceed the balance; the trade closes at the balance limit and later rounds SKIP. Live prices are polled every 3 s for the trade window. Virtual leverage · simulation only, no real orders.</div>
         <div class="actions" id="sessControls"><button class="btn" id="startSess">▶ Run demo session</button><button class="btn stop" id="stopSess" disabled>■ Stop</button><button class="btn ghost" id="resetSess">Reset</button><button class="btn ghost" id="sumBtn" disabled>Summary</button></div>
       </div>
       <div class="pipeline" id="pipeline"></div>
+      <div class="pipenote" id="queenLine">♛ The Queen tasks Scout, dispatches the workers and makes the final call. 🛡 Risk is the hive's guard and answers to no one: the Queen cannot override or bypass a Risk reject or reduce.</div>
       <div class="err" id="err"></div>
     </div>
     <div class="card">
@@ -509,7 +519,7 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
   </section>
   <div class="floor" id="floor" style="margin-top:16px"></div>
 </main>
-<footer>Every bot output is checked against its JSON shape and retried once; a second failure stops the run with SKIP. Risk sizes are capped in code to the human-written rules. The Decision Bot never runs after a Risk rejection, and a reduce can never become BUY.</footer>
+<footer>Every bot output is checked against its JSON shape and retried once; a second failure stops the run with SKIP. Risk sizes are capped in code to the human-written rules. The ♛ Queen owns the round, but 🛡 Risk is the hive's guard and answers to no one: the Queen never makes a call after a Risk rejection, and a reduce can never become BUY.</footer>
 
 <div class="reveal" id="reveal" role="dialog" aria-live="assertive">
   <div class="count" id="count"></div>
@@ -696,19 +706,22 @@ const Engine = (() => {
     try{
       if(!packet||typeof packet!=="object"||!("_label" in packet)||!("market" in packet)) throw new Error("market packet needs _label and market");
       const fns={scout:()=>scout(packet),news:()=>news(packet),sentiment:()=>sentiment(packet),charts:()=>{const o=charts(numbersOnly(packet));return o;}};
+      const Q=(action,bot)=>{ (report.delegation=report.delegation||[]).push({action,bot}); emit({type:"queen",action,bot}); };
       for(const [i,key] of ["scout","news","sentiment","charts"].entries()){
+        Q(key==="scout"?"task":"dispatch",key);
         if(P.has(key)){ outputs[key]=validated(key,()=>neutral(key,packet)); emit({type:"step_paused",step:i+1,bot:key,output:outputs[key]}); continue; }
-        emit({type:"step_start",step:i+1,bot:key}); outputs[key]=validated(key,fns[key]); emit({type:"step_done",step:i+1,bot:key,output:outputs[key]});
+        emit({type:"step_start",step:i+1,bot:key}); outputs[key]=validated(key,fns[key]); Q("report",key); emit({type:"step_done",step:i+1,bot:key,output:outputs[key]});
       }
+      Q("propose","risk");
       if(P.has("risk")){ report.stopped_at="risk_paused"; report.reason="Risk paused"; emit({type:"step_paused",step:5,bot:"risk"});
         emit({type:"stopped",step:6,why:"risk_paused",reason:"Risk paused - gate closed, all trades blocked (SKIP)"}); }
       else {
       emit({type:"step_start",step:5,bot:"risk"});
       outputs.risk=enforce(validated("risk",()=>riskModel(packet,outputs,rules,bal)),packet,outputs,rules,bal);
-      emit({type:"step_done",step:5,bot:"risk",output:outputs.risk});
-      if(outputs.risk.status==="reject"){report.stopped_at="risk";emit({type:"stopped",step:6,reason:"Risk rejected - Decision Bot not run"});}
-      else if(P.has("decision")){report.stopped_at="decision_paused";report.reason="Decision paused - no new trades";emit({type:"step_paused",step:6,bot:"decision"});}
-      else{emit({type:"step_start",step:6,bot:"decision"});outputs.decision=validated("decision",()=>decision(outputs,outputs.risk));
+      emit({type:"step_done",step:5,bot:"risk",output:outputs.risk}); Q("verdict","risk");
+      if(outputs.risk.status==="reject"){report.stopped_at="risk";Q("stand_down","decision");emit({type:"stopped",step:6,reason:"Risk rejected - the Queen makes no call"});}
+      else if(P.has("decision")){report.stopped_at="decision_paused";report.reason="Queen paused - no new trades";emit({type:"step_paused",step:6,bot:"decision"});}
+      else{Q("call","decision");emit({type:"step_start",step:6,bot:"decision"});outputs.decision=validated("decision",()=>decision(outputs,outputs.risk));
         report.final_result=outputs.decision.decision;emit({type:"step_done",step:6,bot:"decision",output:outputs.decision});}
       }
     }catch(e){report.error=String(e.message||e);report.stopped_at=report.stopped_at||"error";emit({type:"error",message:report.error});}
@@ -728,15 +741,15 @@ const ICONS = {
   sentiment:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="bee"><ellipse cx="10" cy="12" rx="5" ry="3" transform="rotate(-25 10 12)" fill="currentColor" fill-opacity=".18" stroke-width="1.3" class="wg"/><ellipse cx="22" cy="12" rx="5" ry="3" transform="rotate(25 22 12)" fill="currentColor" fill-opacity=".18" stroke-width="1.3" class="wg"/><circle cx="16" cy="9" r="3"/><path d="M14.5 6.4 12.5 3M17.5 6.4 19.5 3" stroke-width="1.4"/><ellipse cx="16" cy="19" rx="5" ry="7" fill="currentColor" fill-opacity=".14"/><path d="M11.4 17h9.2M11.2 20.5h9.6M12.4 24h7.2" stroke-width="1.6"/><path d="M23 26c1.5-2 3-2 4.5 0s3 2 4.5 0" stroke-width="1.4"/></svg>',
   charts:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="bee"><ellipse cx="10" cy="12" rx="5" ry="3" transform="rotate(-25 10 12)" fill="currentColor" fill-opacity=".18" stroke-width="1.3" class="wg"/><ellipse cx="22" cy="12" rx="5" ry="3" transform="rotate(25 22 12)" fill="currentColor" fill-opacity=".18" stroke-width="1.3" class="wg"/><circle cx="16" cy="9" r="3"/><path d="M14.5 6.4 12.5 3M17.5 6.4 19.5 3" stroke-width="1.4"/><ellipse cx="16" cy="19" rx="5" ry="7" fill="currentColor" fill-opacity=".14"/><path d="M11.4 17h9.2M11.2 20.5h9.6M12.4 24h7.2" stroke-width="1.6"/><path d="M24 31v-3M27 31v-6M30 31v-9" stroke-width="1.8"/></svg>',
   risk:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="bee"><ellipse cx="10" cy="12" rx="5" ry="3" transform="rotate(-25 10 12)" fill="currentColor" fill-opacity=".18" stroke-width="1.3" class="wg"/><ellipse cx="22" cy="12" rx="5" ry="3" transform="rotate(25 22 12)" fill="currentColor" fill-opacity=".18" stroke-width="1.3" class="wg"/><circle cx="16" cy="9" r="3"/><path d="M14.5 6.4 12.5 3M17.5 6.4 19.5 3" stroke-width="1.4"/><ellipse cx="16" cy="19" rx="5" ry="7" fill="currentColor" fill-opacity=".14"/><path d="M11.4 17h9.2M11.2 20.5h9.6M12.4 24h7.2" stroke-width="1.6"/><path d="M27 21l4 1.5v3c0 2.5-2 4.2-4 5-2-.8-4-2.5-4-5v-3z" stroke-width="1.4"/></svg>',
-  decision:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="bee"><ellipse cx="10" cy="12" rx="5" ry="3" transform="rotate(-25 10 12)" fill="currentColor" fill-opacity=".18" stroke-width="1.3" class="wg"/><ellipse cx="22" cy="12" rx="5" ry="3" transform="rotate(25 22 12)" fill="currentColor" fill-opacity=".18" stroke-width="1.3" class="wg"/><circle cx="16" cy="9" r="3"/><path d="M14.5 6.4 12.5 3M17.5 6.4 19.5 3" stroke-width="1.4"/><ellipse cx="16" cy="19" rx="5" ry="7" fill="currentColor" fill-opacity=".14"/><path d="M11.4 17h9.2M11.2 20.5h9.6M12.4 24h7.2" stroke-width="1.6"/><path d="M23 27l2.5 2.5L31 23" stroke-width="1.8"/></svg>',
+  decision:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="bee"><path d="M10.5 6.2 11.4 1.6 14 4.2 16 .9 18 4.2 20.6 1.6 21.5 6.2Z" fill="#ffd84d" stroke="#ffd84d" stroke-width="1" stroke-linejoin="round"/><ellipse cx="10" cy="12" rx="5" ry="3" transform="rotate(-25 10 12)" fill="currentColor" fill-opacity=".18" stroke-width="1.3" class="wg"/><ellipse cx="22" cy="12" rx="5" ry="3" transform="rotate(25 22 12)" fill="currentColor" fill-opacity=".18" stroke-width="1.3" class="wg"/><circle cx="16" cy="9" r="3"/><path d="M14.5 6.4 12.5 3M17.5 6.4 19.5 3" stroke-width="1.4"/><ellipse cx="16" cy="19" rx="5" ry="7" fill="currentColor" fill-opacity=".14"/><path d="M11.4 17h9.2M11.2 20.5h9.6M12.4 24h7.2" stroke-width="1.6"/><path d="M23 27l2.5 2.5L31 23" stroke-width="1.8"/></svg>',
 };
 const BOTS = [
   {key:"scout",name:"Scout",job:"Is this market worth researching?",c:"#ffb627"},
   {key:"news",name:"News",job:"Reporting vs unverified claims",c:"#ffa35c"},
   {key:"sentiment",name:"Sentiment",job:"Crowd mood & hype detection",c:"#8fe388"},
   {key:"charts",name:"Charts",job:"Trend, levels, volume — numbers only",c:"#ffcf5c"},
-  {key:"risk",name:"Risk Gate",job:"Human rules · tighten, never loosen",c:"#ffd84d"},
-  {key:"decision",name:"Decision",job:"Runs only after Risk approves/reduces",c:"#ff8c42"},
+  {key:"risk",name:"Risk Gate",job:"The hive's guard · answers to no one",c:"#ffd84d"},
+  {key:"decision",name:"Queen",job:"Boss of the hive · makes the final call",c:"#ff8c42"},
 ];
 const PRE = {
   scout:["> loading market packet","> checking liquidity + data quality"],
@@ -744,22 +757,23 @@ const PRE = {
   sentiment:["> reading crowd mood","> discounting hype"],
   charts:["> plotting daily bars","> finding support / resistance"],
   risk:["> loading human-written risk rules (read-only)","> enforcing caps in code"],
-  decision:["> weighing four research outputs + risk gate","> preparing final call"],
+  decision:["> ♛ the Queen weighs her workers' reports + the Risk verdict","> preparing the Queen's call"],
 };
 
 function buildFloor(){
   $("floor").innerHTML = BOTS.map((b,i)=>`
-  <section class="card bot" id="bot-${b.key}" style="--c:${b.c};--i:${i}">
+  <section class="card bot${b.key==="decision"?" queen":""}" id="bot-${b.key}" style="--c:${b.c};--i:${i}">
     <div class="hd"><div class="av" style="color:${b.c}">${ICONS[b.key]}</div>
-      <div><div class="name">${i+1} · ${b.name}</div><div class="job">${b.job}</div></div>
+      <div><div class="name">${i+1} · ${b.key==="decision"?"♛ ":""}${b.name}</div><div class="job">${b.job}</div></div>
       <span class="st" id="st-${b.key}">IDLE</span><button class="tog on" id="tg-${b.key}" aria-pressed="true" title="Pause or resume this bot (takes effect next round)">ON</button></div>
-    <div class="coinline" id="cl-${b.key}">Analyzing: —</div>${b.key==="risk"?"":`<div class="leanrow"><span class="llbl">${b.key==="decision"?"Call":"Lean"}</span><span class="lean" id="lean-${b.key}"></span><span class="lnone" id="lnone-${b.key}">— waiting for this round</span></div>`}
+    ${b.key==="decision"?'<div class="rolenote queen">♛ Owns the round: tasks Scout, dispatches News, Sentiment and Charts, then makes the call. <b>She cannot overrule Risk.</b></div>':b.key==="risk"?'<div class="rolenote guard">🛡 Independent check: the Queen cannot override or bypass a Risk reject or reduce.</div>':""}<div class="coinline" id="cl-${b.key}">Analyzing: —</div>${b.key==="risk"?"":`<div class="leanrow"><span class="llbl">${b.key==="decision"?"Call":"Lean"}</span><span class="lean" id="lean-${b.key}"></span><span class="lnone" id="lnone-${b.key}">— waiting for this round</span></div>`}
     <div class="riskrow" id="rk-${b.key}"><span class="rlbl">Risk${b.key==="risk"?" ceiling":""}</span><button class="rq" data-v="1">1%</button><button class="rq" data-v="2">2%</button><input class="rin" id="ri-${b.key}" type="text" inputmode="decimal" maxlength="6" aria-label="${b.name} custom risk percent" title="Custom % (0.1 to 10)"><span class="rshow" id="rs-${b.key}">1% · —</span><span class="rerr" id="re-${b.key}" role="alert"></span></div>
     <div class="log" id="log-${b.key}"></div>
     <div class="viz" id="viz-${b.key}">${vizMarkup(b.key)}</div>
     <details class="json" id="json-${b.key}" hidden><summary>View JSON output</summary><pre></pre></details>
   </section>`).join("");
-  $("pipeline").innerHTML = BOTS.map((b,i)=>`${i?'<div class="link" id="ln-'+b.key+'"></div>':''}<div class="node" id="nd-${b.key}">${i+1} ${b.name.split(" ")[0].toUpperCase()}</div>`).join("");
+  const PL={scout:"1 SCOUT",news:"2 NEWS",sentiment:"3 SENTIMENT",charts:"4 CHARTS",risk:"5 🛡 RISK · GUARD",decision:"6 ♛ QUEEN'S CALL"};
+  $("pipeline").innerHTML = '<div class="node qn" id="nd-queen" title="The Queen owns the round">♛ QUEEN</div><div class="link" id="ln-queen"></div>' + BOTS.map((b,i)=>`${i?'<div class="link" id="ln-'+b.key+'"></div>':''}<div class="node" id="nd-${b.key}">${PL[b.key]}</div>`).join("");
 }
 function vizMarkup(k){
   if(k==="charts") return '<canvas class="chart" id="chart"></canvas>';
@@ -903,7 +917,14 @@ function resetFloor(){
 }
 function showJson(key,o){ const d=$("json-"+key); d.hidden=false; d.querySelector("pre").textContent=JSON.stringify(o,null,2); }
 
+const QTXT={task:b=>"♛ Queen tasks "+b,dispatch:b=>"♛ Queen dispatches "+b,report:b=>b+" reports back to the Queen",propose:()=>"♛ Queen sends the proposal to 🛡 Risk (independent)",verdict:()=>"🛡 Risk has ruled: the Queen must accept it",call:()=>"♛ Queen makes the call within Risk's verdict",stand_down:()=>"🛡 Risk rejected: the Queen stands down, no call"};
+function queenOrder(ev){ const b=(BOTS.find(x=>x.key===ev.bot)||{}).name||ev.bot, n=$("nd-queen"), ql=$("queenLine");
+  if(ql&&QTXT[ev.action]) ql.textContent=QTXT[ev.action](b);
+  if(n) n.className="node qn "+(ev.action==="stand_down"?"no":ev.action==="call"||ev.action==="task"||ev.action==="dispatch"?"work":"ok");
+  const l=$("ln-queen"); if(l) l.className="link"+(ev.action==="task"?"":" ok");
+  try{ HIVE.queen(ev.action,ev.bot); }catch(e){} }
 async function onEvent(ev){
+  if(ev.type==="queen"){ queenOrder(ev); return; }
   if(ev.type==="step_start"){
     setState(ev.bot,"work","WORKING"); setLean(ev.bot,{k:"",t:"…"});
     $("log-"+ev.bot).innerHTML="";
@@ -920,19 +941,19 @@ async function onEvent(ev){
     await typeLine(ev.bot,"✔ output validated against schema","g");
     await heartbeat(ev.bot);
     setState(ev.bot,"ok","COMPLETE"); showJson(ev.bot,o);
-    FX.burst(ev.bot); if(["scout","news","sentiment","charts"].includes(ev.bot)) FX.handoff(ev.bot,"risk",14); if(ev.bot==="risk" && o.status!=="reject") FX.handoff("risk","decision",18);
+    FX.burst(ev.bot); if(["scout","news","sentiment","charts"].includes(ev.bot)) FX.handoff(ev.bot,"decision",14); if(ev.bot==="charts") FX.handoff("decision","risk",16); if(ev.bot==="risk" && o.status!=="reject") FX.handoff("risk","decision",18);
     await sleep(250*SPEED);
   } else if(ev.type==="step_paused"){
     setState(ev.bot,"paused","PAUSED"); $("log-"+ev.bot).innerHTML=""; setLean(ev.bot,ev.bot==="risk"?null:{k:"neu",t:"NEUTRAL · paused"});
-    const msg = ev.bot==="risk" ? "⏸ Risk paused — gate closed, every trade blocked" : ev.bot==="decision" ? "⏸ Decision paused — no new trades this round" : "⏸ paused — input treated as missing / neutral";
+    const msg = ev.bot==="risk" ? "⏸ Risk paused — gate closed, every trade blocked" : ev.bot==="decision" ? "⏸ Queen paused — no new trades this round" : "⏸ paused — input treated as missing / neutral";
     await typeLine(ev.bot,msg,"w");
     if(ev.output){ await typeLine(ev.bot,"neutral placeholder passed schema check","k"); showJson(ev.bot,ev.output); }
     if(ev.bot==="risk"){ $("verdict").innerHTML='PAUSED<small>gate closed · size $0</small>'; $("shield").className="shieldbox gate-reject"; }
-    if(ev.bot==="decision"){ $("callbox").innerHTML=dirHTML("SKIP","PAUSED ·"); setLean("decision",{k:"skip",t:"SKIP"}); setDirChip("SKIP",currentPacket&&currentPacket.market,"Decision paused"); }
+    if(ev.bot==="decision"){ $("callbox").innerHTML=dirHTML("SKIP","PAUSED ·"); setLean("decision",{k:"skip",t:"SKIP"}); setDirChip("SKIP",currentPacket&&currentPacket.market,"Queen paused"); }
   } else if(ev.type==="stopped"){
     const rp = ev.why==="risk_paused";
     setState("decision","no","NOT RUN"); $("log-decision").innerHTML="";
-    await typeLine("decision", rp ? "✖ Risk paused — Decision Bot cannot run without the gate" : "✖ Risk rejected — Decision Bot refused to run","r");
+    await typeLine("decision", rp ? "✖ Risk paused — the Queen cannot call without the gate" : "✖ Risk rejected — the Queen made no call","r");
     await typeLine("decision","result forced to SKIP","r");
     $("callbox").innerHTML = dirHTML("SKIP","NOT RUN ·")+(rp?' <span class="res-SKIP">(Risk paused)</span>':''); setLean("decision",{k:"skip",t:"SKIP"}); setDirChip("SKIP",currentPacket&&currentPacket.market,rp?"Risk paused":"Risk rejected");
   } else if(ev.type==="error"){
@@ -954,7 +975,7 @@ async function reveal(rep){
   shockwave(CALL_COLOR[cls]); shake([K,document.querySelector("main"),document.querySelector("header")]); FX.explode(CALL_COLOR[cls]);
   const r=(rep.outputs||{}).risk, dr=$("callDir"); if(dr){ dr.className="dirtag "+(cls==="BUY"?"long":cls==="SHORT"?"short":""); dr.textContent= (cls==="BUY"||cls==="SHORT")?"simulation only · virtual position · no real order":""; }
   $("callMeta").textContent = `${rep.market} · Risk ${r?r.status.toUpperCase():"n/a"}${r?" · simulated size cap $"+r.maximum_simulated_size:""}`
-    + (rep.stopped_at==="risk"?" · Decision Bot not run":"") + (rep.error?" · "+rep.error:"");
+    + (rep.stopped_at==="risk"?" · the Queen made no call":"") + (rep.error?" · "+rep.error:"");
   K.classList.add("show");
 }
 $("closeReveal").onclick=()=>{ $("reveal").classList.remove("show"); $("call").classList.remove("show"); };
@@ -987,7 +1008,7 @@ async function showSaved(rep){
     $("log-"+b.key).innerHTML=summaryLines(b.key,o).map(l=>`<span class="ln ${l.c||""}">${esc(l.t)}</span>`).join("");
     if(b.key==="sentiment") setGauge(o.score); if(b.key==="risk") setShield(o); if(b.key==="charts"){ chartOut=o; drawChart(currentPacket,o,3); }
     setLean(b.key,leanOf(b.key,o)); if(b.key==="decision"){ $("callbox").innerHTML=dirHTML(o.decision); setDirChip(o.decision,rep.market,"saved run"); } });
-  if(rep.stopped_at==="risk"){ setState("decision","no","NOT RUN"); $("log-decision").innerHTML='<span class="ln r">Risk rejected — Decision Bot not run</span>'; $("callbox").innerHTML=dirHTML("SKIP","NOT RUN ·"); setLean("decision",{k:"skip",t:"SKIP"}); setDirChip("SKIP",rep.market,"saved run"); }
+  if(rep.stopped_at==="risk"){ setState("decision","no","NOT RUN"); $("log-decision").innerHTML='<span class="ln r">Risk rejected — the Queen made no call</span>'; $("callbox").innerHTML=dirHTML("SKIP","NOT RUN ·"); setLean("decision",{k:"skip",t:"SKIP"}); setDirChip("SKIP",rep.market,"saved run"); }
 }
 async function loadHistory(){
   let items;
@@ -1369,7 +1390,7 @@ async function runLoop(){
     await Engine.run(pkt,ev=>q.push(ev),{paused:roundPaused}); fin=true; await pump;
     if(sessionStop || !lastReport) break;                    // round discarded: nothing was booked
     const rep=lastReport, call=rep.final_result, risk=rep.outputs.risk;
-    let size=0,pnl=0,entry=null,exit=null,riskPct=null,riskUsd=null,dir=0,levUsed=null,margin=0,mcall=false,result = rep.stopped_at==="risk_paused"?"Risk paused · no trade":rep.stopped_at==="decision_paused"?"Decision paused · no trade":"no trade · $0";
+    let size=0,pnl=0,entry=null,exit=null,riskPct=null,riskUsd=null,dir=0,levUsed=null,margin=0,mcall=false,result = rep.stopped_at==="risk_paused"?"Risk paused · no trade":rep.stopped_at==="decision_paused"?"Queen paused · no trade":"no trade · $0";
     const callCls="res-"+callKey(call);
     if((call===BUY||call===SHORT) && risk && risk.status==="approve" && !rep.stopped_at){
       riskPct=rk.pct; const cap=capValue(S.bal), lev=curLev(); dir=dirOf(call); levUsed=lev;
@@ -1560,7 +1581,7 @@ const FX=(()=>{
     if(!busy){ if(!fxClean){ g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); fxClean=true; } orb.length=0; raf=REDUCED?0:requestAnimationFrame(loop); return; }
     fxClean=false;
     g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); g.globalCompositeOperation="lighter";
-    // glowing connector lines into Risk / Decision
+    // glowing connector lines into Risk / the Queen
     for(const [f,t] of links){ const a=center(f), b=center(t); if(!a||!b) continue;
       g.globalAlpha=.5; g.lineWidth=1.6; g.lineCap="round"; g.strokeStyle=color(f); g.setLineDash([1,9]); g.lineDashOffset=-now/28; g.beginPath(); g.moveTo(a.x,a.y);
       for(let i=1;i<=24;i++){ const p=curve(a,b,i/24); g.lineTo(p.x,p.y); } g.stroke(); g.setLineDash([]);
@@ -1592,15 +1613,16 @@ const FX=(()=>{
    honey level, and the resting bees. #hive (fixed background): comb texture and comb walls, drawn once per resize.
    #hivefx (above the page): agent bees flying out of the entrance to their bot panel while it works and back to their
    chamber. Every trip reaches the panel and stays a moment before turning back. Trade open -> bees return; trade close ->
-   win fills honey (Decision + analysts that agreed), loss dims those cells. Risk fills a little on approvals, Scout glows
+   win fills honey (the Queen + analysts that agreed), loss dims those cells. Risk fills a little on approvals, Scout glows
    when it picks a token. Honey levels persist in localStorage. ~30 fps, paused when the tab is hidden, still in reduced motion. */
 const HIVE=(()=>{
   const bc=document.getElementById("hive"), b=bc.getContext("2d"), hb=document.getElementById("hiveband"), h=hb.getContext("2d"), fc=document.getElementById("hivefx"), f=fc.getContext("2d");
-  const MOB=matchMedia("(max-width:680px)").matches, MINF=0.9, OUT=0.95, BACK=1.05;
+  const MOB=matchMedia("(max-width:680px)").matches, MINF=0.9, OUT=0.95, BACK=1.05, HOME=0.6, REPORT=0.45;
+  const WORKERS=["scout","news","sentiment","charts"], SLOT={scout:-2.6,news:-1.75,sentiment:-0.9,decision:0,charts:0.9,risk:2.45};
   let VW=0,VH=0,dpr=1,BW=0,BH=0,bandStat=null,raf=0,last=0,t=0,trade=null,ENT={x:0,y:0,w:0,h:0};
-  const KEYS=["scout","news","sentiment","charts","risk","decision"], NAMES={scout:"SCOUT",news:"NEWS",sentiment:"SENTIMENT",charts:"CHARTS",risk:"RISK",decision:"DECISION"};
+  const KEYS=["scout","news","sentiment","charts","risk","decision"], NAMES={scout:"SCOUT",news:"NEWS",sentiment:"SENTIMENT",charts:"CHARTS",risk:"RISK",decision:"QUEEN"};
   const col=k=>(BOTS.find(x=>x.key===k)||{}).c||"#ffb627";
-  const ch={}, bee={}; KEYS.forEach((k,i)=>{ ch[k]={x:0,y:0,s:0,honey:0,hv:0,dim:0,dv:0,flash:0,glow:0,paused:false}; bee[k]={st:"rest",x:0,y:0,t:0,ft:0,from:null,to:null,ang:Math.random()*6.283,ph:i*1.3,carry:null,dir:0,pend:null,trips:0,arrived:0,early:0}; });
+  const ch={}, bee={}; KEYS.forEach((k,i)=>{ ch[k]={x:0,y:0,s:0,honey:0,hv:0,dim:0,dv:0,flash:0,glow:0,disp:0,stand:0,paused:false}; bee[k]={st:"rest",x:0,y:0,t:0,ft:0,from:null,to:null,ang:Math.random()*6.283,ph:i*1.3,carry:null,dir:0,pend:null,trips:0,arrived:0,early:0}; });
   try{ const sv=JSON.parse(LS.getItem("g6_hive")||"{}"); for(const k of KEYS) if(sv[k]){ ch[k].honey=ch[k].hv=Math.min(1,Math.max(0,+sv[k].h||0)); ch[k].dim=ch[k].dv=Math.min(1,Math.max(0,+sv[k].d||0)); } }catch(e){}
   function save(){ try{ const o={}; for(const k of KEYS) o[k]={h:+ch[k].honey.toFixed(3),d:+ch[k].dim.toFixed(3)}; LS.setItem("g6_hive",JSON.stringify(o)); }catch(e){} }
   function rng(seed){ let x=seed>>>0||1; return ()=>{ x^=x<<13; x^=x>>>17; x^=x<<5; return (x>>>0)/4294967296; }; }
@@ -1621,7 +1643,7 @@ const HIVE=(()=>{
   // ---- hive band: the core ----
   function layoutBand(){ const r=hb.getBoundingClientRect(); BW=Math.max(200,Math.round(r.width)); BH=Math.max(100,Math.round(r.height)); hb.width=BW*dpr; hb.height=BH*dpr;
     ENT={x:BW/2,y:BH-MOB*2-16,w:Math.min(BW*.10,64),h:MOB?9:11};
-    const sp=Math.min(BW/(MOB?6.4:7.2),170); KEYS.forEach((k,i)=>{ const u=(i-2.5)/2.5, c=ch[k]; c.s=MOB?Math.min(17,sp*.29):Math.min(30,sp*.25); c.x=BW/2+(i-2.5)*sp; c.y=BH*(MOB?.40:.42)+u*u*BH*.14; });
+    const sp=Math.min(BW/(MOB?6.2:7.2),170); KEYS.forEach((k,i)=>{ const u=SLOT[k]/2.6, c=ch[k], q=k==="decision"; c.s=(MOB?Math.min(17,sp*.29):Math.min(30,sp*.25))*(q?1.45:1); c.x=BW/2+SLOT[k]*sp; c.y=BH*(MOB?.40:.42)+u*u*BH*.14-(q?BH*.05:0); });
     bandStat=document.createElement("canvas"); bandStat.width=BW*dpr; bandStat.height=BH*dpr; const g=bandStat.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0);
     const bg=g.createLinearGradient(0,0,0,BH); bg.addColorStop(0,"#1c1306"); bg.addColorStop(1,"#120c05"); g.fillStyle=bg; g.fillRect(0,0,BW,BH);
     const gr=g.createRadialGradient(BW/2,BH,4,BW/2,BH,Math.max(BW*.45,BH*1.4)); gr.addColorStop(0,"rgba(255,175,45,.40)"); gr.addColorStop(.5,"rgba(200,120,20,.14)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(0,0,BW,BH);
@@ -1629,8 +1651,9 @@ const HIVE=(()=>{
     g.strokeStyle="rgba(255,190,70,.35)"; g.lineWidth=2; g.beginPath(); g.ellipse(BW/2,BH*1.05,BW*.40,BH*.95,0,Math.PI,2*Math.PI); g.stroke();
     g.fillStyle="rgba(6,4,2,.92)"; g.beginPath(); g.ellipse(ENT.x,ENT.y,ENT.w,ENT.h,0,0,6.283); g.fill();
     g.strokeStyle="rgba(255,200,90,.6)"; g.lineWidth=2; g.beginPath(); g.ellipse(ENT.x,ENT.y-1,ENT.w,ENT.h,0,Math.PI*1.05,Math.PI*1.95); g.stroke();
+    { const a=ch.charts, z=ch.risk, gx=(a.x+z.x)/2; g.strokeStyle="rgba(255,216,77,.45)"; g.setLineDash([3,4]); g.lineWidth=1.5; g.beginPath(); g.moveTo(gx,BH*.14); g.lineTo(gx,BH*.80); g.stroke(); g.setLineDash([]); }
     g.font=`700 ${MOB?8:10}px ui-monospace,Menlo,monospace`; g.textAlign="center"; g.textBaseline="top";
-    for(const k of KEYS){ const c=ch[k], label=NAMES[k]; const w=g.measureText(label).width+8;
+    for(const k of KEYS){ const c=ch[k], label=k==="risk"&&!MOB?"RISK · GUARD":NAMES[k]; const w=g.measureText(label).width+8;
       g.fillStyle="rgba(10,7,3,.88)"; g.fillRect(c.x-w/2,c.y+c.s+5,w,MOB?11:14); g.fillStyle=col(k); g.fillText(label,c.x,c.y+c.s+(MOB?6.5:7)); }
     KEYS.forEach(k=>{ const q=bee[k]; if(q.st==="rest"){ const p=restLocal(k); q.x=p.x; q.y=p.y; } }); }
   const restLocal=k=>({x:ch[k].x, y:ch[k].y-ch[k].s-(MOB?6:8)});
@@ -1639,40 +1662,47 @@ const HIVE=(()=>{
   function avatarPt(k){ const el=document.querySelector("#bot-"+k+" .av"); if(!el) return null; const r=el.getBoundingClientRect(); if(r.width===0) return null;
     const hd=document.querySelector("header"), top=(hd?hd.getBoundingClientRect().bottom:0)+28; return {x:Math.min(VW-28,Math.max(28,r.left+r.width/2)), y:Math.min(VH-40,Math.max(top,r.top+r.height/2))}; }
   // a recognisable honeybee: striped abdomen, dark thorax, head with eye and antennae, veined flapping wings, halo in the bot colour
-  function drawBee(g,x,y,k,c,a,dir,ph,carry,still){ const fl=still?.6:Math.abs(Math.sin(t*28+ph));
+  function crown(g,x,y,w,a){ g.globalAlpha=a; g.fillStyle="#ffd84d"; g.strokeStyle="#22160a"; g.lineWidth=Math.max(.8,w*.08); g.beginPath(); g.moveTo(x-w*.6,y+w*.35); g.lineTo(x-w*.68,y-w*.3); g.lineTo(x-w*.3,y); g.lineTo(x,y-w*.5); g.lineTo(x+w*.3,y); g.lineTo(x+w*.68,y-w*.3); g.lineTo(x+w*.6,y+w*.35); g.closePath(); g.fill(); g.stroke(); g.fillStyle="#ff6b6b"; g.beginPath(); g.arc(x,y+w*.08,w*.1,0,6.283); g.fill(); g.globalAlpha=1; }
+  function drawBee(g,x,y,k,c,a,dir,ph,carry,still,queen){ const fl=still?.6:Math.abs(Math.sin(t*28+ph)); const qa=queen?1.35:1;
     g.globalAlpha=a*.22; g.fillStyle=c; g.beginPath(); g.arc(x,y,k*3,0,6.283); g.fill();
     g.globalAlpha=a*.7; g.strokeStyle=c; g.lineWidth=Math.max(1,k*.22); g.beginPath(); g.arc(x,y,k*2.55,0,6.283); g.stroke();
     g.save(); g.translate(x,y); g.rotate(dir); g.globalAlpha=a;
-    g.fillStyle="#f6c234"; g.beginPath(); g.ellipse(-k*.55,0,k*1.35,k*.88,0,0,6.283); g.fill();
-    g.save(); g.beginPath(); g.ellipse(-k*.55,0,k*1.35,k*.88,0,0,6.283); g.clip(); g.fillStyle="#22160a";
-    for(const sx of [-1.55,-.95,-.35]) g.fillRect(k*sx,-k,k*.32,k*2); g.restore();
-    g.fillStyle="#22160a"; g.beginPath(); g.moveTo(-k*1.85,0); g.lineTo(-k*2.35,-k*.12); g.lineTo(-k*2.35,k*.12); g.closePath(); g.fill();
+    g.fillStyle="#f6c234"; g.beginPath(); g.ellipse(-k*.55*qa,0,k*1.35*qa,k*.88,0,0,6.283); g.fill();
+    g.save(); g.beginPath(); g.ellipse(-k*.55*qa,0,k*1.35*qa,k*.88,0,0,6.283); g.clip(); g.fillStyle="#22160a";
+    for(const sx of (queen?[-2.2,-1.6,-1.0,-.4]:[-1.55,-.95,-.35])) g.fillRect(k*sx,-k,k*.32,k*2); g.restore();
+    g.fillStyle="#22160a"; g.beginPath(); g.moveTo(-k*(1.85*qa),0); g.lineTo(-k*(1.85*qa+.5),-k*.12); g.lineTo(-k*(1.85*qa+.5),k*.12); g.closePath(); g.fill();
     g.fillStyle="#3a2610"; g.beginPath(); g.arc(k*.6,0,k*.62,0,6.283); g.fill(); g.fillStyle="#5a3c18"; g.beginPath(); g.arc(k*.5,-k*.18,k*.3,0,6.283); g.fill();
     g.fillStyle="#22160a"; g.beginPath(); g.arc(k*1.32,0,k*.45,0,6.283); g.fill(); g.fillStyle="#fff6dc"; g.beginPath(); g.arc(k*1.5,-k*.18,k*.13,0,6.283); g.fill();
     g.strokeStyle="#22160a"; g.lineWidth=Math.max(.8,k*.12); g.beginPath(); g.moveTo(k*1.55,-k*.25); g.quadraticCurveTo(k*2.1,-k*.75,k*2.35,-k*.55); g.moveTo(k*1.55,k*.25); g.quadraticCurveTo(k*2.1,k*.75,k*2.35,k*.55); g.stroke();
     for(const sgn of [-1,1]){ g.save(); g.translate(k*.35,sgn*k*.4); g.rotate(sgn*(-.35-.5*fl)); g.globalAlpha=a*.55; g.fillStyle="#eaf6ff"; g.beginPath(); g.ellipse(-k*.6,sgn*k*.75,k*1.15,k*.55,0,0,6.283); g.fill();
       g.globalAlpha=a*.8; g.strokeStyle="rgba(255,255,255,.9)"; g.lineWidth=Math.max(.6,k*.1); g.stroke(); g.globalAlpha=a*.4; g.beginPath(); g.moveTo(0,0); g.lineTo(-k*1.4,sgn*k*.8); g.stroke(); g.restore(); }
-    g.restore(); if(carry){ g.globalAlpha=a; g.fillStyle=carry; g.beginPath(); g.arc(x,y+k*1.35,k*.5,0,6.283); g.fill(); g.strokeStyle="#22160a"; g.lineWidth=1; g.stroke(); } g.globalAlpha=1; }
+    g.restore(); if(queen) crown(g,x+Math.cos(dir)*k*1.3,y+Math.sin(dir)*k*1.3-k*1.25,k*1.5,a);
+    if(carry){ g.globalAlpha=a; g.fillStyle=carry; g.beginPath(); g.arc(x,y+k*1.35,k*.5,0,6.283); g.fill(); g.strokeStyle="#22160a"; g.lineWidth=1; g.stroke(); } g.globalAlpha=1; }
   function drawChamber(g,k){ const c=ch[k], cl=col(k), s=c.s; hex(g,c.x,c.y,s); g.fillStyle="rgba(10,7,3,.85)"; g.fill();
     if(c.hv>0.005){ g.save(); hex(g,c.x,c.y,s-2.5); g.clip(); const top=c.y+s-(2*s)*c.hv; const gr=g.createLinearGradient(0,top,0,c.y+s); gr.addColorStop(0,"#ffd76a"); gr.addColorStop(1,"#c97a12");
       g.globalAlpha=.9; g.fillStyle=gr; g.fillRect(c.x-s,top+(REDUCED?0:Math.sin(t*2+c.x)*1.2),2*s,c.y+s-top+2); g.restore(); g.globalAlpha=1; }
     if(c.dv>0.01){ hex(g,c.x,c.y,s-1); g.fillStyle=`rgba(0,0,0,${(.6*c.dv).toFixed(3)})`; g.fill(); }
     if(c.glow>0){ g.globalAlpha=.5*c.glow; g.fillStyle=cl; hex(g,c.x,c.y,s+8); g.fill(); g.globalAlpha=1; }
     if(c.paused) g.setLineDash([3,3]); g.lineWidth=c.flash>0?3:2; g.strokeStyle=cl; g.globalAlpha=(.85-.4*c.dv)+(c.flash>0?.15*c.flash:0); hex(g,c.x,c.y,s); g.stroke(); g.setLineDash([]); g.globalAlpha=1;
+    if(k==="decision"){ g.globalAlpha=.75; g.strokeStyle="#ffd84d"; g.lineWidth=1.5; hex(g,c.x,c.y,s+4); g.stroke(); g.globalAlpha=1; }
+    if(c.stand>0){ g.globalAlpha=.8*c.stand; g.strokeStyle="#ff6b6b"; g.lineWidth=3; hex(g,c.x,c.y,s+7); g.stroke(); g.globalAlpha=1; }
     if(trade && k==="decision"){ g.globalAlpha=.6+.35*Math.sin(t*4); g.strokeStyle=trade.dir>0?"#8fe388":"#ff6b6b"; g.lineWidth=2.5; hex(g,c.x,c.y,s+5+(REDUCED?0:2*Math.sin(t*4))); g.stroke(); g.globalAlpha=1; } }
   function bez(a,b2,u){ const mx=(a.x+b2.x)/2+(a.x<b2.x?-1:1)*50, my=Math.min(a.y,b2.y)-Math.max(50,Math.abs(a.y-b2.y)*.25); const v=1-u; return {x:v*v*a.x+2*v*u*mx+u*u*b2.x,y:v*v*a.y+2*v*u*my+u*u*b2.y}; }
   const ease=u=>u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
   function entranceView(){ const r=bandRect(); return toView({x:ENT.x+(Math.random()-.5)*ENT.w*.8,y:ENT.y},r); }
-  function startBack(k,carry){ const q=bee[k]; q.pend=null; q.carry=carry||null; q.from={x:q.x,y:q.y}; q.to=()=>toView(restLocal(k),bandRect()); q.t=0; q.st="back"; }
+  const reportPt=k=>{ const Qc=ch.decision, i=WORKERS.indexOf(k), a=Math.PI*(1.05+i*.3); return {x:Qc.x+Math.cos(a)*Qc.s*1.25, y:Qc.y+Math.sin(a)*Qc.s*.9+Qc.s*.2}; };
+  function startBack(k,carry){ const q=bee[k]; q.pend=null; q.carry=carry||null; q.from={x:q.x,y:q.y}; q.via=WORKERS.includes(k)?"queen":null; q.to=q.via?()=>toView(reportPt(k),bandRect()):()=>toView(restLocal(k),bandRect()); q.t=0; q.st="back"; }
+  function goHome(k){ const q=bee[k]; q.from={x:q.x,y:q.y}; q.to=()=>toView(restLocal(k),bandRect()); q.t=0; q.st="home"; q.via=null; }
   function flyOut(k){ const q=bee[k]; if(q.st==="out"||q.st==="forage"){ q.pend=null; return; }
     q.from = q.st==="rest" ? entranceView() : {x:q.x,y:q.y}; q.carry=null; q.pend=null; q.to=()=>avatarPt(k)||{x:VW/2,y:VH/2}; q.t=0; q.st="out"; q.x=q.from.x; q.y=q.from.y; q.trips++; }
   function flyBack(k,carry){ const q=bee[k]; if(q.st==="rest"){ if(carry!==undefined) q.carry=carry; return; }
     if(q.st==="out" || (q.st==="forage" && q.ft<MINF)){ q.pend={carry:carry||null}; return; } if(q.st==="forage") startBack(k,carry); }
   function step(dt){ t+=dt;
-    for(const k of KEYS){ const c=ch[k]; c.hv+=(c.honey-c.hv)*Math.min(1,dt*2.5); c.dv+=(c.dim-c.dv)*Math.min(1,dt*2.5); if(c.flash>0) c.flash=Math.max(0,c.flash-dt*.8); if(c.glow>0) c.glow=Math.max(0,c.glow-dt*.5);
+    for(const k of KEYS){ const c=ch[k]; c.hv+=(c.honey-c.hv)*Math.min(1,dt*2.5); c.dv+=(c.dim-c.dv)*Math.min(1,dt*2.5); if(c.flash>0) c.flash=Math.max(0,c.flash-dt*.8); if(c.glow>0) c.glow=Math.max(0,c.glow-dt*.5); if(c.disp>0) c.disp=Math.max(0,c.disp-dt*.8); if(c.stand>0) c.stand=Math.max(0,c.stand-dt*.4);
       const q=bee[k];
-      if(q.st==="out"||q.st==="back"){ q.t+=dt/(q.st==="out"?OUT:BACK); const u=ease(Math.min(1,q.t)), to=q.to(); const p=bez(q.from,to,u), p2=bez(q.from,to,Math.max(0,u-.02)); q.dir=Math.atan2(p.y-p2.y,p.x-p2.x); q.x=p.x; q.y=p.y;
-        if(q.t>=1){ if(q.st==="out"){ q.st="forage"; q.ft=0; q.arrived++; } else { q.st="rest"; const r=restLocal(k); q.x=r.x; q.y=r.y; } } }
+      if(q.st==="out"||q.st==="back"||q.st==="home"){ q.t+=dt/(q.st==="out"?OUT:q.st==="back"?BACK:HOME); const u=ease(Math.min(1,q.t)), to=q.to(); const p=bez(q.from,to,u), p2=bez(q.from,to,Math.max(0,u-.02)); q.dir=Math.atan2(p.y-p2.y,p.x-p2.x); q.x=p.x; q.y=p.y;
+        if(q.t>=1){ if(q.st==="out"){ q.st="forage"; q.ft=0; q.arrived++; } else if(q.st==="back"&&q.via==="queen"){ q.st="report"; q.rt=0; q.reports=(q.reports||0)+1; ch.decision.flash=Math.max(ch.decision.flash,.6); } else { q.st="rest"; const r=restLocal(k); q.x=r.x; q.y=r.y; } } }
+      else if(q.st==="report"){ q.rt+=dt; const p=toView(reportPt(k),bandRect()); q.x=p.x+Math.sin(t*9+q.ph)*2; q.y=p.y+Math.cos(t*7+q.ph)*1.5; q.dir=Math.atan2(toView(ch.decision,bandRect()).y-q.y,toView(ch.decision,bandRect()).x-q.x); if(q.rt>=REPORT) goHome(k); }
       else if(q.st==="forage"){ q.ft+=dt; const a=avatarPt(k)||{x:VW/2,y:VH/2}; q.ang+=dt*2.4; const rx=34+6*Math.sin(t*1.7+q.ph), nx=a.x+Math.cos(q.ang)*rx, ny=a.y+Math.sin(q.ang)*rx*.6;
         q.dir=Math.atan2(ny-q.y,nx-q.x); q.x+=(nx-q.x)*Math.min(1,dt*8); q.y+=(ny-q.y)*Math.min(1,dt*8); if(q.pend && q.ft>=MINF) startBack(k,q.pend.carry); }
       else { const r=restLocal(k); q.x=r.x+(c.paused?0:Math.sin(t*2+q.ph)*3); q.y=r.y+(c.paused?0:Math.cos(t*2.6+q.ph)*2); q.dir=-Math.PI/2+Math.sin(t+q.ph)*.35; } } }
@@ -1680,11 +1710,13 @@ const HIVE=(()=>{
     if(vis||REDUCED){ h.setTransform(dpr,0,0,dpr,0,0); h.clearRect(0,0,BW,BH); if(bandStat) h.drawImage(bandStat,0,0,BW,BH);
       const pulse=REDUCED?.5:.5+.5*Math.sin(t*1.6); const gr=h.createRadialGradient(ENT.x,ENT.y,1,ENT.x,ENT.y,ENT.w*1.4); gr.addColorStop(0,`rgba(255,205,95,${(.35+.2*pulse).toFixed(3)})`); gr.addColorStop(1,"rgba(255,170,40,0)"); h.fillStyle=gr; h.beginPath(); h.ellipse(ENT.x,ENT.y,ENT.w*1.4,ENT.h*2.6,0,0,6.283); h.fill();
       for(const k of KEYS) drawChamber(h,k);
-      const bk=MOB?3.4:4.6; for(const k of KEYS){ const q=bee[k]; if(q.st==="rest") drawBee(h,q.x,q.y,bk,col(k),ch[k].paused?.5:1,q.dir,q.ph,q.carry,ch[k].paused||REDUCED); } }
+      if(!REDUCED){ const Qc=ch.decision; for(const k of KEYS){ const c=ch[k]; if(c.disp<=0.01||k==="decision") continue; const u=1-c.disp; h.globalAlpha=.85*c.disp; h.strokeStyle=k==="risk"?"#ffd84d":"#ffcf5c"; h.lineWidth=2; h.setLineDash(k==="risk"?[4,4]:[]); h.beginPath(); h.moveTo(Qc.x,Qc.y); h.lineTo(c.x,c.y); h.stroke(); h.setLineDash([]);
+        h.fillStyle="#fff0c8"; h.beginPath(); h.arc(Qc.x+(c.x-Qc.x)*Math.min(1,u*1.6),Qc.y+(c.y-Qc.y)*Math.min(1,u*1.6),3,0,6.283); h.fill(); h.globalAlpha=1; } }
+      const bk=MOB?3.4:4.6; for(const k of KEYS){ const q=bee[k]; if(q.st==="rest") drawBee(h,q.x,q.y,bk*(k==="decision"?1.5:1),col(k),ch[k].paused?.5:1,q.dir,q.ph,q.carry,ch[k].paused||REDUCED,k==="decision"); } }
     f.setTransform(dpr,0,0,dpr,0,0); f.clearRect(0,0,VW,VH);
-    for(const k of KEYS){ const q=bee[k]; if(q.st==="rest") continue; const kk=MOB?6:8;
-      if(q.st!=="forage"){ const to=q.to(); f.globalAlpha=.4; f.strokeStyle=col(k); f.setLineDash([2,7]); f.lineWidth=1.4; f.beginPath(); for(let i=0;i<=24;i++){ const u=ease(Math.min(1,q.t))*i/24, p=bez(q.from,to,u); i?f.lineTo(p.x,p.y):f.moveTo(p.x,p.y);} f.stroke(); f.setLineDash([]); f.globalAlpha=1; }
-      drawBee(f,q.x,q.y,kk,col(k),1,q.dir,q.ph,q.carry,false); } }
+    for(const k of KEYS){ const q=bee[k]; if(q.st==="rest") continue; const kk=(MOB?6:8)*(k==="decision"?1.3:1);
+      if(q.st!=="forage"&&q.st!=="report"){ const to=q.to(); f.globalAlpha=.4; f.strokeStyle=col(k); f.setLineDash([2,7]); f.lineWidth=1.4; f.beginPath(); for(let i=0;i<=24;i++){ const u=ease(Math.min(1,q.t))*i/24, p=bez(q.from,to,u); i?f.lineTo(p.x,p.y):f.moveTo(p.x,p.y);} f.stroke(); f.setLineDash([]); f.globalAlpha=1; }
+      drawBee(f,q.x,q.y,kk,col(k),1,q.dir,q.ph,q.carry,false,k==="decision"); } }
   function loop(now){ raf=0; if(document.hidden||REDUCED) return; const el=now-last; if(el<(MOB?33:16)){ raf=requestAnimationFrame(loop); return; } const dt=Math.min(.1,el/1000); last=now; step(dt); draw(); raf=requestAnimationFrame(loop); }
   function kick(){ if(!raf && !REDUCED && !document.hidden){ last=performance.now(); raf=requestAnimationFrame(loop); } }
   function settleStatic(){ for(const k of KEYS){ const c=ch[k]; c.hv=c.honey; c.dv=c.dim; c.flash=0; c.glow=0; const q=bee[k]; q.st="rest"; q.pend=null; const r=restLocal(k); q.x=r.x; q.y=r.y; q.dir=-Math.PI/2; } draw(); }
@@ -1695,6 +1727,8 @@ const HIVE=(()=>{
       if(k==="risk"){ if(o.status==="approve"){ c.honey=Math.min(1,c.honey+.1); c.dim=Math.max(0,c.dim-.15); } else if(o.status==="reject") c.dim=Math.min(1,c.dim+.2); c.flash=1; save(); }
       if(k==="scout" && o.liquidity_status!=="thin" && o.data_quality!=="poor"){ c.glow=1; c.honey=Math.min(1,c.honey+.04); save(); }
       if(REDUCED) settleStatic(); else kick(); },
+    queen(action,k){ if(!ch[k]) return; const Qc=ch.decision; if(action==="task"||action==="dispatch"||action==="propose"){ ch[k].disp=1; Qc.flash=1; } else if(action==="call"){ Qc.glow=1; } else if(action==="stand_down"){ Qc.stand=1; }
+      this._log=(this._log||[]).concat([action+":"+k]).slice(-40); if(REDUCED) draw(); else kick(); },
     tradeOpen(call){ const dir=dirOf(call); trade={dir}; for(const k of KEYS) flyBack(k, k==="decision"?(dir>0?"#8fe388":"#ff6b6b"):bee[k].carry); if(REDUCED) draw(); else kick(); },
     tradeClose(call,pnl){ const dir=dirOf(call), win=pnl>0; trade=null;
       const agree=k=>{ if(k==="decision") return true; const el=document.getElementById("lean-"+k); if(!el) return false; return dir>0?/\bbull\b/.test(el.className):/\bbear\b/.test(el.className); };
@@ -1703,7 +1737,7 @@ const HIVE=(()=>{
     reset(){ trade=null; for(const k of KEYS){ Object.assign(ch[k],{honey:0,dim:0,flash:0,glow:0}); bee[k].carry=null; } save(); if(REDUCED) settleStatic(); else kick(); },
     resize(){ drawBg(); layoutBand(); if(REDUCED) settleStatic(); },
     motion(red){ if(red){ cancelAnimationFrame(raf); raf=0; f.setTransform(1,0,0,1,0,0); f.clearRect(0,0,fc.width,fc.height); settleStatic(); } else kick(); },
-    state(){ const o={looping:!!raf,hidden:document.hidden,trade:trade&&trade.dir,band:{w:BW,h:BH},bees:{},flights:{},chambers:{}}; for(const k of KEYS){ const q=bee[k]; o.bees[k]=q.st; o.flights[k]={trips:q.trips,arrived:q.arrived}; o.chambers[k]={honey:+ch[k].honey.toFixed(2),dim:+ch[k].dim.toFixed(2)}; } return o; } };
+    state(){ const o={orders:(api._log||[]).slice(),queen:{x:Math.round(ch.decision.x),s:Math.round(ch.decision.s),bandW:BW},looping:!!raf,hidden:document.hidden,trade:trade&&trade.dir,band:{w:BW,h:BH},bees:{},flights:{},chambers:{}}; for(const k of KEYS){ const q=bee[k]; o.bees[k]=q.st; o.flights[k]={trips:q.trips,arrived:q.arrived,reports:q.reports||0}; o.chambers[k]={honey:+ch[k].honey.toFixed(2),dim:+ch[k].dim.toFixed(2)}; } return o; } };
   document.addEventListener("visibilitychange",()=>{ if(document.hidden){ cancelAnimationFrame(raf); raf=0; } else kick(); });
   addEventListener("scroll",()=>{ if(REDUCED) draw(); },{passive:true});
   drawBg(); layoutBand(); if(REDUCED) settleStatic(); kick();

@@ -235,3 +235,85 @@ def test_short_needs_full_risk_approval(packet):
     assert d["decision"] == "WAIT" and d["human_review_required"] is True
     d = decision.run(packet, research, approve, shorty)
     assert d["decision"] == "SELL/SHORT — SIMULATION ONLY"
+
+
+# ---------------------------------------------------------------- Queen hierarchy
+from agents import queen as queen_mod  # noqa: E402
+from agents.queen import GuardIndependenceError, Queen  # noqa: E402
+
+REJECT = lambda p: {"status": "reject", "maximum_simulated_size": 0, "maximum_simulated_loss": 0,  # noqa: E731
+                    "risk_flags": ["test"], "reason": "test rejection"}
+GREEDY_BUY = lambda p: {"decision": "BUY — SIMULATION ONLY", "reasons": ["the queen insists"],  # noqa: E731
+                        "conflicting_signals": [], "missing_information": [],
+                        "invalidation_conditions": [], "human_review_required": False}
+
+
+def test_decision_is_the_queen():
+    from agents import BOT_TITLES, GUARD, QUEEN, WORKERS
+    assert QUEEN == "decision" and BOT_TITLES[QUEEN] == "Queen"
+    assert WORKERS == ["news", "sentiment", "charts"] and GUARD == "risk"
+    assert decision.run is queen_mod.run  # old import path is an alias
+
+
+def test_queen_delegation_order(packet, tmp_config):
+    events = []
+    report = run_pipeline(packet, MockProvider(), tmp_config, load_risk_rules(), on_event=events.append)
+    order = [(d["action"], d["bot"]) for d in report["delegation"]]
+    head = [("task", "scout"), ("report", "scout"),
+            ("dispatch", "news"), ("report", "news"),
+            ("dispatch", "sentiment"), ("report", "sentiment"),
+            ("dispatch", "charts"), ("report", "charts"),
+            ("propose", "risk"), ("verdict", "risk")]
+    assert order[:10] == head
+    assert order[10:] in ([("call", "decision")], [("stand_down", "decision")])
+    starts = [e["bot"] for e in events if e["type"] == "step_start"]
+    assert starts[:5] == ["scout", "news", "sentiment", "charts", "risk"]
+    # Risk always judges before the Queen calls
+    if "decision" in starts:
+        assert starts.index("risk") < starts.index("decision")
+    assert report["hierarchy"]["queen_can_overrule_guard"] is False
+
+
+def test_queen_cannot_overrule_risk_reject(packet, tmp_config):
+    provider = MockProvider(overrides={"risk": REJECT, "decision": GREEDY_BUY})
+    report = run_pipeline(packet, provider, tmp_config, load_risk_rules())
+    assert report["final_result"] == "SKIP" and report["stopped_at"] == "risk"
+    assert "decision" not in provider.calls and "decision" not in report["outputs"]
+    assert report["delegation"][-1] == {"action": "stand_down", "bot": "decision"}
+
+
+def test_queen_cannot_overrule_risk_reduce(packet, tmp_config):
+    reduce = lambda p: {"status": "reduce", "maximum_simulated_size": 100, "maximum_simulated_loss": 10,  # noqa: E731
+                        "risk_flags": ["hype"], "reason": "reduced"}
+    provider = MockProvider(overrides={"risk": reduce, "decision": GREEDY_BUY})
+    report = run_pipeline(packet, provider, tmp_config, load_risk_rules())
+    assert report["outputs"]["risk"]["status"] in ("reduce", "reject")  # code may only tighten
+    assert report["final_result"] in ("WAIT", "SKIP")
+    assert report["final_result"] != "BUY — SIMULATION ONLY"
+
+
+def test_queen_cannot_tamper_with_risk_verdict(packet, tmp_config, monkeypatch):
+    outputs = {}
+
+    def sneaky_call(pkt, research, risk_result, provider, logger=None):
+        outputs["risk"]["status"] = "approve"  # try to rewrite the guard's verdict
+        return {"decision": "BUY — SIMULATION ONLY", "reasons": [], "conflicting_signals": [],
+                "missing_information": [], "invalidation_conditions": [], "human_review_required": True}
+
+    monkeypatch.setattr(queen_mod, "run", sneaky_call)
+    reduce = lambda p: {"status": "reduce", "maximum_simulated_size": 100, "maximum_simulated_loss": 10,  # noqa: E731
+                        "risk_flags": ["hype"], "reason": "reduced"}
+    q = Queen(MockProvider(overrides={"risk": reduce}), load_risk_rules(), tmp_config)
+    with pytest.raises(GuardIndependenceError):
+        q.hold_round(packet, outputs)
+    assert "decision" not in outputs
+
+
+def test_config_cannot_let_queen_overrule_guard(packet, tmp_config):
+    for bad in ({"queen_can_overrule_guard": True}, {"guard": "decision"}):
+        cfg = copy.deepcopy(tmp_config)
+        cfg["hierarchy"] = {**cfg.get("hierarchy", {}), **bad}
+        with pytest.raises(GuardIndependenceError):
+            Queen(MockProvider(), load_risk_rules(), cfg)
+        report = run_pipeline(packet, MockProvider(), cfg, load_risk_rules())
+        assert report["final_result"] == "SKIP" and report["stopped_at"] == "error"

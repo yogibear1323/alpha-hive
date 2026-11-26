@@ -250,7 +250,7 @@ def risk(payload):
     }
 
 
-# ------------------------------------------------------------------ 6 Decision
+# ------------------------------------------------------------------ 6 Queen (Decision)
 def decision(payload):
     r = payload.get("research", {})
     risk_out = payload.get("risk", {})

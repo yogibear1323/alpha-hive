@@ -28,7 +28,7 @@ class BotError(Exception):
 
 
 class RiskRejectedError(Exception):
-    """Raised when something tries to run the Decision Bot after Risk rejected."""
+    """Raised when something tries to run the Queen (Decision) Bot after Risk rejected."""
 
 
 # ---------------------------------------------------------------- config / files

@@ -1,4 +1,4 @@
-"""Runs the six bots in order and writes the timestamped report and log.
+"""Runs one hive round (led by the Queen) and writes the timestamped report and log.
 
 Shared by run_demo.py (terminal) and web/app.py (browser UI).
 """
@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agents import charts, decision, news, risk, scout, sentiment
+from agents.queen import Queen
 from agents.base import (ROOT, BotError, RiskRejectedError, RunLogger, load_config,
                          load_risk_rules, redact_obj, timestamp)
 
@@ -17,7 +17,7 @@ STEPS = [
     (3, "Sentiment", "sentiment"),
     (4, "Charts", "charts"),
     (5, "Risk", "risk"),
-    (6, "Decision", "decision"),
+    (6, "Queen", "decision"),
 ]
 
 DISCLAIMER = ("Educational simulation only. Not financial advice. No order was placed; "
@@ -74,6 +74,7 @@ def run_pipeline(packet: dict, provider, config: dict | None = None, rules: dict
         "stopped_at": None,
         "error": None,
         "human_review_required": True,
+        "guard_rule": "Risk is the hive's guard and answers to no one: the Queen cannot override or bypass a Risk reject or reduce.",
         "disclaimer": DISCLAIMER,
     }
     logger.log(f"run {run_id} start provider={report['provider']} market={report['market']}")
@@ -84,33 +85,12 @@ def run_pipeline(packet: dict, provider, config: dict | None = None, rules: dict
         problems = validate_packet(packet)
         if problems:
             raise BotError("; ".join(problems))
-        research_bots = {"scout": scout, "news": news, "sentiment": sentiment, "charts": charts}
-        for step, label, key in STEPS[:4]:
-            emit({"type": "step_start", "step": step, "bot": key, "label": label})
-            outputs[key] = research_bots[key].run(packet, provider, logger)
-            logger.log(f"[{step}/6] {label} Bot complete")
-            emit({"type": "step_done", "step": step, "bot": key, "label": label,
-                  "output": outputs[key]})
-
-        emit({"type": "step_start", "step": 5, "bot": "risk", "label": "Risk"})
-        research = {k: outputs[k] for k in ("scout", "news", "sentiment", "charts")}
-        outputs["risk"] = risk.run(packet, research, provider, rules, config, logger)
-        logger.log(f"[5/6] Risk Bot complete status={outputs['risk']['status']}")
-        emit({"type": "step_done", "step": 5, "bot": "risk", "label": "Risk",
-              "output": outputs["risk"]})
-
-        if outputs["risk"]["status"] == "reject":
-            report["stopped_at"] = "risk"
-            report["final_result"] = "SKIP"
-            logger.log("Risk rejected: workflow stopped before the Decision Bot")
-            emit({"type": "stopped", "step": 6, "reason": "Risk rejected - Decision Bot not run"})
-        else:
-            emit({"type": "step_start", "step": 6, "bot": "decision", "label": "Decision"})
-            outputs["decision"] = decision.run(packet, research, outputs["risk"], provider, logger)
-            report["final_result"] = outputs["decision"]["decision"]
-            logger.log("[6/6] Decision Bot complete")
-            emit({"type": "step_done", "step": 6, "bot": "decision", "label": "Decision",
-                  "output": outputs["decision"]})
+        queen = Queen(provider, rules, config, logger, emit)
+        report["hierarchy"] = queen.hierarchy
+        report["delegation"] = queen.ledger
+        final, stopped = queen.hold_round(packet, outputs)
+        report["final_result"] = final
+        report["stopped_at"] = stopped
     except (BotError, RiskRejectedError) as exc:
         report["final_result"] = "SKIP"
         report["error"] = str(exc)
