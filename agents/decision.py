@@ -1,9 +1,10 @@
 """6 - Decision Bot: runs only after Risk approves or reduces.
 
-Returns 'BUY — SIMULATION ONLY', 'WAIT', or 'SKIP'. human_review_required is forced
-to true in code. A BUY is only allowed when Risk approved outright.
+Returns 'BUY — SIMULATION ONLY' (long), 'SELL/SHORT — SIMULATION ONLY' (short), 'WAIT', or
+'SKIP'. human_review_required is forced to true in code. A long or short is only allowed when Risk
+approved outright; under 'reduce' either one becomes WAIT (a reduce can never flip direction).
 """
-from agents.base import DECISIONS, RiskRejectedError, call_bot
+from agents.base import DECISIONS, DIRECTIONAL, RiskRejectedError, call_bot
 
 NAME = "decision"
 SCHEMA = {
@@ -23,7 +24,8 @@ def run(packet: dict, research: dict, risk_result: dict, provider, logger=None) 
     payload = {"market": packet.get("market"), "research": research, "risk": risk_result}
     out = call_bot(NAME, SCHEMA, payload, provider, logger)
     out["human_review_required"] = True
-    if out["decision"] == DECISIONS[0] and status != "approve":
+    if out["decision"] in DIRECTIONAL and status != "approve":
+        side = "BUY" if out["decision"] == DECISIONS[0] else "SELL/SHORT"
         out["decision"] = "WAIT"
-        out["reasons"] = out["reasons"] + ["Code downgraded BUY to WAIT: Risk did not fully approve."]
+        out["reasons"] = out["reasons"] + [f"Code downgraded {side} to WAIT: Risk did not fully approve."]
     return out

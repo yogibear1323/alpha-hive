@@ -19,7 +19,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = ROOT / "prompts"
 
-DECISIONS = ["BUY — SIMULATION ONLY", "WAIT", "SKIP"]
+DECISIONS = ["BUY — SIMULATION ONLY", "WAIT", "SKIP", "SELL/SHORT — SIMULATION ONLY"]
+DIRECTIONAL = (DECISIONS[0], DECISIONS[3])  # long or short; both need a full Risk approval
 
 
 class BotError(Exception):

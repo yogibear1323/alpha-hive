@@ -386,6 +386,12 @@ body.reduced .bot.work .av .wg{animation:none}
 .btn.sm{padding:7px 18px;font-size:11px}
 .tokmsg{flex-basis:100%;font-size:12px;color:var(--mute)} .tokmsg:empty{display:none} .tokmsg.bad{color:var(--red)} .tokmsg.ok{color:var(--lime)}
 .tradeline{flex-basis:100%;font:700 12px var(--mono);color:var(--cyan)}
+.res-SHORT{color:#ff6b6b;font-weight:700}
+.call .big.SHORT{color:#ff6b6b;text-shadow:0 0 18px rgba(255,107,107,.55)}
+.dirtag{font:700 13px/1.2 ui-monospace,monospace;letter-spacing:.12em;min-height:16px;margin-bottom:4px}
+.dirtag.long,.dir.long{color:#8fe388}.dirtag.short,.dir.short{color:#ff6b6b}
+.dir{font-weight:700;white-space:nowrap}
+.levtag{display:inline-block;font:600 11px ui-monospace,monospace;color:#ffd84d;border:1px solid rgba(255,182,39,.45);border-radius:4px;padding:2px 7px;margin:2px 0 6px;letter-spacing:.06em}
 </style>
 </head>
 <body>
@@ -425,13 +431,14 @@ body.reduced .bot.work .av .wg{animation:none}
           <div class="fld"><label for="inSize">Cap value</label><input id="inSize" type="number" min="0" step="1" value="5000" disabled></div>
           <div class="fld"><label for="inRounds">Rounds (0 = continuous)</label><input id="inRounds" type="number" min="0" max="500" value="0"></div>
           <div class="fld"><label for="inFeed">Prices</label><select id="inFeed"><option value="live">Live public prices</option><option value="sim">Fictional price paths</option></select></div>
+          <div class="fld"><label for="inLev">Virtual leverage · simulation only</label><select id="inLev"><option value="1">1x (no leverage)</option><option value="2">2x</option><option value="5">5x</option><option value="10">10x</option><option value="20">20x</option><option value="50">50x</option><option value="100">100x (max)</option></select></div>
           <div class="fld"><label for="inWin">Trade window (s)</label><input id="inWin" type="number" min="10" max="600" value="60"></div>
           <div class="fld"><label for="inSeed">Seed (fictional)</label><input id="inSeed" type="number" value="7"></div>
         </div>
         <div class="coins" id="coins"><span class="clbl">Tokens · tap to include · × to remove</span><span id="tokChips"></span>
           <span class="tokadd"><input id="tokIn" type="text" maxlength="12" placeholder="Add token, e.g. LTC" aria-label="Add token symbol" autocomplete="off"><button class="btn ghost sm" id="tokAddBtn">Add token</button><button class="btn ghost sm" id="tokMajors">Add all majors</button></span>
           <span class="tokmsg" id="tokMsg" role="status"></span><span class="tradeline" id="tradeLine">Bots trade: —</span></div>
-        <div class="label" id="sessHelp">Live rounds read real recent candles for each selected token. A virtual BUY (only after the Risk gate approves) risks the effective % of the <b>current</b> balance: the average of the active bots’ risk settings, never above the Risk bot’s %. Size = risk $ ÷ stop distance, capped at the balance and the optional max position cap, so a stop-out loses about the risk $. Live prices are polled every 3 s for the trade window: the trade closes at the first poll at or past the stop or target, or at the last live price.</div>
+        <div class="label" id="sessHelp">Live rounds read real recent candles for each selected token. Decision goes <b class="dir long">▲ LONG</b> (BUY) when the analysts expect a rise and <b class="dir short">▼ SHORT</b> (SELL/SHORT) when charts, sentiment and news are bearish, only after the Risk gate fully approves; a “reduce” becomes WAIT and never flips direction. Each trade risks the effective % of the <b>current</b> balance: the average of the active bots’ risk settings, never above the Risk bot’s %. Notional size = risk $ ÷ stop distance, capped at balance × <b>virtual leverage</b> and the optional max position cap, so a stop-out loses about the risk $; margin used = notional ÷ leverage. Longs: stop below, target above; shorts: stop above, target below, P&amp;L = size × (1 − exit/entry). Virtual margin call: a loss can never exceed the balance; the trade closes at the balance limit and later rounds SKIP. Live prices are polled every 3 s for the trade window. Virtual leverage · simulation only, no real orders.</div>
         <div class="actions" id="sessControls"><button class="btn" id="startSess">▶ Run demo session</button><button class="btn stop" id="stopSess" disabled>■ Stop</button><button class="btn ghost" id="resetSess">Reset</button><button class="btn ghost" id="sumBtn" disabled>Summary</button></div>
       </div>
       <div class="pipeline" id="pipeline"></div>
@@ -459,9 +466,9 @@ body.reduced .bot.work .av .wg{animation:none}
         <canvas class="wide eq" id="eqCanvas"></canvas>
       </div>
       <div class="card">
-        <h2 id="posTitle">Simulated position · fictional price path</h2>
+        <h2 id="posTitle">Simulated position · fictional price path</h2><div class="levtag" id="levTag">Virtual leverage 20x · simulation only</div>
         <canvas class="wide" id="posCanvas"></canvas>
-        <div class="ledger-wrap"><table class="ledger"><thead><tr><th>#</th><th>Ticker</th><th>Call</th><th>Feed</th><th>Risk %</th><th>Risk $</th><th>Size</th><th>Entry</th><th>Exit</th><th>Result</th><th>P&amp;L</th><th>Balance</th></tr></thead><tbody id="ledger"></tbody></table></div>
+        <div class="ledger-wrap"><table class="ledger"><thead><tr><th>#</th><th>Ticker</th><th>Call</th><th>Dir</th><th>Feed</th><th>Risk %</th><th>Risk $</th><th>Lev</th><th>Notional</th><th>Margin</th><th>Entry</th><th>Exit</th><th>Result</th><th>P&amp;L</th><th>Balance</th></tr></thead><tbody id="ledger"></tbody></table></div>
         <div class="sumline" id="sumLine"></div>
       </div>
     </div>
@@ -474,7 +481,7 @@ body.reduced .bot.work .av .wg{animation:none}
   <div class="count" id="count"></div>
   <div class="call" id="call">
     <div class="kicker">Final call · simulated</div>
-    <div class="holo"><div class="big" id="callText"></div></div>
+    <div class="holo"><div class="dirtag" id="callDir"></div><div class="big" id="callText"></div></div>
     <div class="sub">Human review required · No order placed</div>
     <div class="meta" id="callMeta"></div>
     <button class="btn ghost" id="closeReveal">Back to the hive</button>
@@ -495,7 +502,9 @@ body.reduced .bot.work .av .wg{animation:none}
 
 <script>
 const BOOT = /*__BOOT__*/null;
-const BUY = "BUY — SIMULATION ONLY";
+const BUY = "BUY — SIMULATION ONLY", SHORT = "SELL/SHORT — SIMULATION ONLY";
+const callKey = d => !d ? "" : d.startsWith("BUY") ? "BUY" : d.startsWith("SELL") ? "SHORT" : d;
+const dirOf = d => callKey(d)==="BUY" ? 1 : callKey(d)==="SHORT" ? -1 : 0;
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -513,7 +522,7 @@ const Engine = (() => {
     sentiment:{sentiment:["str",["positive","negative","mixed","neutral","unknown"]],score:["int"],main_reasons:["list"],possible_hype:["list"],sources:["list"]},
     charts:{trend:["str",["up","down","sideways","unknown"]],support_levels:["list"],resistance_levels:["list"],volume_summary:["str"],setup_quality:["str",["good","fair","poor","unknown"]],missing_data:["list"]},
     risk:{status:["str",["approve","reduce","reject"]],maximum_simulated_size:["number"],maximum_simulated_loss:["number"],risk_flags:["list"],reason:["str"]},
-    decision:{decision:["str",[BUY,"WAIT","SKIP"]],reasons:["list"],conflicting_signals:["list"],missing_information:["list"],invalidation_conditions:["list"],human_review_required:["bool"]},
+    decision:{decision:["str",[BUY,"WAIT","SKIP",SHORT]],reasons:["list"],conflicting_signals:["list"],missing_information:["list"],invalidation_conditions:["list"],human_review_required:["bool"]},
   };
   const r2 = x => Math.round(x*100)/100;
   const rp = x => Math.abs(x)>=100 ? r2(x) : +x.toPrecision(6);   // keep significant digits for sub-$1 / small-price tokens
@@ -603,14 +612,17 @@ const Engine = (() => {
     const c=R.charts,se=R.sentiment,n=R.news,s=R.scout,conf=[],miss=[],reasons=[];
     if(c.trend==="up"&&se.possible_hype.length) conf.push("Uptrend and volume support the move, but part of the crowd mood is hype.");
     if(n.positive_events.length&&n.unverified_claims.length) conf.push("A reported revenue item sits next to an unverified forum claim.");
+    if(c.trend==="down"&&se.sentiment==="positive") conf.push("Downtrend on the chart, but reported news and crowd mood are positive.");
+    if(c.trend==="down"&&n.positive_events.length>n.negative_events.length) conf.push("Downtrend on the chart, but reported news leans positive.");
     miss.push(...c.missing_data); if(s.data_quality!=="good") miss.push(`scout data quality is ${s.data_quality}`);
     reasons.push(`Risk status is '${risk.status}': ${risk.reason}`); if(c.trend) reasons.push(`Chart trend ${c.trend}; setup quality ${c.setup_quality}.`);
-    let v = (risk.status==="approve"&&c.trend==="up"&&!conf.length&&!miss.length)?BUY:(["down","unknown"].includes(c.trend)?"SKIP":"WAIT");
+    const clean=risk.status==="approve"&&!conf.length&&!miss.length, bearish=["negative","neutral","unknown","mixed"].includes(se.sentiment)&&se.score<=0;
+    let v = clean&&c.trend==="up" ? BUY : clean&&c.trend==="down"&&bearish ? SHORT : (["down","unknown"].includes(c.trend)?"SKIP":"WAIT");
     const inv=[]; if(c.support_levels.length) inv.push(`Daily close below support ${c.support_levels[0]}`);
     if(c.resistance_levels.length) inv.push(`Rejection at resistance ${c.resistance_levels[0]} on falling volume`);
     inv.push("Unverified claims turn out false or the revenue report is revised");
     const out={decision:v,reasons,conflicting_signals:conf,missing_information:miss,invalidation_conditions:inv,human_review_required:true};
-    if(out.decision===BUY&&risk.status!=="approve"){out.decision="WAIT";out.reasons.push("Code downgraded BUY to WAIT: Risk did not fully approve.");}
+    if((out.decision===BUY||out.decision===SHORT)&&risk.status!=="approve"){const side=out.decision===BUY?"BUY":"SELL/SHORT"; out.decision="WAIT"; out.reasons.push(`Code downgraded ${side} to WAIT: Risk did not fully approve.`);}
     return out;
   }
   function validated(bot,fn){ // validate, retry once, then stop
@@ -749,7 +761,7 @@ function summaryLines(key,o){
     case "charts": return [L(`trend ${o.trend.toUpperCase()} · setup ${o.setup_quality}`,o.trend==="unknown"?"r":""),L(`support ${j(o.support_levels)} · resistance ${j(o.resistance_levels)}`),
       L(o.volume_summary),...(o.missing_data.length?[L("missing: "+j(o.missing_data),"w")]:[])];
     case "risk": return [L(`status ${o.status.toUpperCase()}`,o.status==="approve"?"g":o.status==="reduce"?"w":"r"),L(`max simulated size $${o.maximum_simulated_size} · max loss $${o.maximum_simulated_loss}`),L("flags: "+j(o.risk_flags)),L(o.reason)];
-    case "decision": return [L(`call ${o.decision}`,o.decision===BUY?"g":o.decision==="WAIT"?"w":"r"),...o.conflicting_signals.map(c=>L("conflict: "+c)),L("human_review_required = true","g")];
+    case "decision": return [L(`call ${o.decision}${o.decision===BUY?" · ▲ LONG":o.decision===SHORT?" · ▼ SHORT":""}`,o.decision===BUY?"g":o.decision==="WAIT"?"w":"r"),...o.conflicting_signals.map(c=>L("conflict: "+c)),L("human_review_required = true","g")];
   }
   return [];
 }
@@ -840,7 +852,7 @@ async function onEvent(ev){
     if(ev.bot==="sentiment") setGauge(o.score);
     if(ev.bot==="charts") await animateChart(currentPacket,o,2,3,650*SPEED+80);
     if(ev.bot==="risk") setShield(o);
-    if(ev.bot==="decision") $("callbox").innerHTML=`<span class="res-${o.decision.startsWith("BUY")?"BUY":o.decision}">${esc(o.decision)}</span>`;
+    if(ev.bot==="decision") $("callbox").innerHTML=`<span class="res-${callKey(o.decision)}">${o.decision===BUY?"▲ ":o.decision===SHORT?"▼ ":""}${esc(o.decision)}</span>`;
     for(const l of summaryLines(ev.bot,o)) await typeLine(ev.bot,l.t,l.c);
     await typeLine(ev.bot,"✔ output validated against schema","g");
     await heartbeat(ev.bot);
@@ -868,16 +880,16 @@ async function onEvent(ev){
 
 function shockwave(color){ if(REDUCED) return; for(const k of ["","two"]){ const d=document.createElement("div"); d.className="shock "+k; d.style.setProperty("--sc",color); document.body.appendChild(d); setTimeout(()=>d.remove(),1400); } }
 function shake(els){ if(REDUCED) return; els.forEach(e=>{ if(!e) return; e.classList.remove("shake"); void e.offsetWidth; e.classList.add("shake"); setTimeout(()=>e.classList.remove("shake"),600); }); }
-const CALL_COLOR={BUY:"#8fe388",WAIT:"#ffd84d",SKIP:"#ff6b6b"};
+const CALL_COLOR={BUY:"#8fe388",WAIT:"#ffd84d",SKIP:"#ff6b6b",SHORT:"#ff6b6b"};
 async function reveal(rep){
   const R=$("reveal"), C=$("count"), K=$("call"), F=$("flash"); R.classList.add("show"); K.classList.remove("show"); C.style.display="block";
   for(const n of [3,2,1]){ C.textContent=n; C.classList.remove("pop"); void C.offsetWidth; C.classList.add("pop"); FX.ring(C,"#ffb627"); await sleep(650*SPEED); }
   C.style.display="none"; F.classList.remove("go"); void F.offsetWidth; F.classList.add("go");
-  const d=rep.final_result, cls=d.startsWith("BUY")?"BUY":d;
+  const d=rep.final_result, cls=callKey(d);
   const t=$("callText"); t.textContent=d; t.setAttribute("data-text",d); t.className="big glitch burst "+cls+(d.length>6?" small":"");
   setTimeout(()=>t.classList.remove("burst"),1300);
   shockwave(CALL_COLOR[cls]); shake([K,document.querySelector("main"),document.querySelector("header")]); FX.explode(CALL_COLOR[cls]);
-  const r=(rep.outputs||{}).risk;
+  const r=(rep.outputs||{}).risk, dr=$("callDir"); if(dr){ dr.className="dirtag "+(cls==="BUY"?"long":cls==="SHORT"?"short":""); dr.textContent= cls==="BUY"?"▲ LONG · simulated":cls==="SHORT"?"▼ SHORT · simulated":""; }
   $("callMeta").textContent = `${rep.market} · Risk ${r?r.status.toUpperCase():"n/a"}${r?" · simulated size cap $"+r.maximum_simulated_size:""}`
     + (rep.stopped_at==="risk"?" · Decision Bot not run":"") + (rep.error?" · "+rep.error:"");
   K.classList.add("show");
@@ -908,7 +920,7 @@ async function showSaved(rep){
   BOTS.forEach((b,i)=>{ const o=(rep.outputs||{})[b.key]; if(!o) return; setState(b.key,"ok","COMPLETE"); showJson(b.key,o);
     $("log-"+b.key).innerHTML=summaryLines(b.key,o).map(l=>`<span class="ln ${l.c||""}">${esc(l.t)}</span>`).join("");
     if(b.key==="sentiment") setGauge(o.score); if(b.key==="risk") setShield(o); if(b.key==="charts"){ chartOut=o; drawChart(currentPacket,o,3); }
-    if(b.key==="decision") $("callbox").innerHTML=`<span class="res-${o.decision.startsWith("BUY")?"BUY":o.decision}">${esc(o.decision)}</span>`; });
+    if(b.key==="decision") $("callbox").innerHTML=`<span class="res-${callKey(o.decision)}">${o.decision===BUY?"▲ ":o.decision===SHORT?"▼ ":""}${esc(o.decision)}</span>`; });
   if(rep.stopped_at==="risk"){ setState("decision","no","NOT RUN"); $("log-decision").innerHTML='<span class="ln r">Risk rejected — Decision Bot not run</span>'; $("callbox").innerHTML='<span class="res-SKIP">NOT RUN · SKIP</span>'; }
 }
 async function loadHistory(){
@@ -973,15 +985,18 @@ function genPacket(rng,round,kind,seed){
   return pk;
 }
 function gauss(rng){let u=0,v=0;while(!u)u=rng();while(!v)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
-function planStop(entry,support){ let stop=(support&&support<entry)?support*0.997:entry*0.97; return Math.max(entry*0.95,Math.min(stop,entry*0.985)); }
-function planTrade(rng,entry,size,stop){
+function planStop(entry,support,dir,resist){ if(dir<0){ let stop=(resist&&resist>entry)?resist*1.003:entry*1.03; return Math.min(entry*1.05,Math.max(stop,entry*1.015)); }
+  let stop=(support&&support<entry)?support*0.997:entry*0.97; return Math.max(entry*0.95,Math.min(stop,entry*0.985)); }
+function planTrade(rng,entry,size,stop,dir){ dir=dir||1;
   const target=entry+2*(entry-stop), maxSteps=40, vol=.006+.008*rng(), drift=-.002+.006*rng();
   const path=[entry]; let px=entry, exit=null, how="timeout";
   for(let i=0;i<maxSteps;i++){ px=px*Math.exp(drift+vol*gauss(rng));
-    if(px<=stop){exit=stop;how="stop";path.push(stop);break;} if(px>=target){exit=target;how="target";path.push(target);break;} path.push(px); }
+    if(dir>0){ if(px<=stop){exit=stop;how="stop";path.push(stop);break;} if(px>=target){exit=target;how="target";path.push(target);break;} }
+    else { if(px>=stop){exit=stop;how="stop";path.push(stop);break;} if(px<=target){exit=target;how="target";path.push(target);break;} }
+    path.push(px); }
   if(exit===null) exit=px;
-  const pnl=r2s(size*(exit/entry-1));
-  return {entry,stop,target,path,exit,how,pnl,maxSteps};
+  const pnl=pnlOf(dir,size,entry,exit);
+  return {entry,stop,target,path,exit,how,pnl,maxSteps,dir};
 }
 function drawPos(t,k,msg,frac,lv){
   // lv 0..1: entry/stop/target slide in; frac 0..1: partial segment from point k toward k+1
@@ -991,7 +1006,7 @@ function drawPos(t,k,msg,frac,lv){
   const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
   g.strokeStyle="rgba(255,182,39,.08)"; g.lineWidth=1; for(let x=0;x<w;x+=28){g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke();} for(let y=0;y<h;y+=28){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();}
   if(!t){ g.fillStyle="#b9ab8e"; g.font="bold 13px monospace"; g.textAlign="center"; g.fillText(msg||"NO POSITION",w/2,h/2+4); g.textAlign="start"; return; }
-  const lo=Math.min(t.stop,...t.path)*0.995, hi=Math.max(t.target,...t.path)*1.005;
+  const dir=t.dir||1, lo=Math.min(t.stop,t.target,...t.path)*0.995, hi=Math.max(t.stop,t.target,...t.path)*1.005;
   const y=v=>h-12-(v-lo)/(hi-lo)*(h-24), x=i=>50+i*(w-120)/t.maxSteps;
   const e=1-Math.pow(1-lv,3);
   const lvl=(v,col,lab,dir)=>{ const x0=46, x1=w-66, a=dir>0? x0 : x1-(x1-x0)*e, b=dir>0? x0+(x1-x0)*e : x1;
@@ -1001,7 +1016,8 @@ function drawPos(t,k,msg,frac,lv){
   if(lv<1) return;
   const pts=t.path.slice(0,k+1); let lx=x(k), ly=y(pts[k]), lastV=pts[k];
   if(frac>0 && k+1<t.path.length){ lastV=pts[k]+(t.path[k+1]-pts[k])*frac; lx=x(k)+(x(k+1)-x(k))*frac; ly=y(lastV); }
-  const col=lastV>=t.entry?"#8fe388":"#ff6b6b";
+  const col=(dir>0?lastV>=t.entry:lastV<=t.entry)?"#8fe388":"#ff6b6b";
+  g.font="bold 11px monospace"; g.fillStyle=dir>0?"#8fe388":"#ff6b6b"; g.fillText(dir>0?"▲ LONG":"▼ SHORT",50,14);
   g.lineJoin="round"; g.strokeStyle=col; g.globalAlpha=.25; g.lineWidth=6; g.beginPath(); pts.forEach((v,i)=>i?g.lineTo(x(i),y(v)):g.moveTo(x(i),y(v))); g.lineTo(lx,ly); g.stroke();
   g.globalAlpha=1; g.lineWidth=2; g.beginPath(); pts.forEach((v,i)=>i?g.lineTo(x(i),y(v)):g.moveTo(x(i),y(v))); g.lineTo(lx,ly); g.stroke();
   g.fillStyle="rgba(255,255,255,.9)"; g.beginPath(); g.arc(lx,ly,3,0,7); g.fill(); g.fillStyle=col; g.globalAlpha=.35; g.beginPath(); g.arc(lx,ly,9,0,7); g.fill(); g.globalAlpha=1;
@@ -1038,10 +1054,20 @@ function effRisk(paused){ paused=paused||PAUSED; const act=VOTERS.filter(k=>!pau
   const pct=Math.min(avg,RISKP.risk); return {pct:Math.round(pct*10000)/10000, avg:Math.round(avg*10000)/10000, cap:RISKP.risk, capped:avg>RISKP.risk, active:act}; }
 function capValue(bal){ const m=$("inMode").value, v=Math.max(0,parseFloat($("inSize").value)||0); return m==="fixed"? v : m==="pct"? bal*v/100 : 0; }
 // position size so that a stop-out loses about riskUsd: size = riskUsd / (stop distance / entry); never above the balance or the optional cap
-function riskSize(bal,pct,entry,stop,cap){ const riskUsd=balOk(bal)?r2s(bal*pct/100):0, dist=(entry-stop)/entry;
-  if(!balOk(bal)||!(dist>0)||!(pct>0)) return {riskUsd,size:0,capped:false,dist};
-  let size=riskUsd/dist, capped=false; const lim=Math.min(bal, cap>0?cap:Infinity); if(size>lim){ size=lim; capped=true; }
-  return {riskUsd, size:r2s(size), capped, dist}; }
+// works for longs (stop below entry) and shorts (stop above): distance is |entry - stop| / entry
+// size (notional) = riskUsd / distance, capped at balance x virtual leverage and at the optional cap; margin used = size / leverage
+function riskSize(bal,pct,entry,stop,cap,lev){ lev=lev||1; const riskUsd=balOk(bal)?r2s(bal*pct/100):0, dist=Math.abs(entry-stop)/entry;
+  if(!balOk(bal)||!(dist>0)||!(pct>0)) return {riskUsd,size:0,capped:false,dist,lev,margin:0};
+  let size=riskUsd/dist, capped=false; const lim=Math.min(bal*lev, cap>0?cap:Infinity); if(size>lim){ size=lim; capped=true; }
+  size=r2s(size); return {riskUsd, size, capped, dist, lev, margin:r2s(size/lev)}; }
+const LEVS=[1,2,5,10,20,50,100];
+function validLev(v){ const n=+v; return LEVS.includes(n) ? n : null; }
+function curLev(){ return validLev($("inLev").value)||20; }
+const pnlOf=(dir,size,entry,exit)=>r2s(dir>=0 ? size*(exit/entry-1) : size*(1-exit/entry));
+// virtual margin call: a loss can never exceed the balance; close at the price where loss == balance
+function marginGuard(bal,dir,size,entry,exit){ const pnl=pnlOf(dir,size,entry,exit);
+  if(!(size>0) || pnl>-bal) return {exit,pnl,called:false};
+  const ex = dir>=0 ? entry*(1-bal/size) : entry*(1+bal/size); return {exit:ex,pnl:r2s(-bal),called:true}; }
 const fmtPct=n=>(+n.toFixed(2))+"%";
 function renderRisk(){ const bal=curBal(), ok=balOk(bal);
   RISK_KEYS.forEach(k=>{ const el=$("rs-"+k); if(!el) return; const v=RISKP[k];
@@ -1078,7 +1104,7 @@ async function addMajors(){ const b=$("tokMajors"); b.disabled=true; const todo=
   tokMsg(todo.length ? `✔ Added ${added.length} major(s)${added.length?": "+added.join(", "):""}.${skipped.length?" Skipped (no USD price right now): "+skipped.join(", ")+".":""} Tap a chip to include it in the session.` : "All majors are already in your list.", added.length||!todo.length?"ok":"bad");
   return {added,skipped}; }
 window.G6_TOKENS=()=>({list:TOK.list.slice(),sel:selTokens(),src:{...TOK.src}});
-window.G6_RISK={size:riskSize,validate:validRisk,eff:()=>effRisk(),set:setRisk,get:()=>({...RISKP})};
+window.G6_RISK={margin:marginGuard,pnl:pnlOf,lev:()=>curLev(),size:riskSize,validate:validRisk,eff:()=>effRisk(),set:setRisk,get:()=>({...RISKP})};
 /* ---- per-bot toggles (take effect next round) ---- */
 const PAUSED=new Set();
 function markPaused(){ BOTS.forEach(b=>{ const on=!PAUSED.has(b.key), t=$("tg-"+b.key); if(!t) return; t.classList.toggle("on",on); t.textContent=on?"ON":"OFF"; t.setAttribute("aria-pressed",String(on)); $("bot-"+b.key).classList.toggle("off",!on); }); if(typeof renderRisk==="function" && $("rs-risk")) renderRisk(); }
@@ -1169,15 +1195,15 @@ function setSessState(st){ sessState=st;
 }
 function newSession(){
   const rawBal=parseFloat($("inBal").value), start=isFinite(rawBal)?rawBal:NaN, seed=parseInt($("inSeed").value)||7, rng=mulberry32(seed), lim=Math.max(0,parseInt($("inRounds").value)||0);
-  S={start,bal:start,seed,rng,deck:makeDeck(rng,lim||8),round:0,rows:[],trades:0,wins:0,feed:$("inFeed").value};
+  S={start,bal:start,seed,rng,deck:makeDeck(rng,lim||8),round:0,rows:[],trades:0,wins:0,dirN:{L:0,S:0},dirW:{L:0,S:0},feed:$("inFeed").value};
   eqPts=[balOk(start)?start:0]; balShown=balOk(start)?start:0; $("balNum").textContent=balOk(start)?money(start):"unavailable"; renderRisk(); $("ledger").innerHTML=""; $("sumLine").textContent=""; $("kPnl").textContent="$0.00"; $("kPnl").className="flat"; $("kWins").textContent="0 · 0";
 }
 function eqN(){ const lim=Math.max(0,parseInt($("inRounds").value)||0); return lim||Math.max(10,eqPts.length); }
-function sumLine(frozenAt){ if(!S) return; const c={BUY:0,WAIT:0,SKIP:0}; S.rows.forEach(x=>c[x.call.startsWith("BUY")?"BUY":x.call]++); const tot=balOk(S.start)&&isFinite(S.bal)?S.bal-S.start:0;
-  $("sumLine").innerHTML=`${S.rows.length} rounds · ${c.BUY} BUY · ${c.WAIT} WAIT · ${c.SKIP} SKIP · win rate ${S.trades?Math.round(S.wins/S.trades*100)+"% ("+S.wins+"/"+S.trades+")":"—"} · total <b class="${cls(tot)}">${balOk(S.start)?sgn(tot)+" ("+(tot/S.start*100).toFixed(3)+"%)":"—"}</b> · max DD ${maxDrawdown(eqPts).toFixed(3)}%`
+function sumLine(frozenAt){ if(!S) return; const c={BUY:0,WAIT:0,SKIP:0,SHORT:0}; S.rows.forEach(x=>c[callKey(x.call)]++); const wr=(k)=>S.dirN&&S.dirN[k]?Math.round(S.dirW[k]/S.dirN[k]*100)+"% ("+S.dirW[k]+"/"+S.dirN[k]+")":"—"; const tot=balOk(S.start)&&isFinite(S.bal)?S.bal-S.start:0;
+  $("sumLine").innerHTML=`${S.rows.length} rounds · ${c.BUY} BUY · ${c.SHORT} SHORT · ${c.WAIT} WAIT · ${c.SKIP} SKIP · win rate ${S.trades?Math.round(S.wins/S.trades*100)+"% ("+S.wins+"/"+S.trades+")":"—"} · <span class="dir long">▲ LONG ${wr("L")}</span> · <span class="dir short">▼ SHORT ${wr("S")}</span> · total <b class="${cls(tot)}">${balOk(S.start)?sgn(tot)+" ("+(tot/S.start*100).toFixed(3)+"%)":"—"}</b> · max DD ${maxDrawdown(eqPts).toFixed(3)}%`
     + (frozenAt?` · <span class="frozen">STOPPED — figures frozen at ${frozenAt}</span>`:""); }
 function setCoinLine(txt){ RISK_KEYS.forEach(k=>{ const e=$("cl-"+k); if(e) e.textContent=txt; }); }
-async function playLive(t,coin,size,r,lim,callCls,call,pkt,rinfo){
+async function playLive(t,coin,size,r,lim,callCls,call,pkt,rinfo,bal){ const dir=t.dir||1;
   // t.entry/stop/target set; poll live price every 3 s for the window; close at SL/TP or at the last live price
   const win=Math.max(10,parseFloat($("inWin").value)||60), POLL=3000, steps=Math.ceil(win*1000/POLL); t.maxSteps=steps; t.path=[t.entry];
   let exit=null, how="window ended · closed at last live price";
@@ -1188,13 +1214,16 @@ async function playLive(t,coin,size,r,lim,callCls,call,pkt,rinfo){
     t.path.push(px);
     if(!REDUCED){ const t1=performance.now(); while(true){ const f=Math.min(1,(performance.now()-t1)/400); drawPos(t,t.path.length-2,null,f,1); if(f>=1||sessionStop) break; await frame(); } }
     drawPos(t,t.path.length-1);
-    const open=r2s(size*(px/t.entry-1)); $("kOpen").textContent=sgn(open); $("kOpen").className=cls(open);
+    const open=pnlOf(dir,size,t.entry,px); $("kOpen").textContent=sgn(open); $("kOpen").className=cls(open);
     $("pnlTape").innerHTML=`ROUND ${r}${lim?"/"+lim:""} · ${esc(pkt.market)} <span class="stamp ${callCls}">${esc(call)}</span> · ${rinfo||"size "+money(size)} · entry ${fmtPx(t.entry)} · stop ${fmtPx(t.stop)} · live ${fmtPx(px)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · ${k*3}s/${steps*3}s`;
-    if(px<=t.stop){ exit=px; how="stop hit (live poll)"; break; } if(px>=t.target){ exit=px; how="target hit (live poll)"; break; }
+    if(open<=-bal){ exit=px; how="virtual margin call · closed at balance limit"; break; }
+    if(dir>0){ if(px<=t.stop){ exit=px; how="stop hit (live poll)"; break; } if(px>=t.target){ exit=px; how="target hit (live poll)"; break; } }
+    else { if(px>=t.stop){ exit=px; how="stop hit (live poll)"; break; } if(px<=t.target){ exit=px; how="target hit (live poll)"; break; } }
   }
   if(sessionStop){ exit=t.path[t.path.length-1]; how="stopped by user · marked to last live price"; }
   if(exit===null) exit=t.path[t.path.length-1];
-  return {exit,how,pnl:r2s(size*(exit/t.entry-1))};
+  const mg=marginGuard(bal,dir,size,t.entry,exit); if(mg.called) how="virtual margin call · closed at balance limit";
+  return {exit:mg.exit,how,pnl:mg.pnl,mc:mg.called};
 }
 async function runLoop(){
   if(running) return; running=true; sessionStop=false; if(!S) newSession(); setSessState("running"); sessLabel();
@@ -1209,8 +1238,8 @@ async function runLoop(){
       renderRisk(); resetFloor(); setCoinLine("Trading disabled · balance unavailable");
       BOTS.forEach(b=>setState(b.key,"no","DISABLED")); drawPos(null,0,"TRADING DISABLED · BALANCE UNAVAILABLE");
       const res="Balance unavailable · trading disabled"; S.round=r;
-      S.rows.push({r,tk:coin+"-USD",call:"SKIP",feed:"—",riskPct:null,riskUsd:null,size:0,entry:null,exit:null,result:res,pnl:0,bal:S.bal});
-      const tr=document.createElement("tr"); tr.className="new"; tr.innerHTML=`<td>${r}</td><td>${esc(coin)}-USD</td><td class="res-SKIP">SKIP</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>${res}</td><td class="flat">$0.00</td><td>${isFinite(S.bal)?money(S.bal):"unavailable"}</td>`;
+      S.rows.push({r,tk:coin+"-USD",call:"SKIP",dir:null,feed:"—",riskPct:null,riskUsd:null,lev:null,margin:0,size:0,entry:null,exit:null,result:res,pnl:0,bal:S.bal});
+      const tr=document.createElement("tr"); tr.className="new"; tr.innerHTML=`<td>${r}</td><td>${esc(coin)}-USD</td><td class="res-SKIP">SKIP</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>${res}</td><td class="flat">$0.00</td><td>${isFinite(S.bal)?money(S.bal):"unavailable"}</td>`;
       $("ledger").appendChild(tr); $("pnlTape").innerHTML=`ROUND ${r} · <span class="stamp res-SKIP">SKIP</span> · ${res}`; sumLine(); eqPts.push(isFinite(S.bal)?S.bal:0);
       if(sessionStop) break; await sleepStop(1500); continue; }
     if(S.feed==="live"){
@@ -1227,45 +1256,46 @@ async function runLoop(){
     await Engine.run(pkt,ev=>q.push(ev),{paused:roundPaused}); fin=true; await pump;
     if(sessionStop || !lastReport) break;                    // round discarded: nothing was booked
     const rep=lastReport, call=rep.final_result, risk=rep.outputs.risk;
-    let size=0,pnl=0,entry=null,exit=null,riskPct=null,riskUsd=null,result = rep.stopped_at==="risk_paused"?"Risk paused · no trade":rep.stopped_at==="decision_paused"?"Decision paused · no trade":"no trade · $0";
-    const callCls=call.startsWith("BUY")?"res-BUY":"res-"+call;
-    if(call===BUY && risk && risk.status==="approve" && !rep.stopped_at){
-      riskPct=rk.pct; const cap=capValue(S.bal);
+    let size=0,pnl=0,entry=null,exit=null,riskPct=null,riskUsd=null,dir=0,levUsed=null,margin=0,mcall=false,result = rep.stopped_at==="risk_paused"?"Risk paused · no trade":rep.stopped_at==="decision_paused"?"Decision paused · no trade":"no trade · $0";
+    const callCls="res-"+callKey(call);
+    if((call===BUY||call===SHORT) && risk && risk.status==="approve" && !rep.stopped_at){
+      riskPct=rk.pct; const cap=capValue(S.bal), lev=curLev(); dir=dirOf(call); levUsed=lev;
       if(live){
         let e0; try{ e0=await Feed.ticker(pkt._live.coin); }catch(err){ e0=pkt.price.last; }
         const dist=Math.min(Math.max(1.5*pkt._live.atr,e0*0.0006),e0*0.5);
-        const sz=riskSize(S.bal,rk.pct,e0,e0-dist,cap); size=sz.size; riskUsd=sz.riskUsd;
-        const rinfo=`risk ${fmtPct(rk.pct)} · ${money(riskUsd)} · size ${money(size)}${sz.capped?" (capped)":""}`;
-        const t={entry:e0,stop:e0-dist,target:e0+2*dist,path:[e0],maxSteps:20};
-        if(size>0){ const o=await playLive(t,pkt._live.coin,size,r,lim,callCls,call,pkt,rinfo); entry=e0; exit=o.exit; pnl=o.pnl; result=o.how+(sz.capped?" · size capped":""); }
+        const stop=e0-dir*dist, sz=riskSize(S.bal,rk.pct,e0,stop,cap,lev); size=sz.size; riskUsd=sz.riskUsd; margin=sz.margin;
+        const rinfo=`${dir>0?"▲ LONG":"▼ SHORT"} · risk ${fmtPct(rk.pct)} · ${money(riskUsd)} · ${lev}x · notional ${money(size)} · margin ${money(margin)}${sz.capped?" (capped)":""}`;
+        const t={entry:e0,stop,target:e0+dir*2*dist,path:[e0],maxSteps:20,dir};
+        if(size>0){ const o=await playLive(t,pkt._live.coin,size,r,lim,callCls,call,pkt,rinfo,S.bal); entry=e0; exit=o.exit; pnl=o.pnl; mcall=o.mc; result=o.how+(sz.capped?" · size capped":""); }
       } else {
-        const sup=(rep.outputs.charts.support_levels||[])[0], e0=pkt.price.last, stop=planStop(e0,sup);
-        const sz=riskSize(S.bal,rk.pct,e0,stop,cap); size=sz.size; riskUsd=sz.riskUsd;
+        const sup=(rep.outputs.charts.support_levels||[])[0], res=(rep.outputs.charts.resistance_levels||[])[0], e0=pkt.price.last, stop=planStop(e0,sup,dir,res);
+        const sz=riskSize(S.bal,rk.pct,e0,stop,cap,lev); size=sz.size; riskUsd=sz.riskUsd; margin=sz.margin;
       }
       if(size>0 && !live){
-        const t=planTrade(S.rng,pkt.price.last,size,planStop(pkt.price.last,(rep.outputs.charts.support_levels||[])[0])); entry=t.entry;
+        const t=planTrade(S.rng,pkt.price.last,size,planStop(pkt.price.last,(rep.outputs.charts.support_levels||[])[0],dir,(rep.outputs.charts.resistance_levels||[])[0]),dir); entry=t.entry;
         await slideLevels(t); let k=0;
         for(k=0;k<t.path.length;k++){
           if(sessionStop) break;
           if(k>0 && !REDUCED){ const t1=performance.now(), d=70*(FAST?0.3:1); while(true){ const f=Math.min(1,(performance.now()-t1)/d); drawPos(t,k-1,null,f,1); if(f>=1) break; await frame(); } }
-          drawPos(t,k); const open=r2s(size*(t.path[k]/t.entry-1));
+          drawPos(t,k); const open=pnlOf(dir,size,t.entry,t.path[k]);
           $("kOpen").textContent=sgn(open); $("kOpen").className=cls(open);
-          $("pnlTape").innerHTML=`ROUND ${r} · ${esc(pkt.market)} <span class="stamp ${callCls}">${esc(call)}</span> · risk ${fmtPct(riskPct)} · ${money(riskUsd)} · size ${money(size)} · entry ${fmtPx(t.entry)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · session <b class="${cls(S.bal-S.start)}">${sgn(S.bal-S.start)}</b>`;
+          $("pnlTape").innerHTML=`ROUND ${r} · ${esc(pkt.market)} <span class="stamp ${callCls}">${esc(call)}</span> · ${dir>0?"▲ LONG":"▼ SHORT"} · risk ${fmtPct(riskPct)} · ${money(riskUsd)} · ${levUsed}x · notional ${money(size)} · margin ${money(margin)} · entry ${fmtPx(t.entry)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · session <b class="${cls(S.bal-S.start)}">${sgn(S.bal-S.start)}</b>`;
           if(REDUCED) await sleep(70*(FAST?0.3:1)); }
-        if(sessionStop){ exit=t.path[Math.max(0,Math.min(k,t.path.length-1))]; pnl=r2s(size*(exit/t.entry-1)); result="stopped by user · marked to last price"; }
+        if(sessionStop){ exit=t.path[Math.max(0,Math.min(k,t.path.length-1))]; pnl=pnlOf(dir,size,t.entry,exit); result="stopped by user · marked to last price"; }
         else { exit=t.exit; pnl=t.pnl; result = t.how==="target"?"target hit":t.how==="stop"?"stop hit (≈ risk $)":"timed out"; }
+        const mg=marginGuard(S.bal,dir,size,t.entry,exit); if(mg.called){ exit=mg.exit; pnl=mg.pnl; mcall=true; result="virtual margin call · closed at balance limit"; }
       } else if(!(size>0)) result="size $0 · no trade";
-      if(size>0){ S.trades++; if(pnl>0) S.wins++; }
+      if(size>0){ S.trades++; if(pnl>0) S.wins++; const dk=dir>0?"L":"S"; S.dirN[dk]++; if(pnl>0) S.dirW[dk]++; }
     } else {
       drawPos(null,0,`NO POSITION · ${rep.stopped_at==="risk_paused"?"RISK PAUSED · SKIP":rep.stopped_at==="decision_paused"?"DECISION PAUSED · SKIP":call==="SKIP"&&rep.stopped_at==="risk"?"RISK REJECTED · SKIP":call} · $0 CHANGE`);
       $("pnlTape").innerHTML=`ROUND ${r} · ${esc(pkt.market)} <span class="stamp ${callCls}">${esc(call)}</span> · no position · $0.00`;
     }
     $("kOpen").textContent="none"; $("kOpen").className="flat";
-    S.round=r; S.bal=r2s(S.bal+pnl); eqPts.push(S.bal);
+    S.round=r; S.bal=mcall?0:r2s(S.bal+pnl); eqPts.push(S.bal);
     const feedTag = live ? `live · ${pkt._live.source}` : (S.feed==="live" ? "offline · simulated" : "fictional");
-    S.rows.push({r,tk:pkt.market,call,feed:feedTag,riskPct:size?riskPct:null,riskUsd:size?riskUsd:null,size,entry,exit,result,pnl,bal:S.bal});
+    S.rows.push({r,tk:pkt.market,call,dir:size?(dir>0?"LONG":"SHORT"):null,feed:feedTag,riskPct:size?riskPct:null,riskUsd:size?riskUsd:null,lev:size?levUsed:null,size,margin:size?margin:0,entry,exit,result,pnl,bal:S.bal,mcall});
     const tr=document.createElement("tr"); tr.className="new";
-    tr.innerHTML=`<td>${r}</td><td>${esc(pkt.market)}</td><td class="${callCls}">${esc(call)}</td><td>${esc(feedTag)}</td><td>${size?fmtPct(riskPct):"—"}</td><td>${size?money(riskUsd):"—"}</td><td>${size?money(size):"—"}</td><td>${entry!=null?fmtPx(entry):"—"}</td><td>${exit!=null?fmtPx(exit):"—"}</td><td>${esc(result)}</td><td class="${cls(pnl)}">${sgn(pnl)}</td><td>${money(S.bal)}</td>`;
+    tr.innerHTML=`<td>${r}</td><td>${esc(pkt.market)}</td><td class="${callCls}">${esc(call)}</td><td>${size?(dir>0?'<span class="dir long">▲ LONG</span>':'<span class="dir short">▼ SHORT</span>'):"—"}</td><td>${esc(feedTag)}</td><td>${size?fmtPct(riskPct):"—"}</td><td>${size?money(riskUsd):"—"}</td><td>${size?levUsed+"x":"—"}</td><td>${size?money(size):"—"}</td><td>${size?money(margin):"—"}</td><td>${entry!=null?fmtPx(entry):"—"}</td><td>${exit!=null?fmtPx(exit):"—"}</td><td>${esc(result)}</td><td class="${cls(pnl)}">${sgn(pnl)}</td><td>${money(S.bal)}</td>`;
     $("ledger").appendChild(tr); tr.scrollIntoView({block:"nearest"});
     $("kPnl").textContent=sgn(S.bal-S.start); $("kPnl").className=cls(S.bal-S.start); $("kWins").textContent=`${S.trades} · ${S.wins}`;
     sumLine(); renderRisk();
@@ -1287,11 +1317,12 @@ function maxDrawdown(pts){ let peak=pts[0], dd=0; for(const v of pts){ peak=Math
 async function showSummary(start,end,rows,trades,wins,seed){
   const total=r2s(end-start), pct=total/start*100, traded=rows.filter(x=>x.size>0);
   const best=traded.length?traded.reduce((a,b)=>b.pnl>a.pnl?b:a):null, worst=traded.length?traded.reduce((a,b)=>b.pnl<a.pnl?b:a):null;
-  const counts={BUY:0,WAIT:0,SKIP:0}; rows.forEach(x=>counts[x.call.startsWith("BUY")?"BUY":x.call]++);
-  $("sumSub").textContent=`${rows.length} rounds · ${seed} · calls: ${counts.BUY} BUY — SIMULATION ONLY · ${counts.WAIT} WAIT · ${counts.SKIP} SKIP`;
+  const counts={BUY:0,WAIT:0,SKIP:0,SHORT:0}; rows.forEach(x=>counts[callKey(x.call)]++);
+  $("sumSub").textContent=`${rows.length} rounds · ${seed} · calls: ${counts.BUY} ▲ BUY (long) · ${counts.SHORT} ▼ SELL/SHORT · ${counts.WAIT} WAIT · ${counts.SKIP} SKIP — simulation only, virtual leverage`;
+  const dirRate=d=>{ const t=traded.filter(x=>x.dir===d), w=t.filter(x=>x.pnl>0).length; return t.length? `${Math.round(w/t.length*100)}% (${w}/${t.length})` : "— (none)"; };
   const items=[["Starting balance",start,"money"],["Ending balance",end,"money"],["Total P&L",total,"pnl"],["Return",pct,"pct"],
     ["Win rate",trades?wins/trades*100:0,"rate"],["Best round",best?best.pnl:0,"pnl",best?`#${best.r} ${best.tk}`:"no trades"],
-    ["Worst round",worst?worst.pnl:0,"pnl",worst?`#${worst.r} ${worst.tk}`:"no trades"],["Max drawdown",maxDrawdown(eqPts),"dd"]];
+    ["Worst round",worst?worst.pnl:0,"pnl",worst?`#${worst.r} ${worst.tk}`:"no trades"],["Max drawdown",maxDrawdown(eqPts),"dd"],["▲ LONG win rate",0,"txt",null,dirRate("LONG")],["▼ SHORT win rate",0,"txt",null,dirRate("SHORT")]];
   $("sumGrid").innerHTML=items.map((it,i)=>`<div class="kpi"><small>${it[0]}</small><b id="sv${i}">—</b>${it[3]?`<small style="text-transform:none">${esc(it[3])}</small>`:""}</div>`).join("");
   $("summary").classList.add("show"); const F=$("flash"); F.classList.remove("go"); void F.offsetWidth; F.classList.add("go");
   const card=document.querySelector(".sumcard"), h3=card.querySelector("h3"); card.classList.remove("enter"); void card.offsetWidth; card.classList.add("enter");
@@ -1301,8 +1332,8 @@ async function showSummary(start,end,rows,trades,wins,seed){
   const fmt=(v,k)=>k==="money"?money(v):k==="pnl"?sgn(v):k==="pct"?(v>0?"+":"")+v.toFixed(2)+"%":k==="rate"?(trades?v.toFixed(0)+"% ("+wins+"/"+trades+")":"— (no trades)"):"-"+v.toFixed(2)+"%";
   const t0=performance.now(), d=1400*(FAST?0.3:1);
   while(true){ const p=Math.min(1,(performance.now()-t0)/d), e=1-Math.pow(1-p,3);
-    items.forEach((it,i)=>{ const el=$("sv"+i), v=it[1]*e; el.textContent=fmt(p>=1?it[1]:v,it[2]);
-      el.className = it[2]==="pnl"||it[2]==="pct" ? cls(it[1]) : it[2]==="dd" ? (it[1]>0?"neg":"flat") : ""; });
+    items.forEach((it,i)=>{ const el=$("sv"+i), v=it[1]*e; el.textContent= it[2]==="txt" ? it[4] : fmt(p>=1?it[1]:v,it[2]);
+      el.className = it[2]==="txt" ? (i===items.length-2?"pos":"neg") : it[2]==="pnl"||it[2]==="pct" ? cls(it[1]) : it[2]==="dd" ? (it[1]>0?"neg":"flat") : ""; });
     if(p>=1) break; await sleep(30); }
 }
 $("closeSum").onclick=()=>$("summary").classList.remove("show");
@@ -1313,6 +1344,9 @@ $("sumBtn").onclick=()=>{ if(S&&S.rows.length) showSummary(S.start,S.bal,S.rows,
 $("inFeed").onchange=()=>{ if($("inFeed").value==="sim" && $("inRounds").value==="0") $("inRounds").value="8"; sessLabel(); };
 $("inMode").onchange=()=>{ const m=$("inMode").value; $("inSize").disabled=m==="none"; $("inSize").value=m==="pct"?"50":m==="fixed"?"5000":$("inSize").value; };
 $("inBal").addEventListener("input",()=>{ if(!S) renderRisk(); });
+function levLabel(){ const l=curLev(); $("levTag").textContent=`Virtual leverage ${l}x · simulation only`; }
+(function(){ let v=null; try{ v=validLev(localStorage.getItem("g6_lev")); }catch(e){} $("inLev").value=String(v||20); levLabel(); })();
+$("inLev").onchange=()=>{ const v=validLev($("inLev").value)||20; $("inLev").value=String(v); try{ localStorage.setItem("g6_lev",String(v)); }catch(e){} levLabel(); };
 $("tokAddBtn").onclick=async()=>{ const b=$("tokAddBtn"); b.disabled=true; if(await addToken($("tokIn").value)) $("tokIn").value=""; b.disabled=false; };
 $("tokIn").onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); $("tokAddBtn").click(); } };
 $("tokMajors").onclick=()=>addMajors();

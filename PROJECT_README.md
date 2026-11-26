@@ -19,7 +19,7 @@ Six bots look at one market packet and give a research verdict:
 
 The flow: the same packet goes to Scout, News, Sentiment, and Charts → each answer is checked
 against its JSON shape → all four go to Risk → **the run stops if Risk rejects** → Decision returns
-`BUY — SIMULATION ONLY`, `WAIT`, or `SKIP` → a timestamped report (`reports/report-<time>.json`)
+`BUY — SIMULATION ONLY`, `SELL/SHORT — SIMULATION ONLY`, `WAIT`, or `SKIP` → a timestamped report (`reports/report-<time>.json`)
 and log (`logs/run-<time>.log`) are saved. No real order, ever.
 
 ---
@@ -116,10 +116,24 @@ virtual balance (for example `1% · $99.98`).
 - Effective risk per trade = the average of the *active* Scout, News, Sentiment, Charts and Decision
   settings, never above the Risk bot's % (the ceiling, which can't be bypassed).
 - Risk $ = current balance × effective risk.
-- Position size = risk $ ÷ (stop distance ÷ entry), capped at the balance and at the optional
-  **Max position cap**. A stopped-out trade therefore loses about the risk $.
+- Position (notional) size = risk $ ÷ (stop distance ÷ entry), capped at balance × **virtual leverage**
+  and at the optional **Max position cap**. A stopped-out trade therefore loses about the risk $.
 - In demo sessions this replaces the fixed size cap from the risk-rules file. The Risk gate still
-  decides approve / reduce / reject, and only an approved BUY trades.
+  decides approve / reduce / reject, and only a fully approved BUY or SELL/SHORT trades. A "reduce"
+  turns either into WAIT; it can never flip the direction.
+
+**Virtual leverage · simulation only.** Session setup has a **Virtual leverage** setting: 1x, 2x, 5x, 10x,
+20x (default), 50x or 100x, validated and saved in your browser. One-minute live stops are tight (often
+~0.05%), so at 1x the size hit the balance cap and a stop-out lost far less than the risk $; with
+leverage the notional can reach balance × leverage, so a stop-out loses about the risk $. Margin used =
+notional ÷ leverage. 1x reproduces the old unleveraged behaviour exactly. **Virtual margin call:** a loss
+is never allowed to exceed the balance. The trade closes at the price where the loss equals the balance,
+the balance becomes $0, and every later round is `SKIP` ("Balance unavailable · trading disabled").
+There is no borrowing, exchange, order or real money anywhere.
+
+**Long and short.** Decision goes **▲ LONG** (`BUY — SIMULATION ONLY`) on a clean uptrend and
+**▼ SHORT** (`SELL/SHORT — SIMULATION ONLY`) on a clean downtrend with bearish or neutral sentiment
+(score ≤ 0) and no positive-news conflict. Both need a full Risk approval.
 - If the balance is unavailable, NaN or ≤ 0, trading is disabled. Every call becomes `SKIP`
   ("Balance unavailable · trading disabled"), and the header and panels say so.
 
@@ -149,20 +163,27 @@ How a round works:
   the intraday check. Each panel shows "Analyzing: <coin>/USD".
   - Price levels keep enough significant digits for sub-$1 coins.
   - News and forum inputs stay empty, so Sentiment is "unknown".
-- A `BUY — SIMULATION ONLY` call opens a virtual position, sized as above.
+- A `BUY — SIMULATION ONLY` call opens a virtual **long**; `SELL/SHORT — SIMULATION ONLY` opens a virtual
+  **short**. Both are sized as above.
   - Entry is a fresh live price.
-  - The stop is about 1.5× the recent one-minute range below entry.
-  - The target is twice the stop distance above entry.
+  - The stop is about 1.5× the recent one-minute range away from entry: below it for a long, above it
+    for a short.
+  - The target is twice the stop distance the other way (above for a long, below for a short).
 - Live prices are then polled every 3 seconds for the trade window.
-  - The first poll at or below the stop closes the trade (a loss of about the risk $).
-  - The first poll at or above the target closes it (a win).
+  - The first poll at or past the stop closes the trade (a loss of about the risk $).
+  - The first poll at or past the target closes it (a win).
+  - If the open loss reaches the balance, the virtual margin call closes it at the balance limit.
   - If neither is hit, the trade closes at the last live price.
-- P&L is `size × (exit ÷ entry − 1)`. WAIT and SKIP rounds change nothing.
+- P&L is `size × (exit ÷ entry − 1)` for a long and `size × (1 − exit ÷ entry)` for a short. WAIT and
+  SKIP rounds change nothing.
 
 What you see:
 - A balance counter, the effective risk % and $, a running P&L line and the coin being traded.
-- A per-round ledger with the feed, risk %, risk $, size, entry, exit, result, P&L and balance.
-- An equity curve and a summary.
+- The position chart, labelled ▲ LONG or ▼ SHORT (for a short the stop line sits above entry and the
+  target below), with a "Virtual leverage Nx · simulation only" tag.
+- A per-round ledger with the call, direction, feed, risk %, risk $, leverage, notional, margin used,
+  entry, exit, result, P&L and balance.
+- An equity curve and a summary, including the win rate for longs and for shorts.
 - A header chip showing the feed and when it last updated (LIVE / STALE).
 - A Running/Stopped indicator.
 
@@ -204,9 +225,9 @@ retried once; a second failure stops the run safely with `SKIP`.
 python -m pytest -q
 ```
 
-Expected: `11 passed`. The tests check that all six bots load, the sample data is valid, every output
+Expected: `12 passed`. The tests check that all six bots load, the sample data is valid, every output
 matches its shape, missing data leads to a safe result, a Risk rejection stops the run, Decision
-can't bypass Risk, the planted instruction stays data, there is no order code, bad output is retried
+can't bypass Risk, a short needs full Risk approval (a reduce becomes WAIT), the planted instruction stays data, there is no order code, bad output is retried
 once and then stops, secrets never reach logs or reports, and the program refuses to run if
 `TRADING_MODE` is anything other than `SIMULATION_ONLY` (exit code 2).
 
@@ -232,7 +253,7 @@ prompts/     one .txt per bot
 data/        sample_market.json  ← EXAMPLE DATA (fictional ticker EXMP)
 reports/     report-<time>.json (one per run)
 logs/        run-<time>.log (one per run)
-tests/       test_workflow.py (11 safety tests)
+tests/       test_workflow.py (12 safety tests)
 web/         app.py (browser UI)  templates/index.html  static-demo.html  build_static.py
 ```
 

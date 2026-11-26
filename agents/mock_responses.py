@@ -258,6 +258,10 @@ def decision(payload):
     conflicts, missing, reasons = [], [], []
     if c.get("trend") == "up" and se.get("possible_hype"):
         conflicts.append("Uptrend and volume support the move, but part of the crowd mood is hype.")
+    if c.get("trend") == "down" and se.get("sentiment") == "positive":
+        conflicts.append("Downtrend on the chart, but reported news and crowd mood are positive.")
+    if c.get("trend") == "down" and len(n.get("positive_events", [])) > len(n.get("negative_events", [])):
+        conflicts.append("Downtrend on the chart, but reported news leans positive.")
     if n.get("positive_events") and n.get("unverified_claims"):
         conflicts.append("A reported revenue item sits next to an unverified forum claim.")
     missing += c.get("missing_data", [])
@@ -266,8 +270,12 @@ def decision(payload):
     reasons.append(f"Risk status is '{risk_out.get('status')}': {risk_out.get('reason', '')}")
     if c.get("trend"):
         reasons.append(f"Chart trend {c['trend']}; setup quality {c.get('setup_quality')}.")
-    if risk_out.get("status") == "approve" and c.get("trend") == "up" and not conflicts and not missing:
+    clean = risk_out.get("status") == "approve" and not conflicts and not missing
+    bearish = se.get("sentiment") in ("negative", "neutral", "unknown", "mixed") and se.get("score", 0) <= 0
+    if clean and c.get("trend") == "up":
         verdict = "BUY — SIMULATION ONLY"
+    elif clean and c.get("trend") == "down" and bearish:
+        verdict = "SELL/SHORT — SIMULATION ONLY"
     elif c.get("trend") in ("down", "unknown"):
         verdict = "SKIP"
     else:

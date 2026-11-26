@@ -1,4 +1,4 @@
-"""The 11 safety tests. Run with: python -m pytest -q
+"""The 12 safety tests. Run with: python -m pytest -q
 
 Everything runs offline with deterministic mock responses.
 """
@@ -214,3 +214,24 @@ def test_refuses_outside_simulation_mode():
     assert proc.returncode == 2
     assert "SIMULATION_ONLY" in proc.stderr
     assert "Bot complete" not in proc.stdout
+
+
+# 12
+def test_short_needs_full_risk_approval(packet):
+    """A simulated short is allowed only on a full approval; 'reduce' downgrades it to WAIT, never a flip."""
+    from agents import mock_responses
+    research = {
+        "scout": {"data_quality": "good"},
+        "news": {"positive_events": [], "negative_events": ["x"], "unverified_claims": []},
+        "sentiment": {"sentiment": "negative", "score": -50, "possible_hype": []},
+        "charts": {"trend": "down", "support_levels": [9.0], "resistance_levels": [11.0], "missing_data": [], "setup_quality": "good"},
+    }
+    approve = {"status": "approve", "reason": "ok"}
+    assert mock_responses.decision({"research": research, "risk": approve})["decision"] == "SELL/SHORT — SIMULATION ONLY"
+    shorty = MockProvider(overrides={"decision": lambda p: {
+        "decision": "SELL/SHORT — SIMULATION ONLY", "reasons": [], "conflicting_signals": [],
+        "missing_information": [], "invalidation_conditions": [], "human_review_required": False}})
+    d = decision.run(packet, research, {"status": "reduce", "reason": "flags"}, shorty)
+    assert d["decision"] == "WAIT" and d["human_review_required"] is True
+    d = decision.run(packet, research, approve, shorty)
+    assert d["decision"] == "SELL/SHORT — SIMULATION ONLY"
