@@ -2,17 +2,25 @@
 
 **Live site:** https://yogibear1323.github.io/alpha-hive/ · **Terminal:** https://yogibear1323.github.io/alpha-hive/terminal/
 
-> Educational simulation. Single runs use fictional example data; the demo session reads free public
-> prices. It places no real orders, connects to no trading
+> Educational simulation on free public prices (Coinbase Exchange, Kraken fallback) with a virtual
+> balance. Fictional EXMP/EXMQ packets remain only as a labelled "Practice (fictional)" option. It places no real orders, connects to no trading
 > account, and is not financial advice.
 
 `index.html` is the landing page, which explains the project, and `terminal/index.html` is the terminal itself. Each is a single, self-contained file (no external files or CDNs). Add `?session`, `?fast` or `?offline` to the terminal address. Pick a
-market packet, press **Run the six bots**, and watch Scout, News, Sentiment, Charts, the Risk gate, and
+live coin (or a Practice packet), press **Run the six bots**, and watch Scout, News, Sentiment, Charts, the Risk gate, and
 Decision work through it, ending in a final call of `BUY — SIMULATION ONLY` (▲ long), `SELL/SHORT — SIMULATION ONLY` (▼ short), `WAIT`, or `SKIP`. A human
 must review every result.
 
-- **EXMP sample:** Risk reduces the simulated size to $100, and the call is WAIT.
-- **EXMQ missing price:** Risk rejects, the Decision Bot does not run, and the call is SKIP.
+- **Live coins (default):** single runs fetch real hourly and one-minute candles for the selected coin.
+- **Ticker tape:** live USD prices and 24h change for your token list, refreshed every 10 s, marked LIVE;
+  it says "Offline" instead of showing fake tickers if both feeds fail.
+- **Status labels:** a header chip, the Decision call, the position panel and the round tape show
+  `LONG ▲ BUY` (green) or `SHORT ▼ SELL` (red), or WAIT/SKIP, reset every round; each analyst shows its own
+  lean (bullish/bearish/neutral). "simulation only" is a separate tag.
+- **Trade timer:** every open trade shows `TIME LEFT m:ss` with a draining ring and bar (amber under 15 s,
+  red under 5 s). It freezes with the reason when a trade closes early (for example `STOP HIT at 0:31`).
+- **Practice (fictional) EXMP sample:** Risk reduces the simulated size to $100, and the call is WAIT.
+- **Practice (fictional) EXMQ missing price:** Risk rejects, the Decision Bot does not run, and the call is SKIP.
 - **Demo session:** a virtual balance (default $10,000) trades the tokens you pick.
   - Prices are **live public prices**: Coinbase Exchange first, then Kraken. No keys, no sign-in, no
     real orders.

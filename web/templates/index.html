@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Alpha Hive — a six-bot AI trading team. An educational simulation with fictional example data. No real orders.">
+<meta name="description" content="Alpha Hive — a six-bot AI trading team. An educational simulation on live public prices with a virtual balance. No real orders.">
 <link rel="icon" href="data:,">
 <title>Alpha Hive · Six-Bot AI Trading Team · Simulation</title>
 <style>
@@ -396,10 +396,26 @@ body.reduced .bot.work .av .wg{animation:none}
 .dlab.long{color:#8fe388}.dlab.short{color:#ff6b6b}.dlab.wait{color:#ffd84d}.dlab.skip{color:#ff6b6b}.dlab.idle{color:var(--mute);border-style:dashed}
 .simtag{display:inline-block;font:600 10px var(--mono);letter-spacing:1px;color:var(--mute);border:1px dashed rgba(207,195,168,.5);border-radius:5px;padding:1px 6px;margin-left:6px;white-space:nowrap;text-transform:uppercase}
 .lean{font:800 10px var(--mono);letter-spacing:1px;padding:2px 6px;border-radius:5px;border:1px solid currentColor;white-space:nowrap;margin-right:4px;color:var(--mute)}
-.lean.bull{color:#8fe388}.lean.bear{color:#ff6b6b}.lean.neu{color:#ffd84d}.lean.long{color:#8fe388}.lean.short{color:#ff6b6b}.lean.wait{color:#ffd84d}.lean.skip{color:#ff6b6b}.lean:empty{display:none}
+.lean.bull{color:#8fe388}.lean.bear{color:#ff6b6b}.lean.neu{color:#ffd84d}.lean.long{color:#8fe388}.lean.short{color:#ff6b6b}.lean.wait{color:#ffd84d}.lean.skip{color:#ff6b6b}.lean:empty{display:none}.lean:not(:empty)+.lnone{display:none}
+.leanrow{display:flex;align-items:center;gap:6px;min-height:20px;margin:2px 0 4px;font:600 10px var(--mono);letter-spacing:1px}.llbl{color:var(--mute);text-transform:uppercase}.lnone{color:var(--mute)}
 .chip.dir.long{color:#8fe388;border-color:#8fe388}.chip.dir.short{color:#ff6b6b;border-color:#ff6b6b}.chip.dir.wait{color:#ffd84d}.chip.dir.skip{color:#ff6b6b}
 .posdir{margin-left:8px;vertical-align:middle}
 .callbox .simtag{vertical-align:middle}
+.ttimer{display:inline-flex;align-items:center;gap:8px;margin:2px 0 6px 8px;padding:3px 10px 3px 4px;border:1px solid rgba(255,182,39,.45);border-radius:999px;font:700 12px var(--mono);letter-spacing:1px;color:var(--text);vertical-align:middle}
+.ttimer[hidden]{display:none}
+.ttimer svg{width:26px;height:26px;transform:rotate(-90deg);flex:none}.ttimer .trk{stroke:rgba(255,255,255,.12)}.ttimer .arc{stroke:#8fe388;transition:stroke-dashoffset .25s linear}
+.ttimer .ttl{color:var(--mute);font-size:10px}.ttimer b{font-size:15px;min-width:42px;color:#8fe388}
+.ttimer .ttbar{width:70px;height:4px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden}.ttimer .ttbar i{display:block;height:100%;background:#8fe388;transition:width .25s linear}
+.ttimer.amber b,.tt-in.amber{color:#ffd84d}.ttimer.amber .arc{stroke:#ffd84d}.ttimer.amber .ttbar i{background:#ffd84d}.ttimer.amber{border-color:#ffd84d}
+.ttimer.red b,.tt-in.red{color:#ff6b6b}.ttimer.red .arc{stroke:#ff6b6b}.ttimer.red .ttbar i{background:#ff6b6b}.ttimer.red{border-color:#ff6b6b}
+.ttimer.frozen{border-style:dashed}.ttimer.frozen b{color:var(--text)}.ttimer .ttwhy{color:var(--mute);font-size:10px;letter-spacing:.5px}
+.ttimer.pulse,.tt-in.pulse{animation:ttpulse 1s ease-in-out infinite}
+@keyframes ttpulse{0%,100%{opacity:1}50%{opacity:.55}}
+body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
+@media (prefers-reduced-motion: reduce){.ttimer.pulse,.tt-in.pulse{animation:none}}
+.tt-in{font-weight:800;color:#8fe388}
+.ticker .tag.live{color:#8fe388;text-shadow:0 0 8px rgba(143,227,136,.6)}.ticker .tag.off{color:#ff6b6b;text-shadow:none}
+.pk.practice small{color:#ffd84d}.pkhead{flex:1 1 100%;font:700 10px var(--mono);letter-spacing:1.5px;color:var(--mute);text-transform:uppercase;margin-top:4px}
 </style>
 </head>
 <body>
@@ -414,7 +430,7 @@ body.reduced .bot.work .av .wg{animation:none}
     </div>
     <div class="chips"><span class="chip sim">Simulation only</span><span class="chip live" id="modeChip">Offline mock</span><span class="chip run" id="runChip">● Idle</span><span class="chip dir" id="dirChip" aria-live="polite">◇ no call yet</span><span class="chip guard" id="guardChip" hidden>⚠ Balance unavailable · trading disabled</span><span class="chip feed" id="feedChip">Feed: —</span><a class="chip motion" id="homeLink" href="../" hidden>⌂ Home</a><button class="chip motion" id="motionBtn" title="Toggle animations">Motion: full</button></div>
   </div>
-  <div class="ticker"><div class="tag">SIMULATED · EXAMPLE DATA</div><div class="tape"><div class="tape-inner" id="tape"></div></div></div>
+  <div class="ticker"><div class="tag" id="tapeTag">◌ LIVE PRICES · connecting…</div><div class="tape"><div class="tape-inner" id="tape"></div></div></div>
 </header>
 
 <main>
@@ -474,7 +490,7 @@ body.reduced .bot.work .av .wg{animation:none}
         <canvas class="wide eq" id="eqCanvas"></canvas>
       </div>
       <div class="card">
-        <h2 id="posTitle">Simulated position · fictional price path</h2><span class="posdir" id="posDir"></span><div class="levtag" id="levTag">Virtual leverage 20x · simulation only</div>
+        <h2 id="posTitle">Simulated position · fictional price path</h2><span class="posdir" id="posDir"></span><div class="ttimer" id="tTimer" hidden role="timer" aria-live="off"><svg viewBox="0 0 36 36"><circle class="trk" cx="18" cy="18" r="15" fill="none" stroke-width="4"/><circle class="arc" id="ttArc" cx="18" cy="18" r="15" fill="none" stroke-width="4" stroke-dasharray="94.25" stroke-dashoffset="0"/></svg><span class="ttl" id="ttLbl">TIME LEFT</span><b id="ttVal">0:00</b><span class="ttbar"><i id="ttFill" style="width:100%"></i></span><span class="ttwhy" id="ttWhy"></span></div><div class="levtag" id="levTag">Virtual leverage 20x · simulation only</div>
         <canvas class="wide" id="posCanvas"></canvas>
         <div class="ledger-wrap"><table class="ledger"><thead><tr><th>#</th><th>Ticker</th><th>Call</th><th>Dir</th><th>Feed</th><th>Risk %</th><th>Risk $</th><th>Lev</th><th>Notional</th><th>Margin</th><th>Entry</th><th>Exit</th><th>Result</th><th>P&amp;L</th><th>Balance</th></tr></thead><tbody id="ledger"></tbody></table></div>
         <div class="sumline" id="sumLine"></div>
@@ -506,7 +522,7 @@ body.reduced .bot.work .av .wg{animation:none}
   </div>
 </div>
 <div class="flash" id="flash"></div>
-<div class="badge">Educational simulation · example data · not financial advice</div>
+<div class="badge">Educational simulation · live public prices · virtual money · not financial advice</div>
 
 <script>
 const BOOT = /*__BOOT__*/null;
@@ -726,8 +742,8 @@ function buildFloor(){
   <section class="card bot" id="bot-${b.key}" style="--c:${b.c};--i:${i}">
     <div class="hd"><div class="av" style="color:${b.c}">${ICONS[b.key]}</div>
       <div><div class="name">${i+1} · ${b.name}</div><div class="job">${b.job}</div></div>
-      <span class="lean" id="lean-${b.key}"></span><span class="st" id="st-${b.key}">IDLE</span><button class="tog on" id="tg-${b.key}" aria-pressed="true" title="Pause or resume this bot (takes effect next round)">ON</button></div>
-    <div class="coinline" id="cl-${b.key}">Analyzing: —</div>
+      <span class="st" id="st-${b.key}">IDLE</span><button class="tog on" id="tg-${b.key}" aria-pressed="true" title="Pause or resume this bot (takes effect next round)">ON</button></div>
+    <div class="coinline" id="cl-${b.key}">Analyzing: —</div>${b.key==="risk"?"":`<div class="leanrow"><span class="llbl">${b.key==="decision"?"Call":"Lean"}</span><span class="lean" id="lean-${b.key}"></span><span class="lnone" id="lnone-${b.key}">— waiting for this round</span></div>`}
     <div class="riskrow" id="rk-${b.key}"><span class="rlbl">Risk${b.key==="risk"?" ceiling":""}</span><button class="rq" data-v="1">1%</button><button class="rq" data-v="2">2%</button><input class="rin" id="ri-${b.key}" type="text" inputmode="decimal" maxlength="6" aria-label="${b.name} custom risk percent" title="Custom % (0.1 to 10)"><span class="rshow" id="rs-${b.key}">1% · —</span><span class="rerr" id="re-${b.key}" role="alert"></span></div>
     <div class="log" id="log-${b.key}"></div>
     <div class="viz" id="viz-${b.key}">${vizMarkup(b.key)}</div>
@@ -857,7 +873,19 @@ function setShield(r){
 }
 
 /* ---------------------------------------------------------------- state */
-let markets=[], current=null, currentPacket=null, running=false, lastReport=null;
+let markets=[], current=null, currentPacket=null, running=false, lastReport=null, PRACTICE=[];
+const niceP=f=>f==="sample_market.json"?"Practice (fictional) · trend up, mixed signals":f==="example_missing_price.json"?"Practice (fictional) · missing price, safe reject path":"Practice (fictional)";
+function buildPicker(){ if(!$("picker")||!PRACTICE.length) return; const coins=selTokens().slice(0,12);
+  markets=[...coins.map(c=>({file:"live:"+c,live:c,packet:null})),...PRACTICE];
+  $("picker").innerHTML='<div class="pkhead">Live coins · real candles from Coinbase Exchange / Kraken</div>'+coins.map(c=>`<button class="pk" data-f="live:${esc(c)}"><b>${esc(c)}/USD</b><small>● Live public prices</small></button>`).join("")
+    +'<div class="pkhead">Practice (fictional) · invented data for learning the workflow</div>'+PRACTICE.map(m=>`<button class="pk practice" data-f="${esc(m.file)}"><b>${esc((m.packet&&m.packet.market)||m.market||m.file)}</b><small>${esc(niceP(m.file))}</small></button>`).join("");
+  document.querySelectorAll(".pk").forEach(b=>b.onclick=()=>{ if(!running) selectMarket(b.dataset.f); });
+  if(current && !markets.find(m=>m.file===current) && !running && !document.body.classList.contains("session-mode")) selectMarket(markets[0].file);
+  else document.querySelectorAll(".pk").forEach(b=>b.classList.toggle("on",b.dataset.f===current)); }
+async function practicePacket(file){ const m=PRACTICE.find(x=>x.file===file); if(!m.packet && BOOT.mode!=="static") m.packet=await (await fetch("api/markets/"+encodeURIComponent(file))).json(); return m.packet; }
+async function loadLive(m){ try{ m.packet=await livePacket(m.live); m.offline=false; }
+  catch(e){ const base=structuredClone(await practicePacket(PRACTICE[0].file)); base._label=`OFFLINE · SIMULATED PRICES - live feeds unreachable for ${m.live}/USD (${String(e.message||e).slice(0,60)}), so this run uses the fictional practice packet ${base.market}. Not a real market.`; m.packet=base; m.offline=true; }
+  return m.packet; }
 function resetFloor(){
   chartAnim++; chartOut=null; setDirChip(null,currentPacket&&currentPacket.market); BOTS.forEach(b=>{ setState(b.key,"","IDLE"); setLean(b.key,null); $("log-"+b.key).innerHTML='<span class="ln">standing by…</span>'; const d=$("json-"+b.key); d.hidden=true; d.open=false; });
   $("viz-risk").innerHTML=vizMarkup("risk"); $("viz-scout").innerHTML=vizMarkup("scout"); $("viz-sentiment").innerHTML=vizMarkup("sentiment"); $("viz-decision").innerHTML=vizMarkup("decision");
@@ -922,11 +950,14 @@ async function reveal(rep){
 $("closeReveal").onclick=()=>{ $("reveal").classList.remove("show"); $("call").classList.remove("show"); };
 
 async function run(){
-  if(running) return; running=true; setRunChip("running"); $("runBtn").disabled=true; $("resetBtn").disabled=true; resetFloor(); setCoinLine("Analyzing: "+((currentPacket&&currentPacket.market)||"—")+" · example data");
+  if(running) return; running=true; setRunChip("running"); $("runBtn").disabled=true; $("resetBtn").disabled=true;
+  const cm=markets.find(x=>x.file===current)||{};
+  if(cm.live){ setCoinLine(`Fetching live candles: ${cm.live}/USD…`); await loadLive(cm); currentPacket=cm.packet; $("pktLabel").textContent=cm.packet._label||""; }
+  resetFloor(); setCoinLine("Analyzing: "+((currentPacket&&currentPacket.market)||"—")+(cm.live?(cm.offline?" · OFFLINE: simulated (fictional practice data)":" · live · "+(Feed.source||"")):" · practice (fictional)"));
   const q=[]; let finished=false;
   const pump=(async()=>{ while(!finished||q.length){ if(q.length) await onEvent(q.shift()); else await sleep(30); } })();
   try{
-    if(BOOT.mode==="static" || PAUSED.size){ await Engine.run(structuredClone(currentPacket), ev=>q.push(ev), {paused:new Set(PAUSED)}); }
+    if(BOOT.mode==="static" || PAUSED.size || cm.live){ await Engine.run(structuredClone(currentPacket), ev=>q.push(ev), {paused:new Set(PAUSED)}); }
     else{
       const res=await fetch("api/run",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({market_file:current})});
       if(!res.ok){ const j=await res.json().catch(()=>({error:res.statusText})); throw new Error(j.error||res.statusText); }
@@ -959,17 +990,37 @@ async function loadHistory(){
     const rep=r._r||await (await fetch("api/reports/"+encodeURIComponent(r.file))).json(); await selectMarket((markets.find(m=>((m.packet&&m.packet.market)||m.market)===rep.market)||{}).file||current,true); showSaved(rep); });
 }
 async function selectMarket(file,quiet){
-  current=file; const m=markets.find(x=>x.file===file);
-  if(!m.packet && BOOT.mode!=="static") m.packet=await (await fetch("api/markets/"+encodeURIComponent(file))).json();
-  currentPacket=m.packet; $("pktLabel").textContent=m.packet._label||"";
+  current=file; let m=markets.find(x=>x.file===file); if(!m){ m=markets[0]; current=m.file; }
+  document.querySelectorAll(".pk").forEach(b=>b.classList.toggle("on",b.dataset.f===current));
+  if(m.live){ $("pktLabel").textContent=`Fetching live candles for ${m.live}/USD…`; await loadLive(m); if(current!==m.file) return; }
+  else await practicePacket(m.file);
+  currentPacket=m.packet; $("pktLabel").textContent= m.practice ? "PRACTICE (FICTIONAL) · "+(m.packet._label||"").replace(/^EXAMPLE DATA - /,"") : (m.packet._label||"");
   document.querySelectorAll(".pk").forEach(b=>b.classList.toggle("on",b.dataset.f===file));
   if(!quiet) resetFloor();
 }
-function buildTape(){
-  const rows=[["EXMP","40.10","+3.30%",1],["EXMQ","—","no price",0],["DEMO-A","112.40","+0.82%",1],["DEMO-B","9.87","-1.45%",0],["FAKE-IX","3,214.0","+0.21%",1],["SAMPL","58.02","-0.33%",0],["TEST-X","0.442","+5.10%",1],["MOCK","77.70","-2.04%",0]];
-  const one=rows.map(r=>`<b>${r[0]}</b>${r[1]} <span class="${r[3]?"up":"dn"}">${r[3]?"▲":"▼"} ${r[2]}</span>`).join("")+'<b style="color:#ffd84d">◆ SIMULATED · FICTIONAL TICKERS ◆</b>';
-  $("tape").innerHTML=one+one;
-}
+// Live ticker tape: real USD last price + 24h change for the user's token list.
+// Coinbase Exchange /products/<X>-USD/stats (24h open/last); Kraken Ticker fallback (change vs today's UTC open). No fake tickers: offline says so.
+const LiveTape=(()=>{ const CB="https://api.exchange.coinbase.com/products/", KR="https://api.kraken.com/0/public/"; let data={}, lastAt=0, src="", busy=false;
+  const OFF=new URLSearchParams(location.search).has("offline");
+  async function j(url){ const c=new AbortController(), tm=setTimeout(()=>c.abort(),6000); try{ const r=await fetch(url,{cache:"no-store",signal:c.signal}); if(!r.ok) throw new Error("HTTP "+r.status); return await r.json(); } finally{ clearTimeout(tm); } }
+  async function one(x){
+    if(tokSrc(x)!=="kr") try{ const st=await j(`${CB}${coinIds(x).cb}/stats`), last=parseFloat(st.last), open=parseFloat(st.open); if(last>0&&open>0) return {px:last,ch:(last/open-1)*100,src:"Coinbase Exchange",span:"24h"}; }catch(e){}
+    try{ const r=await j(`${KR}Ticker?pair=${coinIds(x).kr}`); if(r.error&&r.error.length) throw 0; const k=Object.values(r.result)[0], last=parseFloat(k.c[0]), open=parseFloat(k.o); if(last>0&&open>0) return {px:last,ch:(last/open-1)*100,src:"Kraken",span:"UTC day"}; }catch(e){}
+    return null; }
+  const fp=v=>v>=1000?v.toLocaleString("en-US",{maximumFractionDigits:2}):v>=1?v.toFixed(v>=100?2:4):v.toPrecision(4);
+  function paint(){ const list=(TOK&&TOK.list)||["BTC","ETH","SOL"], tag=$("tapeTag"), ok=list.filter(x=>data[x]);
+    if(!ok.length){ tag.className="tag off"; tag.textContent= OFF?"OFFLINE · live prices off (?offline)":lastAt?"OFFLINE · live feeds unreachable":"◌ LIVE PRICES · connecting…"; $("tape").innerHTML= lastAt||OFF ? '<b style="color:#ff6b6b">Offline · no live prices right now · nothing shown rather than fake tickers</b>' : ""; return; }
+    tag.className="tag live"; tag.textContent=`● LIVE · ${src} · ${new Date(lastAt).toLocaleTimeString()}`;
+    const row=ok.map(x=>{ const d=data[x], up=d.ch>=0; return `<b data-t="${x}">${x}</b><span class="tp" data-p="${x}">$${fp(d.px)}</span> <span class="${up?"up":"dn"}">${up?"▲":"▼"} ${(up?"+":"")+d.ch.toFixed(2)}% <small>${d.span}</small></span>`; }).join("")+`<b style="color:#8fe388">● LIVE PUBLIC PRICES · USD · refresh 10 s</b>`;
+    $("tape").innerHTML=row+row; }
+  async function refresh(){ if(busy) return; busy=true; try{ if(OFF){ data={}; lastAt=Date.now(); paint(); return; }
+      const list=((TOK&&TOK.list)||["BTC","ETH","SOL"]).slice(0,30), res=[]; for(let i=0;i<list.length;i+=6){ res.push(...await Promise.all(list.slice(i,i+6).map(one))); }
+      const nd={}, srcs=new Set(); list.forEach((x,i)=>{ if(res[i]){ nd[x]=res[i]; srcs.add(res[i].src); } }); data=nd; src=[...srcs].join(" + ")||"—"; lastAt=Date.now(); paint();
+    } finally{ busy=false; } }
+  return {start(){ refresh(); setInterval(refresh,10000); }, refresh, paint, get data(){return data;}, get at(){return lastAt;}};
+})();
+window.G6_TAPE=LiveTape;
+function buildTape(){ LiveTape.start(); }
 
 
 /* ---------------------------------------------------------------- demo session (virtual balance, fictional paths) */
@@ -997,7 +1048,7 @@ function genPacket(rng,round,kind,seed){
   const avg=Math.round(R(.5,3)*1e6), today=Math.round(avg*R(.8,2.4)); bars.forEach((b,i)=>b.volume=i===4?today:Math.round(avg*R(.8,1.2)));
   const last=bars[4].close, prev=bars[3].close;
   const intraday=(kind==="clean_up"||kind==="downtrend")?Array.from({length:6},(_,i)=>({time:`${10+i}:00`,close:r2s(prev+(last-prev)*(i+1)/6)})):[];
-  const pk={_label:`EXAMPLE DATA - generated fictional ticker ${tk} (seed ${seed}, round ${round}). Not a real market.`,
+  const pk={_label:`FICTIONAL PRACTICE DATA - generated ticker ${tk} (seed ${seed}, round ${round}). Not a real market.`,
     market:tk,name:`${tk} (fictional)`,as_of:"2026-10-06",currency:"USD",
     volume:{today,avg_30d:avg},avg_daily_dollar_volume_usd:kind==="thin"?Math.round(R(2e5,8e5)):Math.round(avg*last),
     daily_bars:bars,intraday_bars:intraday,
@@ -1111,7 +1162,7 @@ function wireRisk(){ RISK_KEYS.forEach(k=>{ $("rk-"+k).querySelectorAll(".rq").f
 function saveTok(){ LS.setItem("g6_tokens",JSON.stringify(TOK)); }
 function selTokens(){ const s=TOK.list.filter(x=>TOK.sel.includes(x)); return s.length?s:[TOK.list[0]||"BTC"]; }
 function tokMsg(t,cls){ const m=$("tokMsg"); m.textContent=t; m.className="tokmsg "+(cls||""); }
-function renderTok(){ $("tokChips").innerHTML=TOK.list.map(x=>`<span class="tok${TOK.sel.includes(x)?" on":""}" data-s="${x}"><button class="tk" aria-pressed="${TOK.sel.includes(x)}" title="Include ${x} in the session">${x}</button><button class="tx" aria-label="Remove ${x}" title="Remove ${x}">×</button></span>`).join("");
+function renderTok(){ setTimeout(()=>{ if(typeof buildPicker==="function") buildPicker(); if(typeof LiveTape!=="undefined") LiveTape.paint(); },0); $("tokChips").innerHTML=TOK.list.map(x=>`<span class="tok${TOK.sel.includes(x)?" on":""}" data-s="${x}"><button class="tk" aria-pressed="${TOK.sel.includes(x)}" title="Include ${x} in the session">${x}</button><button class="tx" aria-label="Remove ${x}" title="Remove ${x}">×</button></span>`).join("");
   $("tokChips").querySelectorAll(".tok").forEach(c=>{ const x=c.dataset.s;
     c.querySelector(".tk").onclick=()=>{ if(TOK.sel.includes(x)){ if(TOK.sel.length<=1){ tokMsg("Keep at least one token selected.","bad"); return; } TOK.sel=TOK.sel.filter(y=>y!==x); } else TOK.sel.push(x); saveTok(); renderTok(); tokMsg(""); };
     c.querySelector(".tx").onclick=()=>{ if(TOK.list.length<=1){ tokMsg("Keep at least one token in the list.","bad"); return; } TOK.list=TOK.list.filter(y=>y!==x); TOK.sel=TOK.sel.filter(y=>y!==x); if(!TOK.sel.length) TOK.sel=[TOK.list[0]]; saveTok(); renderTok(); tokMsg(`Removed ${x}.`); }; });
@@ -1200,6 +1251,29 @@ async function livePacket(coin){
     headlines:[], forum_posts:[], _live:{coin, atr, source:Feed.source}};
 }
 
+// Trade countdown: wall-clock deadline, repaints every 250 ms (>= 1/s), independent of the 3 s price poll.
+// Fictional/offline replays use the same display on a simulated clock driven by the replay steps.
+const TT=(()=>{ let deadline=0,total=0,iv=null,frozen=null,simLeft=null,label="TIME LEFT";
+  const mmss=ms=>{ const s=Math.max(0,Math.ceil(ms/1000)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); };
+  const left=()=> simLeft!==null ? simLeft : Math.max(0,deadline-Date.now());
+  function paint(){ const box=$("tTimer"); if(!box) return; const l=frozen?frozen.left:left(), f=total>0?l/total:0;
+    const c = frozen ? "" : l<5000 ? "red" : l<15000 ? "amber" : ""; const pulse=!frozen && c && !REDUCED;
+    box.hidden=false; box.className="ttimer "+c+(frozen?" frozen":"")+(pulse?" pulse":"");
+    $("ttLbl").textContent=frozen?frozen.why:label; $("ttVal").textContent=mmss(l); $("ttWhy").textContent=frozen?"frozen":"";
+    $("ttFill").style.width=(f*100).toFixed(1)+"%"; $("ttArc").style.strokeDashoffset=(94.25*(1-f)).toFixed(2);
+    document.querySelectorAll(".tt-in").forEach(e=>{ e.className="tt-in "+c+(pulse?" pulse":""); e.textContent=inline(); }); }
+  function inline(){ const l=frozen?frozen.left:left(); return frozen?`${frozen.why} at ${mmss(l)}`:`${label} ${mmss(l)}`; }
+  return { mmss,
+    start(ms){ clearInterval(iv); total=ms; deadline=Date.now()+ms; frozen=null; simLeft=null; label="TIME LEFT"; paint(); iv=setInterval(paint,250); },
+    startSim(ms){ clearInterval(iv); total=ms; frozen=null; simLeft=ms; label="SIM TIME LEFT"; paint(); },
+    setSim(ms){ if(frozen) return; simLeft=Math.max(0,ms); paint(); },
+    freeze(why){ if(frozen) return; clearInterval(iv); frozen={why,left:left()}; paint(); },
+    hide(){ clearInterval(iv); frozen=null; const b=$("tTimer"); if(b) b.hidden=true; },
+    remaining:left, deadline:()=>deadline, isFrozen:()=>!!frozen, frozenText:()=>frozen?inline():"",
+    html(){ return `<span class="tt-in">${esc(inline())}</span>`; } };
+})();
+window.G6_TIMER=TT;
+function whyOf(how){ return /margin/.test(how)?"MARGIN CALL":/stop hit/.test(how)?"STOP HIT":/target/.test(how)?"TARGET HIT":/user/.test(how)?"STOPPED BY USER":"WINDOW ENDED"; }
 function sleepStop(ms){ return new Promise(res=>{ const t0=Date.now(); const iv=setInterval(()=>{ if(sessionStop||Date.now()-t0>=ms){ clearInterval(iv); res(); } },50); }); }
 let S=null, sessState="idle";
 function sessLabel(){ const live=$("inFeed").value==="live";
@@ -1232,22 +1306,25 @@ async function playLive(t,coin,size,r,lim,callCls,call,pkt,rinfo,bal){ const dir
   // t.entry/stop/target set; poll live price every 3 s for the window; close at SL/TP or at the last live price
   const win=Math.max(10,parseFloat($("inWin").value)||60), POLL=3000, steps=Math.ceil(win*1000/POLL); t.maxSteps=steps; t.path=[t.entry];
   let exit=null, how="window ended · closed at last live price";
-  await slideLevels(t);
-  for(let k=1;k<=steps;k++){
-    await sleepStop(POLL); if(sessionStop) break;
+  await slideLevels(t); TT.start(win*1000); const deadline=TT.deadline();
+  for(let k=1;;k++){
+    const wait=Math.min(POLL,deadline-Date.now()); if(wait>0) await sleepStop(wait); if(sessionStop) break;
+    if(t.path.length>=t.maxSteps+1) t.maxSteps=t.path.length+1;
     let px; try{ px=await Feed.ticker(coin); }catch(e){ if(sessionStop) break; px=t.path[t.path.length-1]; }
     t.path.push(px);
     if(!REDUCED){ const t1=performance.now(); while(true){ const f=Math.min(1,(performance.now()-t1)/400); drawPos(t,t.path.length-2,null,f,1); if(f>=1||sessionStop) break; await frame(); } }
     drawPos(t,t.path.length-1);
     const open=pnlOf(dir,size,t.entry,px); $("kOpen").textContent=sgn(open); $("kOpen").className=cls(open);
-    $("pnlTape").innerHTML=`ROUND ${r}${lim?"/"+lim:""} · ${esc(pkt.market)} ${dirHTML(call)} · ${rinfo||"size "+money(size)} · entry ${fmtPx(t.entry)} · stop ${fmtPx(t.stop)} · live ${fmtPx(px)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · ${k*3}s/${steps*3}s`;
+    $("pnlTape").innerHTML=`ROUND ${r}${lim?"/"+lim:""} · ${esc(pkt.market)} ${dirHTML(call)} · ${rinfo||"size "+money(size)} · entry ${fmtPx(t.entry)} · stop ${fmtPx(t.stop)} · live ${fmtPx(px)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · ${TT.html()}`;
     if(open<=-bal){ exit=px; how="virtual margin call · closed at balance limit"; break; }
     if(dir>0){ if(px<=t.stop){ exit=px; how="stop hit (live poll)"; break; } if(px>=t.target){ exit=px; how="target hit (live poll)"; break; } }
     else { if(px>=t.stop){ exit=px; how="stop hit (live poll)"; break; } if(px<=t.target){ exit=px; how="target hit (live poll)"; break; } }
+    if(Date.now()>=deadline-40) break;
   }
   if(sessionStop){ exit=t.path[t.path.length-1]; how="stopped by user · marked to last live price"; }
   if(exit===null) exit=t.path[t.path.length-1];
   const mg=marginGuard(bal,dir,size,t.entry,exit); if(mg.called) how="virtual margin call · closed at balance limit";
+  TT.freeze(whyOf(how));
   return {exit:mg.exit,how,pnl:mg.pnl,mc:mg.called};
 }
 async function runLoop(){
@@ -1299,17 +1376,19 @@ async function runLoop(){
       if(size>0 && !live){
         setPosDir(call,"open"); setDirChip(call,pkt.market,"position open");
         const t=planTrade(S.rng,pkt.price.last,size,planStop(pkt.price.last,(rep.outputs.charts.support_levels||[])[0],dir,(rep.outputs.charts.resistance_levels||[])[0]),dir); entry=t.entry;
-        await slideLevels(t); let k=0;
+        await slideLevels(t); let k=0; const simWin=Math.max(10,parseFloat($("inWin").value)||60)*1000; TT.startSim(simWin);
         for(k=0;k<t.path.length;k++){
-          if(sessionStop) break;
+          if(sessionStop) break; TT.setSim(simWin*(1-k/Math.max(1,t.maxSteps)));
           if(k>0 && !REDUCED){ const t1=performance.now(), d=70*(FAST?0.3:1); while(true){ const f=Math.min(1,(performance.now()-t1)/d); drawPos(t,k-1,null,f,1); if(f>=1) break; await frame(); } }
           drawPos(t,k); const open=pnlOf(dir,size,t.entry,t.path[k]);
           $("kOpen").textContent=sgn(open); $("kOpen").className=cls(open);
-          $("pnlTape").innerHTML=`ROUND ${r} · ${esc(pkt.market)} ${dirHTML(call)} · risk ${fmtPct(riskPct)} · ${money(riskUsd)} · ${levUsed}x · notional ${money(size)} · margin ${money(margin)} · entry ${fmtPx(t.entry)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · session <b class="${cls(S.bal-S.start)}">${sgn(S.bal-S.start)}</b>`;
+          $("pnlTape").innerHTML=`ROUND ${r} · ${esc(pkt.market)} ${dirHTML(call)} · risk ${fmtPct(riskPct)} · ${money(riskUsd)} · ${levUsed}x · notional ${money(size)} · margin ${money(margin)} · entry ${fmtPx(t.entry)} · stop ${fmtPx(t.stop)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · ${TT.html()} · session <b class="${cls(S.bal-S.start)}">${sgn(S.bal-S.start)}</b>`;
           if(REDUCED) await sleep(70*(FAST?0.3:1)); }
         if(sessionStop){ exit=t.path[Math.max(0,Math.min(k,t.path.length-1))]; pnl=pnlOf(dir,size,t.entry,exit); result="stopped by user · marked to last price"; }
         else { exit=t.exit; pnl=t.pnl; result = t.how==="target"?"target hit":t.how==="stop"?"stop hit (≈ risk $)":"timed out"; }
         const mg=marginGuard(S.bal,dir,size,t.entry,exit); if(mg.called){ exit=mg.exit; pnl=mg.pnl; mcall=true; result="virtual margin call · closed at balance limit"; }
+        if(!sessionStop && t.how!=="stop" && t.how!=="target" && !mcall) TT.setSim(0);
+        TT.freeze(whyOf(sessionStop?"user":mcall?"margin":t.how==="stop"?"stop hit":t.how==="target"?"target":"window"));
       } else if(!(size>0)) result="size $0 · no trade";
       if(size>0){ S.trades++; if(pnl>0) S.wins++; const dk=dir>0?"L":"S"; S.dirN[dk]++; if(pnl>0) S.dirW[dk]++; }
     } else {
@@ -1337,7 +1416,7 @@ async function runLoop(){
   loadHistory();
 }
 function stopSession(){ if(sessState!=="running") return; sessionStop=true; Feed.abort(); setSessState("stopping"); }
-function resetSession(){ if(running) return; S=null; setPosDir(null); setDirChip(null); eqPts=[]; $("ledger").innerHTML=""; $("sumLine").textContent=""; $("kRound").textContent="0 / 0"; $("kPnl").textContent="$0.00"; $("kPnl").className="flat"; $("kWins").textContent="0 · 0";
+function resetSession(){ if(running) return; S=null; setPosDir(null); setDirChip(null); TT.hide(); eqPts=[]; $("ledger").innerHTML=""; $("sumLine").textContent=""; $("kRound").textContent="0 / 0"; $("kPnl").textContent="$0.00"; $("kPnl").className="flat"; $("kWins").textContent="0 · 0";
   $("balNum").textContent=balOk(parseFloat($("inBal").value))?money(parseFloat($("inBal").value)):"unavailable"; balShown=0; drawEquity(1); drawPos(null,0,"PRESS RUN DEMO SESSION"); $("pnlTape").textContent="Press Run demo session."; setSessState("idle"); sessLabel(); resetFloor(); markPaused(); renderRisk(); setCoinLine("Analyzing: —"); }
 window.G6_SESSION=()=>S && {start:S.start,bal:S.bal,round:S.round,rows:S.rows.map(x=>({...x})),trades:S.trades,wins:S.wins,state:sessState,eq:eqPts.slice()};
 function maxDrawdown(pts){ let peak=pts[0], dd=0; for(const v of pts){ peak=Math.max(peak,v); dd=Math.max(dd,(peak-v)/peak); } return dd*100; }
@@ -1518,10 +1597,8 @@ window.addEventListener("resize",()=>{ if(!running) drawChart(currentPacket,char
   $("modeChip").textContent = BOOT.mode==="static" ? "Mock bots · in-browser" : (BOOT.provider==="GROK" ? "Grok · "+BOOT.model : "Local server · mock");
   if(BOOT.mode==="static") markets=BOOT.static.markets.map(m=>({file:m.file,packet:m.packet}));
   else markets=(await (await fetch("api/markets")).json()).map(m=>({file:m.file,label:m.label,market:m.market,packet:null}));
-  const nice=f=>f==="sample_market.json"?"Sample · trend up, mixed signals":f==="example_missing_price.json"?"Missing price · safe reject path":f;
-  $("picker").innerHTML=markets.map(m=>`<button class="pk" data-f="${esc(m.file)}"><b>${esc((m.packet&&m.packet.market)||m.market||m.file)}</b><small>${esc(nice(m.file))}</small></button>`).join("");
-  document.querySelectorAll(".pk").forEach(b=>b.onclick=()=>{ if(!running) selectMarket(b.dataset.f); });
-  await selectMarket(markets[0].file); loadHistory();
+  markets.forEach(m=>m.practice=true); PRACTICE=markets.slice();
+  buildPicker(); await selectMarket(markets.find(m=>m.live).file); loadHistory();
 })();
 </script>
 </body>

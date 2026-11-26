@@ -116,7 +116,7 @@ body.reduced *,body.reduced *::before,body.reduced *::after{animation:none!impor
     <div class="panel"><h3>Live crypto prices</h3>
       <p>Demo sessions use free public market data that needs no key and no sign-in.</p>
       <div class="flow"><span>Coinbase Exchange</span><i>→ if unavailable →</i><span>Kraken</span><i>→ if both fail →</i><span>Offline: simulated prices</span></div>
-      <ul><li>Every round, the bots analyse real candles for the coin.</li><li>A virtual long or short is tracked against live prices, polled every 3 seconds. It closes at its stop or target, or at the last live price when the window ends.</li><li>A header chip always shows which feed is in use and when it last updated. If prices are simulated, the page says so.</li></ul></div>
+      <ul><li>Every round, the bots analyse real candles for the coin.</li><li>A virtual long or short is tracked against live prices, polled every 3 seconds. It closes at its stop or target, or at the last live price when the window ends.</li><li>Live by default: single runs analyse a live coin, and the ticker tape shows live USD prices and 24h change for your tokens (it says “Offline” rather than showing fake tickers). Fictional EXMP/EXMQ stay as a labelled “Practice (fictional)” option.</li><li>Each open trade shows <b>TIME LEFT m:ss</b> with a draining ring; it freezes with the reason, such as “STOP HIT at 0:31”. Direction labels read <b style="color:#8fe388">LONG ▲ BUY</b> or <b style="color:#ff6b6b">SHORT ▼ SELL</b>.</li><li>A header chip always shows which feed is in use and when it last updated. If prices are simulated, the page says so.</li></ul></div>
     <div class="panel"><h3>Run · Stop · Resume</h3>
       <ul><li><b>Continuous mode</b> (rounds = 0) keeps the hive working round after round until you stop it.</li><li><b>Stop</b> halts at once. Any open virtual trade is marked to the last live price, and the balance, equity curve, ledger and summary freeze.</li><li><b>Resume</b> carries on from the frozen balance. <b>Reset</b> starts over.</li><li>A single-run mode lets you watch one example market step by step.</li></ul></div>
     <div class="panel"><h3>Per-bot on/off switches</h3>
@@ -154,7 +154,7 @@ body.reduced *,body.reduced *::before,body.reduced *::after{animation:none!impor
   </div>
 </section>
 
-<div class="bottom-cta"><a class="hex-btn" id="enterBottom" href="terminal/">Enter the Hive →</a><p style="color:var(--mute);font-size:14px;margin:14px 0 0">Opens the terminal: single runs, demo sessions with live public prices, per-bot switches and risk settings.</p></div>
+<div class="bottom-cta"><a class="hex-btn" id="enterBottom" href="terminal/">Enter the Hive →</a><p style="color:var(--mute);font-size:14px;margin:14px 0 0">Opens the terminal on live public prices: single runs on a live coin, demo sessions with direction labels and a trade timer, a live ticker tape, per-bot switches and risk settings.</p></div>
 </div>
 <footer><div class="wrap">Alpha Hive · educational simulation · virtual balance · no real orders · not financial advice<br>Source code on GitHub: <a href="https://github.com/yogibear1323/alpha-hive">github.com/yogibear1323/alpha-hive</a></div></footer>
 <script>

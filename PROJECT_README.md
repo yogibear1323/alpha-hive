@@ -137,6 +137,27 @@ There is no borrowing, exchange, order or real money anywhere.
 - If the balance is unavailable, NaN or ≤ 0, trading is disabled. Every call becomes `SKIP`
   ("Balance unavailable · trading disabled"), and the header and panels say so.
 
+**Live by default.** The browser terminal runs on live public prices out of the box:
+- Single runs: pick a live coin (your selected tokens) and the six bots analyse its real candles. The
+  fictional EXMP/EXMQ packets stay available, labelled **Practice (fictional)**. If both feeds are
+  unreachable, a run falls back to the practice packet and is labelled "OFFLINE · SIMULATED PRICES".
+- The ticker tape shows live USD prices and 24h change for your token list (Coinbase Exchange `/stats`;
+  Kraken `Ticker` fallback, change vs today's UTC open), refreshed every 10 s and marked LIVE. If both
+  feeds fail it says "Offline" and shows no tickers.
+- Demo sessions default to **Live public prices**.
+
+**Direction labels.** A header chip, the Decision call box, the position panel and the round tape show
+`LONG ▲ BUY` (green), `SHORT ▼ SELL` (red), `WAIT` or `SKIP`; they reset to "researching" each round.
+Scout, News, Sentiment and Charts each show their own lean for the current coin (bullish ▲ / bearish ▼ /
+neutral; Scout only screens liquidity, so it stays neutral). "simulation only" is a separate tag.
+
+**Trade timer.** Each open trade shows `TIME LEFT m:ss` with a draining ring and bar in the position panel
+and the round tape. It runs on a wall-clock deadline, repainting several times a second independently
+of the 3 s price poll; amber under 15 s, red under 5 s, with a gentle pulse (none in reduced motion). At
+0:00 the trade settles at the last live price. A stop, target, margin call or **Stop** freezes it with the
+reason (for example `STOP HIT at 0:31`); **Resume** starts a fresh timer on the next trade. Fictional and
+offline rounds show the same timer on a simulated clock ("SIM TIME LEFT").
+
 **Demo session (virtual balance, live public prices).** Switch Mission control to **Demo session**.
 
 Settings:
@@ -250,7 +271,7 @@ agents/      base.py (prompts, mock/Grok calls, schema check, retry, redaction)
              scout.py news.py sentiment.py charts.py risk.py decision.py (one bot each: run() + SCHEMA)
              mock_responses.py (offline answers)  pipeline.py (runs the six in order)
 prompts/     one .txt per bot
-data/        sample_market.json  ← EXAMPLE DATA (fictional ticker EXMP)
+data/        sample_market.json  ← PRACTICE DATA (fictional ticker EXMP; used by tests and the "Practice (fictional)" option)
 reports/     report-<time>.json (one per run)
 logs/        run-<time>.log (one per run)
 tests/       test_workflow.py (12 safety tests)
