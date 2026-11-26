@@ -151,6 +151,15 @@ There is no borrowing, exchange, order or real money anywhere.
 Scout, News, Sentiment and Charts each show their own lean for the current coin (bullish ▲ / bearish ▼ /
 neutral; Scout only screens liquidity, so it stays neutral). "simulation only" is a separate tag.
 
+**Hive scene.** The terminal background is a beehive: a honeycomb dome with a glowing entrance at the
+bottom, comb walls on both sides (blended with the existing hex grid and honey drips), and six chambers, one
+per bot. Each bot's agent bee flies out of the entrance to its panel while the bot is working and flies back
+when it finishes. When a trade opens, the bees return to their chambers and Decision's chamber pulses
+green (long) or red (short). When the trade closes, a win fills honey in Decision's chamber and in each
+analyst whose lean agreed with the trade, and a loss dims those cells; Reset clears them. It runs on two
+canvases with requestAnimationFrame (about 30 fps on phones), pauses while the tab is hidden, and is a
+still picture in reduced motion. It is decorative only: prices, risk, leverage and trades are unchanged.
+
 **Trade timer.** Each open trade shows `TIME LEFT m:ss` with a draining ring and bar in the position panel
 and the round tape. It runs on a wall-clock deadline, repainting several times a second independently
 of the 3 s price poll; amber under 15 s, red under 5 s, with a gentle pulse (none in reduced motion). At
