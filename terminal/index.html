@@ -392,6 +392,14 @@ body.reduced .bot.work .av .wg{animation:none}
 .dirtag.long,.dir.long{color:#8fe388}.dirtag.short,.dir.short{color:#ff6b6b}
 .dir{font-weight:700;white-space:nowrap}
 .levtag{display:inline-block;font:600 11px ui-monospace,monospace;color:#ffd84d;border:1px solid rgba(255,182,39,.45);border-radius:4px;padding:2px 7px;margin:2px 0 6px;letter-spacing:.06em}
+.dlab{display:inline-block;font:800 12px var(--mono);letter-spacing:1.5px;padding:2px 8px;border-radius:6px;border:1px solid currentColor;white-space:nowrap}
+.dlab.long{color:#8fe388}.dlab.short{color:#ff6b6b}.dlab.wait{color:#ffd84d}.dlab.skip{color:#ff6b6b}.dlab.idle{color:var(--mute);border-style:dashed}
+.simtag{display:inline-block;font:600 10px var(--mono);letter-spacing:1px;color:var(--mute);border:1px dashed rgba(207,195,168,.5);border-radius:5px;padding:1px 6px;margin-left:6px;white-space:nowrap;text-transform:uppercase}
+.lean{font:800 10px var(--mono);letter-spacing:1px;padding:2px 6px;border-radius:5px;border:1px solid currentColor;white-space:nowrap;margin-right:4px;color:var(--mute)}
+.lean.bull{color:#8fe388}.lean.bear{color:#ff6b6b}.lean.neu{color:#ffd84d}.lean.long{color:#8fe388}.lean.short{color:#ff6b6b}.lean.wait{color:#ffd84d}.lean.skip{color:#ff6b6b}.lean:empty{display:none}
+.chip.dir.long{color:#8fe388;border-color:#8fe388}.chip.dir.short{color:#ff6b6b;border-color:#ff6b6b}.chip.dir.wait{color:#ffd84d}.chip.dir.skip{color:#ff6b6b}
+.posdir{margin-left:8px;vertical-align:middle}
+.callbox .simtag{vertical-align:middle}
 </style>
 </head>
 <body>
@@ -404,7 +412,7 @@ body.reduced .bot.work .av .wg{animation:none}
       <svg class="logo" viewBox="0 0 40 40" fill="none" stroke="#ffb627" stroke-width="2"><polygon points="20,2 36,11 36,29 20,38 4,29 4,11"/><polygon points="20,11 27,15 27,23 20,27 13,23 13,15" stroke="#ff8c42" stroke-width="1.6"/><circle cx="20" cy="19" r="2.4" fill="#ffd84d" stroke="none"/></svg>
       <div><h1>Alpha <span>Hive</span></h1><small>SIX-BOT AI TRADING TEAM · SCOUT · NEWS · SENTIMENT · CHARTS · RISK · DECISION</small></div>
     </div>
-    <div class="chips"><span class="chip sim">Simulation only</span><span class="chip live" id="modeChip">Offline mock</span><span class="chip run" id="runChip">● Idle</span><span class="chip guard" id="guardChip" hidden>⚠ Balance unavailable · trading disabled</span><span class="chip feed" id="feedChip">Feed: —</span><a class="chip motion" id="homeLink" href="../" hidden>⌂ Home</a><button class="chip motion" id="motionBtn" title="Toggle animations">Motion: full</button></div>
+    <div class="chips"><span class="chip sim">Simulation only</span><span class="chip live" id="modeChip">Offline mock</span><span class="chip run" id="runChip">● Idle</span><span class="chip dir" id="dirChip" aria-live="polite">◇ no call yet</span><span class="chip guard" id="guardChip" hidden>⚠ Balance unavailable · trading disabled</span><span class="chip feed" id="feedChip">Feed: —</span><a class="chip motion" id="homeLink" href="../" hidden>⌂ Home</a><button class="chip motion" id="motionBtn" title="Toggle animations">Motion: full</button></div>
   </div>
   <div class="ticker"><div class="tag">SIMULATED · EXAMPLE DATA</div><div class="tape"><div class="tape-inner" id="tape"></div></div></div>
 </header>
@@ -466,7 +474,7 @@ body.reduced .bot.work .av .wg{animation:none}
         <canvas class="wide eq" id="eqCanvas"></canvas>
       </div>
       <div class="card">
-        <h2 id="posTitle">Simulated position · fictional price path</h2><div class="levtag" id="levTag">Virtual leverage 20x · simulation only</div>
+        <h2 id="posTitle">Simulated position · fictional price path</h2><span class="posdir" id="posDir"></span><div class="levtag" id="levTag">Virtual leverage 20x · simulation only</div>
         <canvas class="wide" id="posCanvas"></canvas>
         <div class="ledger-wrap"><table class="ledger"><thead><tr><th>#</th><th>Ticker</th><th>Call</th><th>Dir</th><th>Feed</th><th>Risk %</th><th>Risk $</th><th>Lev</th><th>Notional</th><th>Margin</th><th>Entry</th><th>Exit</th><th>Result</th><th>P&amp;L</th><th>Balance</th></tr></thead><tbody id="ledger"></tbody></table></div>
         <div class="sumline" id="sumLine"></div>
@@ -505,6 +513,22 @@ const BOOT = {"mode": "static", "static": {"markets": [{"file": "sample_market.j
 const BUY = "BUY — SIMULATION ONLY", SHORT = "SELL/SHORT — SIMULATION ONLY";
 const callKey = d => !d ? "" : d.startsWith("BUY") ? "BUY" : d.startsWith("SELL") ? "SHORT" : d;
 const dirOf = d => callKey(d)==="BUY" ? 1 : callKey(d)==="SHORT" ? -1 : 0;
+// direction-aware labels: direction and "simulation only" are shown separately
+function dirInfo(call){ const k=callKey(call); return k==="BUY"?{k:"long",t:"LONG ▲ BUY"}:k==="SHORT"?{k:"short",t:"SHORT ▼ SELL"}:k==="WAIT"?{k:"wait",t:"WAIT"}:k==="SKIP"?{k:"skip",t:"SKIP"}:{k:"idle",t:k||"—"}; }
+function dirHTML(call,pre){ const d=dirInfo(call); return `<span class="dlab ${d.k}">${pre?esc(pre)+" ":""}${d.t}</span>${d.k==="long"||d.k==="short"?'<span class="simtag">simulation only</span>':""}`; }
+function leanOf(key,o){ if(!o) return {k:"neu",t:"NEUTRAL"};
+  if(key==="scout") return {k:"neu",t:"NEUTRAL · screener"};
+  if(key==="news"){ const p=(o.positive_events||[]).length, n=(o.negative_events||[]).length; return p>n?{k:"bull",t:"BULLISH ▲"}:n>p?{k:"bear",t:"BEARISH ▼"}:{k:"neu",t:"NEUTRAL"}; }
+  if(key==="sentiment") return (o.sentiment==="positive"||o.score>=20)?{k:"bull",t:"BULLISH ▲"}:(o.sentiment==="negative"||o.score<=-20)?{k:"bear",t:"BEARISH ▼"}:{k:"neu",t:"NEUTRAL"};
+  if(key==="charts") return o.trend==="up"?{k:"bull",t:"BULLISH ▲"}:o.trend==="down"?{k:"bear",t:"BEARISH ▼"}:{k:"neu",t:"NEUTRAL"};
+  if(key==="decision"){ const d=dirInfo(o.decision); return {k:d.k,t:d.t}; }
+  return null; }
+function setLean(key,v){ const el=document.getElementById("lean-"+key); if(!el) return; el.className="lean"+(v?" "+v.k:""); el.textContent=v?v.t:""; }
+function setDirChip(call,coin,state){ const c=document.getElementById("dirChip"); if(!c) return;
+  if(!call){ c.className="chip dir"; c.textContent=coin?`◇ researching · ${coin}`:"◇ no call yet"; return; }
+  const d=dirInfo(call); c.className="chip dir "+d.k; c.textContent=d.t+(coin?" · "+coin:"")+(state?" · "+state:""); }
+function setPosDir(call,state){ const el=document.getElementById("posDir"); if(!el) return; if(!call){ el.innerHTML=""; return; }
+  const d=dirInfo(call); el.innerHTML=`<span class="dlab ${d.k}">${d.t}${state?" · "+esc(state):""}</span>`; }
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -702,7 +726,7 @@ function buildFloor(){
   <section class="card bot" id="bot-${b.key}" style="--c:${b.c};--i:${i}">
     <div class="hd"><div class="av" style="color:${b.c}">${ICONS[b.key]}</div>
       <div><div class="name">${i+1} · ${b.name}</div><div class="job">${b.job}</div></div>
-      <span class="st" id="st-${b.key}">IDLE</span><button class="tog on" id="tg-${b.key}" aria-pressed="true" title="Pause or resume this bot (takes effect next round)">ON</button></div>
+      <span class="lean" id="lean-${b.key}"></span><span class="st" id="st-${b.key}">IDLE</span><button class="tog on" id="tg-${b.key}" aria-pressed="true" title="Pause or resume this bot (takes effect next round)">ON</button></div>
     <div class="coinline" id="cl-${b.key}">Analyzing: —</div>
     <div class="riskrow" id="rk-${b.key}"><span class="rlbl">Risk${b.key==="risk"?" ceiling":""}</span><button class="rq" data-v="1">1%</button><button class="rq" data-v="2">2%</button><input class="rin" id="ri-${b.key}" type="text" inputmode="decimal" maxlength="6" aria-label="${b.name} custom risk percent" title="Custom % (0.1 to 10)"><span class="rshow" id="rs-${b.key}">1% · —</span><span class="rerr" id="re-${b.key}" role="alert"></span></div>
     <div class="log" id="log-${b.key}"></div>
@@ -835,7 +859,7 @@ function setShield(r){
 /* ---------------------------------------------------------------- state */
 let markets=[], current=null, currentPacket=null, running=false, lastReport=null;
 function resetFloor(){
-  chartAnim++; chartOut=null; BOTS.forEach(b=>{ setState(b.key,"","IDLE"); $("log-"+b.key).innerHTML='<span class="ln">standing by…</span>'; const d=$("json-"+b.key); d.hidden=true; d.open=false; });
+  chartAnim++; chartOut=null; setDirChip(null,currentPacket&&currentPacket.market); BOTS.forEach(b=>{ setState(b.key,"","IDLE"); setLean(b.key,null); $("log-"+b.key).innerHTML='<span class="ln">standing by…</span>'; const d=$("json-"+b.key); d.hidden=true; d.open=false; });
   $("viz-risk").innerHTML=vizMarkup("risk"); $("viz-scout").innerHTML=vizMarkup("scout"); $("viz-sentiment").innerHTML=vizMarkup("sentiment"); $("viz-decision").innerHTML=vizMarkup("decision");
   drawChart(currentPacket,null,0); $("err").textContent=""; if(typeof markPaused==="function") markPaused();
 }
@@ -843,7 +867,7 @@ function showJson(key,o){ const d=$("json-"+key); d.hidden=false; d.querySelecto
 
 async function onEvent(ev){
   if(ev.type==="step_start"){
-    setState(ev.bot,"work","WORKING");
+    setState(ev.bot,"work","WORKING"); setLean(ev.bot,{k:"",t:"…"});
     $("log-"+ev.bot).innerHTML="";
     if(ev.bot==="charts") animateChart(currentPacket,null,0,2,1500*SPEED+120);
     for(const l of PRE[ev.bot]) await typeLine(ev.bot,l,"k");
@@ -852,7 +876,8 @@ async function onEvent(ev){
     if(ev.bot==="sentiment") setGauge(o.score);
     if(ev.bot==="charts") await animateChart(currentPacket,o,2,3,650*SPEED+80);
     if(ev.bot==="risk") setShield(o);
-    if(ev.bot==="decision") $("callbox").innerHTML=`<span class="res-${callKey(o.decision)}">${o.decision===BUY?"▲ ":o.decision===SHORT?"▼ ":""}${esc(o.decision)}</span>`;
+    if(ev.bot==="decision"){ $("callbox").innerHTML=dirHTML(o.decision); setDirChip(o.decision,currentPacket&&currentPacket.market); }
+    setLean(ev.bot,leanOf(ev.bot,o));
     for(const l of summaryLines(ev.bot,o)) await typeLine(ev.bot,l.t,l.c);
     await typeLine(ev.bot,"✔ output validated against schema","g");
     await heartbeat(ev.bot);
@@ -860,18 +885,18 @@ async function onEvent(ev){
     FX.burst(ev.bot); if(["scout","news","sentiment","charts"].includes(ev.bot)) FX.handoff(ev.bot,"risk",14); if(ev.bot==="risk" && o.status!=="reject") FX.handoff("risk","decision",18);
     await sleep(250*SPEED);
   } else if(ev.type==="step_paused"){
-    setState(ev.bot,"paused","PAUSED"); $("log-"+ev.bot).innerHTML="";
+    setState(ev.bot,"paused","PAUSED"); $("log-"+ev.bot).innerHTML=""; setLean(ev.bot,ev.bot==="risk"?null:{k:"neu",t:"NEUTRAL · paused"});
     const msg = ev.bot==="risk" ? "⏸ Risk paused — gate closed, every trade blocked" : ev.bot==="decision" ? "⏸ Decision paused — no new trades this round" : "⏸ paused — input treated as missing / neutral";
     await typeLine(ev.bot,msg,"w");
     if(ev.output){ await typeLine(ev.bot,"neutral placeholder passed schema check","k"); showJson(ev.bot,ev.output); }
     if(ev.bot==="risk"){ $("verdict").innerHTML='PAUSED<small>gate closed · size $0</small>'; $("shield").className="shieldbox gate-reject"; }
-    if(ev.bot==="decision") $("callbox").innerHTML='<span class="res-SKIP">PAUSED · SKIP</span>';
+    if(ev.bot==="decision"){ $("callbox").innerHTML=dirHTML("SKIP","PAUSED ·"); setLean("decision",{k:"skip",t:"SKIP"}); setDirChip("SKIP",currentPacket&&currentPacket.market,"Decision paused"); }
   } else if(ev.type==="stopped"){
     const rp = ev.why==="risk_paused";
     setState("decision","no","NOT RUN"); $("log-decision").innerHTML="";
     await typeLine("decision", rp ? "✖ Risk paused — Decision Bot cannot run without the gate" : "✖ Risk rejected — Decision Bot refused to run","r");
     await typeLine("decision","result forced to SKIP","r");
-    $("callbox").innerHTML = rp ? '<span class="res-SKIP">NOT RUN · SKIP (Risk paused)</span>' : '<span class="res-SKIP">NOT RUN · SKIP</span>';
+    $("callbox").innerHTML = dirHTML("SKIP","NOT RUN ·")+(rp?' <span class="res-SKIP">(Risk paused)</span>':''); setLean("decision",{k:"skip",t:"SKIP"}); setDirChip("SKIP",currentPacket&&currentPacket.market,rp?"Risk paused":"Risk rejected");
   } else if(ev.type==="error"){
     $("err").textContent="Stopped safely: "+ev.message;
     BOTS.forEach(b=>{ if(!$("bot-"+b.key).classList.contains("ok")) setState(b.key,"no","STOPPED"); });
@@ -886,10 +911,10 @@ async function reveal(rep){
   for(const n of [3,2,1]){ C.textContent=n; C.classList.remove("pop"); void C.offsetWidth; C.classList.add("pop"); FX.ring(C,"#ffb627"); await sleep(650*SPEED); }
   C.style.display="none"; F.classList.remove("go"); void F.offsetWidth; F.classList.add("go");
   const d=rep.final_result, cls=callKey(d);
-  const t=$("callText"); t.textContent=d; t.setAttribute("data-text",d); t.className="big glitch burst "+cls+(d.length>6?" small":"");
+  const dt=dirInfo(d).t, t=$("callText"); t.textContent=dt; t.setAttribute("data-text",dt); t.className="big glitch burst "+cls+(dt.length>6?" small":"");
   setTimeout(()=>t.classList.remove("burst"),1300);
   shockwave(CALL_COLOR[cls]); shake([K,document.querySelector("main"),document.querySelector("header")]); FX.explode(CALL_COLOR[cls]);
-  const r=(rep.outputs||{}).risk, dr=$("callDir"); if(dr){ dr.className="dirtag "+(cls==="BUY"?"long":cls==="SHORT"?"short":""); dr.textContent= cls==="BUY"?"▲ LONG · simulated":cls==="SHORT"?"▼ SHORT · simulated":""; }
+  const r=(rep.outputs||{}).risk, dr=$("callDir"); if(dr){ dr.className="dirtag "+(cls==="BUY"?"long":cls==="SHORT"?"short":""); dr.textContent= (cls==="BUY"||cls==="SHORT")?"simulation only · virtual position · no real order":""; }
   $("callMeta").textContent = `${rep.market} · Risk ${r?r.status.toUpperCase():"n/a"}${r?" · simulated size cap $"+r.maximum_simulated_size:""}`
     + (rep.stopped_at==="risk"?" · Decision Bot not run":"") + (rep.error?" · "+rep.error:"");
   K.classList.add("show");
@@ -920,8 +945,8 @@ async function showSaved(rep){
   BOTS.forEach((b,i)=>{ const o=(rep.outputs||{})[b.key]; if(!o) return; setState(b.key,"ok","COMPLETE"); showJson(b.key,o);
     $("log-"+b.key).innerHTML=summaryLines(b.key,o).map(l=>`<span class="ln ${l.c||""}">${esc(l.t)}</span>`).join("");
     if(b.key==="sentiment") setGauge(o.score); if(b.key==="risk") setShield(o); if(b.key==="charts"){ chartOut=o; drawChart(currentPacket,o,3); }
-    if(b.key==="decision") $("callbox").innerHTML=`<span class="res-${callKey(o.decision)}">${o.decision===BUY?"▲ ":o.decision===SHORT?"▼ ":""}${esc(o.decision)}</span>`; });
-  if(rep.stopped_at==="risk"){ setState("decision","no","NOT RUN"); $("log-decision").innerHTML='<span class="ln r">Risk rejected — Decision Bot not run</span>'; $("callbox").innerHTML='<span class="res-SKIP">NOT RUN · SKIP</span>'; }
+    setLean(b.key,leanOf(b.key,o)); if(b.key==="decision"){ $("callbox").innerHTML=dirHTML(o.decision); setDirChip(o.decision,rep.market,"saved run"); } });
+  if(rep.stopped_at==="risk"){ setState("decision","no","NOT RUN"); $("log-decision").innerHTML='<span class="ln r">Risk rejected — Decision Bot not run</span>'; $("callbox").innerHTML=dirHTML("SKIP","NOT RUN ·"); setLean("decision",{k:"skip",t:"SKIP"}); setDirChip("SKIP",rep.market,"saved run"); }
 }
 async function loadHistory(){
   let items;
@@ -929,7 +954,7 @@ async function loadHistory(){
   else items=await (await fetch("api/reports")).json();
   const ul=$("history");
   if(!items.length){ ul.innerHTML='<li class="empty">No runs yet — press Run.</li>'; return; }
-  ul.innerHTML=items.map((r,i)=>{const fr=r.final_result||""; return `<li data-i="${i}"><span>${esc((r.file||"").replace(/^report-|\.json$/g,""))}</span><span>${esc(r.market||"")} · <b class="res-${fr.startsWith("BUY")?"BUY":fr}">${esc(fr)}</b></span></li>`;}).join("");
+  ul.innerHTML=items.map((r,i)=>{const fr=r.final_result||""; return `<li data-i="${i}"><span>${esc((r.file||"").replace(/^report-|\.json$/g,""))}</span><span>${esc(r.market||"")} · <span class="dlab ${dirInfo(fr).k}">${dirInfo(fr).t}</span></span></li>`;}).join("");
   ul.querySelectorAll("li").forEach(li=>li.onclick=async()=>{ if(running) return; const r=items[+li.dataset.i];
     const rep=r._r||await (await fetch("api/reports/"+encodeURIComponent(r.file))).json(); await selectMarket((markets.find(m=>((m.packet&&m.packet.market)||m.market)===rep.market)||{}).file||current,true); showSaved(rep); });
 }
@@ -1215,7 +1240,7 @@ async function playLive(t,coin,size,r,lim,callCls,call,pkt,rinfo,bal){ const dir
     if(!REDUCED){ const t1=performance.now(); while(true){ const f=Math.min(1,(performance.now()-t1)/400); drawPos(t,t.path.length-2,null,f,1); if(f>=1||sessionStop) break; await frame(); } }
     drawPos(t,t.path.length-1);
     const open=pnlOf(dir,size,t.entry,px); $("kOpen").textContent=sgn(open); $("kOpen").className=cls(open);
-    $("pnlTape").innerHTML=`ROUND ${r}${lim?"/"+lim:""} · ${esc(pkt.market)} <span class="stamp ${callCls}">${esc(call)}</span> · ${rinfo||"size "+money(size)} · entry ${fmtPx(t.entry)} · stop ${fmtPx(t.stop)} · live ${fmtPx(px)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · ${k*3}s/${steps*3}s`;
+    $("pnlTape").innerHTML=`ROUND ${r}${lim?"/"+lim:""} · ${esc(pkt.market)} ${dirHTML(call)} · ${rinfo||"size "+money(size)} · entry ${fmtPx(t.entry)} · stop ${fmtPx(t.stop)} · live ${fmtPx(px)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · ${k*3}s/${steps*3}s`;
     if(open<=-bal){ exit=px; how="virtual margin call · closed at balance limit"; break; }
     if(dir>0){ if(px<=t.stop){ exit=px; how="stop hit (live poll)"; break; } if(px>=t.target){ exit=px; how="target hit (live poll)"; break; } }
     else { if(px>=t.stop){ exit=px; how="stop hit (live poll)"; break; } if(px<=t.target){ exit=px; how="target hit (live poll)"; break; } }
@@ -1240,7 +1265,7 @@ async function runLoop(){
       const res="Balance unavailable · trading disabled"; S.round=r;
       S.rows.push({r,tk:coin+"-USD",call:"SKIP",dir:null,feed:"—",riskPct:null,riskUsd:null,lev:null,margin:0,size:0,entry:null,exit:null,result:res,pnl:0,bal:S.bal});
       const tr=document.createElement("tr"); tr.className="new"; tr.innerHTML=`<td>${r}</td><td>${esc(coin)}-USD</td><td class="res-SKIP">SKIP</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>${res}</td><td class="flat">$0.00</td><td>${isFinite(S.bal)?money(S.bal):"unavailable"}</td>`;
-      $("ledger").appendChild(tr); $("pnlTape").innerHTML=`ROUND ${r} · <span class="stamp res-SKIP">SKIP</span> · ${res}`; sumLine(); eqPts.push(isFinite(S.bal)?S.bal:0);
+      $("ledger").appendChild(tr); $("pnlTape").innerHTML=`ROUND ${r} · ${dirHTML("SKIP")} · ${res}`; setPosDir("SKIP","no position"); setDirChip("SKIP",coin+"-USD","balance unavailable"); sumLine(); eqPts.push(isFinite(S.bal)?S.bal:0);
       if(sessionStop) break; await sleepStop(1500); continue; }
     if(S.feed==="live"){
       $("pnlTape").textContent=`ROUND ${r} · ${coin} · fetching live candles…`;
@@ -1264,14 +1289,15 @@ async function runLoop(){
         let e0; try{ e0=await Feed.ticker(pkt._live.coin); }catch(err){ e0=pkt.price.last; }
         const dist=Math.min(Math.max(1.5*pkt._live.atr,e0*0.0006),e0*0.5);
         const stop=e0-dir*dist, sz=riskSize(S.bal,rk.pct,e0,stop,cap,lev); size=sz.size; riskUsd=sz.riskUsd; margin=sz.margin;
-        const rinfo=`${dir>0?"▲ LONG":"▼ SHORT"} · risk ${fmtPct(rk.pct)} · ${money(riskUsd)} · ${lev}x · notional ${money(size)} · margin ${money(margin)}${sz.capped?" (capped)":""}`;
+        const rinfo=`risk ${fmtPct(rk.pct)} · ${money(riskUsd)} · ${lev}x · notional ${money(size)} · margin ${money(margin)}${sz.capped?" (capped)":""}`;
         const t={entry:e0,stop,target:e0+dir*2*dist,path:[e0],maxSteps:20,dir};
-        if(size>0){ const o=await playLive(t,pkt._live.coin,size,r,lim,callCls,call,pkt,rinfo,S.bal); entry=e0; exit=o.exit; pnl=o.pnl; mcall=o.mc; result=o.how+(sz.capped?" · size capped":""); }
+        if(size>0){ setPosDir(call,"open"); setDirChip(call,pkt.market,"position open"); const o=await playLive(t,pkt._live.coin,size,r,lim,callCls,call,pkt,rinfo,S.bal); entry=e0; exit=o.exit; pnl=o.pnl; mcall=o.mc; result=o.how+(sz.capped?" · size capped":""); }
       } else {
         const sup=(rep.outputs.charts.support_levels||[])[0], res=(rep.outputs.charts.resistance_levels||[])[0], e0=pkt.price.last, stop=planStop(e0,sup,dir,res);
         const sz=riskSize(S.bal,rk.pct,e0,stop,cap,lev); size=sz.size; riskUsd=sz.riskUsd; margin=sz.margin;
       }
       if(size>0 && !live){
+        setPosDir(call,"open"); setDirChip(call,pkt.market,"position open");
         const t=planTrade(S.rng,pkt.price.last,size,planStop(pkt.price.last,(rep.outputs.charts.support_levels||[])[0],dir,(rep.outputs.charts.resistance_levels||[])[0]),dir); entry=t.entry;
         await slideLevels(t); let k=0;
         for(k=0;k<t.path.length;k++){
@@ -1279,7 +1305,7 @@ async function runLoop(){
           if(k>0 && !REDUCED){ const t1=performance.now(), d=70*(FAST?0.3:1); while(true){ const f=Math.min(1,(performance.now()-t1)/d); drawPos(t,k-1,null,f,1); if(f>=1) break; await frame(); } }
           drawPos(t,k); const open=pnlOf(dir,size,t.entry,t.path[k]);
           $("kOpen").textContent=sgn(open); $("kOpen").className=cls(open);
-          $("pnlTape").innerHTML=`ROUND ${r} · ${esc(pkt.market)} <span class="stamp ${callCls}">${esc(call)}</span> · ${dir>0?"▲ LONG":"▼ SHORT"} · risk ${fmtPct(riskPct)} · ${money(riskUsd)} · ${levUsed}x · notional ${money(size)} · margin ${money(margin)} · entry ${fmtPx(t.entry)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · session <b class="${cls(S.bal-S.start)}">${sgn(S.bal-S.start)}</b>`;
+          $("pnlTape").innerHTML=`ROUND ${r} · ${esc(pkt.market)} ${dirHTML(call)} · risk ${fmtPct(riskPct)} · ${money(riskUsd)} · ${levUsed}x · notional ${money(size)} · margin ${money(margin)} · entry ${fmtPx(t.entry)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · session <b class="${cls(S.bal-S.start)}">${sgn(S.bal-S.start)}</b>`;
           if(REDUCED) await sleep(70*(FAST?0.3:1)); }
         if(sessionStop){ exit=t.path[Math.max(0,Math.min(k,t.path.length-1))]; pnl=pnlOf(dir,size,t.entry,exit); result="stopped by user · marked to last price"; }
         else { exit=t.exit; pnl=t.pnl; result = t.how==="target"?"target hit":t.how==="stop"?"stop hit (≈ risk $)":"timed out"; }
@@ -1288,10 +1314,11 @@ async function runLoop(){
       if(size>0){ S.trades++; if(pnl>0) S.wins++; const dk=dir>0?"L":"S"; S.dirN[dk]++; if(pnl>0) S.dirW[dk]++; }
     } else {
       drawPos(null,0,`NO POSITION · ${rep.stopped_at==="risk_paused"?"RISK PAUSED · SKIP":rep.stopped_at==="decision_paused"?"DECISION PAUSED · SKIP":call==="SKIP"&&rep.stopped_at==="risk"?"RISK REJECTED · SKIP":call} · $0 CHANGE`);
-      $("pnlTape").innerHTML=`ROUND ${r} · ${esc(pkt.market)} <span class="stamp ${callCls}">${esc(call)}</span> · no position · $0.00`;
+      $("pnlTape").innerHTML=`ROUND ${r} · ${esc(pkt.market)} ${dirHTML(call)} · no position · $0.00`; setPosDir(call,"no position"); setDirChip(call,pkt.market,"no position");
     }
     $("kOpen").textContent="none"; $("kOpen").className="flat";
     S.round=r; S.bal=mcall?0:r2s(S.bal+pnl); eqPts.push(S.bal);
+    if(size>0){ setPosDir(call,"last · closed "+sgn(pnl)); setDirChip(call,pkt.market,"closed "+sgn(pnl)); }
     const feedTag = live ? `live · ${pkt._live.source}` : (S.feed==="live" ? "offline · simulated" : "fictional");
     S.rows.push({r,tk:pkt.market,call,dir:size?(dir>0?"LONG":"SHORT"):null,feed:feedTag,riskPct:size?riskPct:null,riskUsd:size?riskUsd:null,lev:size?levUsed:null,size,margin:size?margin:0,entry,exit,result,pnl,bal:S.bal,mcall});
     const tr=document.createElement("tr"); tr.className="new";
@@ -1310,7 +1337,7 @@ async function runLoop(){
   loadHistory();
 }
 function stopSession(){ if(sessState!=="running") return; sessionStop=true; Feed.abort(); setSessState("stopping"); }
-function resetSession(){ if(running) return; S=null; eqPts=[]; $("ledger").innerHTML=""; $("sumLine").textContent=""; $("kRound").textContent="0 / 0"; $("kPnl").textContent="$0.00"; $("kPnl").className="flat"; $("kWins").textContent="0 · 0";
+function resetSession(){ if(running) return; S=null; setPosDir(null); setDirChip(null); eqPts=[]; $("ledger").innerHTML=""; $("sumLine").textContent=""; $("kRound").textContent="0 / 0"; $("kPnl").textContent="$0.00"; $("kPnl").className="flat"; $("kWins").textContent="0 · 0";
   $("balNum").textContent=balOk(parseFloat($("inBal").value))?money(parseFloat($("inBal").value)):"unavailable"; balShown=0; drawEquity(1); drawPos(null,0,"PRESS RUN DEMO SESSION"); $("pnlTape").textContent="Press Run demo session."; setSessState("idle"); sessLabel(); resetFloor(); markPaused(); renderRisk(); setCoinLine("Analyzing: —"); }
 window.G6_SESSION=()=>S && {start:S.start,bal:S.bal,round:S.round,rows:S.rows.map(x=>({...x})),trades:S.trades,wins:S.wins,state:sessState,eq:eqPts.slice()};
 function maxDrawdown(pts){ let peak=pts[0], dd=0; for(const v of pts){ peak=Math.max(peak,v); dd=Math.max(dd,(peak-v)/peak); } return dd*100; }
