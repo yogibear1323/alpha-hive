@@ -208,7 +208,7 @@ footer{color:var(--mute);font-size:12px;text-align:center;padding:10px 20px 70px
 @keyframes textbreathe{0%,100%{text-shadow:0 0 6px var(--cyan)}50%{text-shadow:0 0 16px var(--cyan),0 0 32px rgba(255,182,39,.5)}}
 .logo{animation:logobreathe 4s ease-in-out infinite}
 @keyframes logobreathe{50%{filter:drop-shadow(0 0 12px var(--cyan)) drop-shadow(0 0 4px var(--mag))}}
-.chip.motion{cursor:pointer;background:transparent;font:600 11px var(--mono)}
+.chip.motion{cursor:pointer;background:transparent;font:600 11px var(--mono);text-decoration:none}
 .chip.motion:hover{color:var(--cyan);border-color:var(--cyan)}
 /* ---- panel transitions ---- */
 .bot{transform-origin:50% 60%;transition:transform .55s cubic-bezier(.2,1.35,.3,1),border-color .3s,box-shadow .45s;animation:flipin .8s cubic-bezier(.2,1.2,.3,1) backwards;animation-delay:calc(var(--i,0) * 90ms)}
@@ -280,6 +280,9 @@ footer{color:var(--mute);font-size:12px;text-align:center;padding:10px 20px 70px
 .frozen{color:var(--red);font-weight:700}
 /* ---- reduced motion ---- */
 body.reduced *,body.reduced *::before,body.reduced *::after{animation:none!important;transition:none!important}
+body{background:transparent}
+#honey{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.32}
+footer{position:relative;background:rgba(20,18,15,.92);border-radius:10px;max-width:900px;margin:0 auto}
 body.reduced .bot.work{transform:none}
 body.reduced #fx{display:none}
 
@@ -362,11 +365,32 @@ header{background:rgba(20,18,15,.9);border-bottom:1px solid rgba(255,182,39,.22)
 .log{background:rgba(0,0,0,.32);border-color:rgba(255,182,39,.10)}
 .pnltape{background:rgba(255,140,66,.08);border-color:rgba(255,140,66,.32)}
 body.reduced .bot.work .av .wg{animation:none}
+/* ---- per-bot risk, coin line, tokens ---- */
+.coinline{font:700 11px var(--mono);letter-spacing:.5px;color:var(--cyan);margin:-4px 0 6px}
+.riskrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;font:11px var(--mono)}
+.riskrow .rlbl{color:var(--mute);font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:10px}
+.rq{cursor:pointer;font:700 11px var(--mono);padding:3px 9px;border:1px solid rgba(255,182,39,.4);background:transparent;color:var(--text);border-radius:4px}
+.rq.on{background:var(--cyan);color:#1a1206;border-color:var(--cyan)}
+.rin{width:58px;background:rgba(0,0,0,.45);color:var(--text);border:1px solid rgba(255,182,39,.35);border-radius:4px;padding:3px 6px;font:12px var(--mono)}
+.rin.bad{border-color:var(--red)}
+.rshow{color:var(--cyan);font-weight:700;margin-left:auto;white-space:nowrap}
+.rerr{flex-basis:100%;color:var(--red);font-size:11px} .rerr:empty{display:none}
+.bot.guard .rshow{color:var(--red)}
+.chip.guard{color:var(--red);border-color:var(--red)}
+.tok{display:inline-flex;align-items:center;border:1px solid rgba(255,182,39,.3);border-radius:999px;margin:2px 3px;overflow:hidden}
+.tok .tk{background:transparent;color:var(--mute);border:none;padding:4px 6px 4px 11px;font:700 12px var(--mono);cursor:pointer}
+.tok.on{border-color:var(--cyan);background:rgba(255,182,39,.16)} .tok.on .tk{color:var(--cyan)}
+.tok .tx{background:transparent;border:none;color:var(--mute);padding:4px 9px 4px 3px;cursor:pointer;font:700 13px var(--mono)} .tok .tx:hover{color:var(--red)}
+.tokadd{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
+#tokIn{width:170px;background:rgba(0,0,0,.45);color:var(--text);border:1px solid rgba(255,182,39,.3);border-radius:4px;padding:7px 9px;font:13px var(--mono);text-transform:uppercase}
+.btn.sm{padding:7px 18px;font-size:11px}
+.tokmsg{flex-basis:100%;font-size:12px;color:var(--mute)} .tokmsg:empty{display:none} .tokmsg.bad{color:var(--red)} .tokmsg.ok{color:var(--lime)}
+.tradeline{flex-basis:100%;font:700 12px var(--mono);color:var(--cyan)}
 </style>
 </head>
 <body>
 <div class="glowlayer"></div>
-<div class="gridbg" id="gridbg"><div class="gridplane"></div><div class="hivecomb"></div></div>
+<div class="gridbg" id="gridbg"><div class="gridplane"></div><div class="hivecomb"></div><canvas id="honey" aria-hidden="true"></canvas></div>
 <canvas id="fx" aria-hidden="true"></canvas>
 <header>
   <div class="bar">
@@ -374,7 +398,7 @@ body.reduced .bot.work .av .wg{animation:none}
       <svg class="logo" viewBox="0 0 40 40" fill="none" stroke="#ffb627" stroke-width="2"><polygon points="20,2 36,11 36,29 20,38 4,29 4,11"/><polygon points="20,11 27,15 27,23 20,27 13,23 13,15" stroke="#ff8c42" stroke-width="1.6"/><circle cx="20" cy="19" r="2.4" fill="#ffd84d" stroke="none"/></svg>
       <div><h1>Alpha <span>Hive</span></h1><small>SIX-BOT AI TRADING TEAM · SCOUT · NEWS · SENTIMENT · CHARTS · RISK · DECISION</small></div>
     </div>
-    <div class="chips"><span class="chip sim">Simulation only</span><span class="chip live" id="modeChip">Offline mock</span><span class="chip run" id="runChip">● Idle</span><span class="chip feed" id="feedChip">Feed: —</span><button class="chip motion" id="motionBtn" title="Toggle animations">Motion: full</button></div>
+    <div class="chips"><span class="chip sim">Simulation only</span><span class="chip live" id="modeChip">Offline mock</span><span class="chip run" id="runChip">● Idle</span><span class="chip guard" id="guardChip" hidden>⚠ Balance unavailable · trading disabled</span><span class="chip feed" id="feedChip">Feed: —</span><a class="chip motion" id="homeLink" href="../" hidden>⌂ Home</a><button class="chip motion" id="motionBtn" title="Toggle animations">Motion: full</button></div>
   </div>
   <div class="ticker"><div class="tag">SIMULATED · EXAMPLE DATA</div><div class="tape"><div class="tape-inner" id="tape"></div></div></div>
 </header>
@@ -397,18 +421,17 @@ body.reduced .bot.work .av .wg{animation:none}
         <h2 style="margin-top:4px">Demo account</h2>
         <div class="acct">
           <div class="fld"><label for="inBal">Starting virtual balance ($)</label><input id="inBal" type="number" min="100" step="100" value="10000"></div>
-          <div class="fld"><label for="inMode">Trade size</label><select id="inMode"><option value="max">Max allowed by Risk</option><option value="fixed">Fixed $ amount</option><option value="pct">% of balance</option></select></div>
-          <div class="fld"><label for="inSize">Size value</label><input id="inSize" type="number" min="0" step="1" value="150" disabled></div>
+          <div class="fld"><label for="inMode">Max position cap (optional)</label><select id="inMode"><option value="none">No cap · risk-based size</option><option value="fixed">Fixed $ cap</option><option value="pct">% of balance cap</option></select></div>
+          <div class="fld"><label for="inSize">Cap value</label><input id="inSize" type="number" min="0" step="1" value="5000" disabled></div>
           <div class="fld"><label for="inRounds">Rounds (0 = continuous)</label><input id="inRounds" type="number" min="0" max="500" value="0"></div>
           <div class="fld"><label for="inFeed">Prices</label><select id="inFeed"><option value="live">Live public prices</option><option value="sim">Fictional price paths</option></select></div>
           <div class="fld"><label for="inWin">Trade window (s)</label><input id="inWin" type="number" min="10" max="600" value="60"></div>
           <div class="fld"><label for="inSeed">Seed (fictional)</label><input id="inSeed" type="number" value="7"></div>
         </div>
-        <div class="coins" id="coins"><span class="clbl">Coins</span>
-          <label><input type="checkbox" id="coinBTC" value="BTC" checked> BTC</label>
-          <label><input type="checkbox" id="coinETH" value="ETH" checked> ETH</label>
-          <label><input type="checkbox" id="coinSOL" value="SOL" checked> SOL</label></div>
-        <div class="label" id="sessHelp">Live rounds read real recent candles, then a virtual BUY resolves against live prices polled every 3 s for the trade window: it closes at the first poll at or past the stop or target, or at the last live price when the window ends. Every trade is capped by the Risk bot's max simulated size and max simulated loss.</div>
+        <div class="coins" id="coins"><span class="clbl">Tokens · tap to include · × to remove</span><span id="tokChips"></span>
+          <span class="tokadd"><input id="tokIn" type="text" maxlength="12" placeholder="Add token, e.g. LTC" aria-label="Add token symbol" autocomplete="off"><button class="btn ghost sm" id="tokAddBtn">Add token</button><button class="btn ghost sm" id="tokMajors">Add all majors</button></span>
+          <span class="tokmsg" id="tokMsg" role="status"></span><span class="tradeline" id="tradeLine">Bots trade: —</span></div>
+        <div class="label" id="sessHelp">Live rounds read real recent candles for each selected token. A virtual BUY (only after the Risk gate approves) risks the effective % of the <b>current</b> balance: the average of the active bots’ risk settings, never above the Risk bot’s %. Size = risk $ ÷ stop distance, capped at the balance and the optional max position cap, so a stop-out loses about the risk $. Live prices are polled every 3 s for the trade window: the trade closes at the first poll at or past the stop or target, or at the last live price.</div>
         <div class="actions" id="sessControls"><button class="btn" id="startSess">▶ Run demo session</button><button class="btn stop" id="stopSess" disabled>■ Stop</button><button class="btn ghost" id="resetSess">Reset</button><button class="btn ghost" id="sumBtn" disabled>Summary</button></div>
       </div>
       <div class="pipeline" id="pipeline"></div>
@@ -429,7 +452,7 @@ body.reduced .bot.work .av .wg{animation:none}
         <div class="kpis">
           <div class="kpi"><small>Session P&amp;L</small><b id="kPnl" class="flat">$0.00</b></div>
           <div class="kpi"><small>Round</small><b id="kRound">0 / 0</b></div>
-          <div class="kpi"><small>Open position</small><b id="kOpen" class="flat">none</b></div>
+          <div class="kpi"><small>Open position</small><b id="kOpen" class="flat">none</b></div><div class="kpi"><small>Effective risk / trade</small><b id="kRisk" class="flat">—</b></div>
           <div class="kpi"><small>Trades · wins</small><b id="kWins">0 · 0</b></div>
         </div>
         <div class="pnltape" id="pnlTape">Press Start demo session.</div>
@@ -438,7 +461,7 @@ body.reduced .bot.work .av .wg{animation:none}
       <div class="card">
         <h2 id="posTitle">Simulated position · fictional price path</h2>
         <canvas class="wide" id="posCanvas"></canvas>
-        <div class="ledger-wrap"><table class="ledger"><thead><tr><th>#</th><th>Ticker</th><th>Call</th><th>Feed</th><th>Size</th><th>Entry</th><th>Exit</th><th>Result</th><th>P&amp;L</th><th>Balance</th></tr></thead><tbody id="ledger"></tbody></table></div>
+        <div class="ledger-wrap"><table class="ledger"><thead><tr><th>#</th><th>Ticker</th><th>Call</th><th>Feed</th><th>Risk %</th><th>Risk $</th><th>Size</th><th>Entry</th><th>Exit</th><th>Result</th><th>P&amp;L</th><th>Balance</th></tr></thead><tbody id="ledger"></tbody></table></div>
         <div class="sumline" id="sumLine"></div>
       </div>
     </div>
@@ -493,6 +516,7 @@ const Engine = (() => {
     decision:{decision:["str",[BUY,"WAIT","SKIP"]],reasons:["list"],conflicting_signals:["list"],missing_information:["list"],invalidation_conditions:["list"],human_review_required:["bool"]},
   };
   const r2 = x => Math.round(x*100)/100;
+  const rp = x => Math.abs(x)>=100 ? r2(x) : +x.toPrecision(6);   // keep significant digits for sub-$1 / small-price tokens
   const isNum = x => typeof x === "number" && isFinite(x);
   function check(out, schema){
     const errs=[]; if(!out||typeof out!=="object"||Array.isArray(out)) return ["not an object"];
@@ -543,7 +567,7 @@ const Engine = (() => {
     if(last===null||bars.length<2) return {trend:"unknown",support_levels:[],resistance_levels:[],volume_summary:"Not enough numeric data to read volume.",setup_quality:"unknown",missing_data:missing};
     const ch=(bars[bars.length-1].close-bars[0].close)/bars[0].close*100;
     const vol=p.volume||{};
-    return {trend:ch>1?"up":ch<-1?"down":"sideways",support_levels:[r2(Math.min(...bars.map(b=>b.low)))],resistance_levels:[r2(Math.max(...bars.map(b=>b.high)))],
+    return {trend:ch>1?"up":ch<-1?"down":"sideways",support_levels:[rp(Math.min(...bars.map(b=>b.low)))],resistance_levels:[rp(Math.max(...bars.map(b=>b.high)))],
       volume_summary:(vol.today&&vol.avg_30d)?`Latest volume ${(vol.today/vol.avg_30d).toFixed(1)}x the 30-day average.`:"Volume comparison unavailable.",
       setup_quality:missing.length?"fair":"good",missing_data:missing};
   }
@@ -667,6 +691,8 @@ function buildFloor(){
     <div class="hd"><div class="av" style="color:${b.c}">${ICONS[b.key]}</div>
       <div><div class="name">${i+1} · ${b.name}</div><div class="job">${b.job}</div></div>
       <span class="st" id="st-${b.key}">IDLE</span><button class="tog on" id="tg-${b.key}" aria-pressed="true" title="Pause or resume this bot (takes effect next round)">ON</button></div>
+    <div class="coinline" id="cl-${b.key}">Analyzing: —</div>
+    <div class="riskrow" id="rk-${b.key}"><span class="rlbl">Risk${b.key==="risk"?" ceiling":""}</span><button class="rq" data-v="1">1%</button><button class="rq" data-v="2">2%</button><input class="rin" id="ri-${b.key}" type="text" inputmode="decimal" maxlength="6" aria-label="${b.name} custom risk percent" title="Custom % (0.1 to 10)"><span class="rshow" id="rs-${b.key}">1% · —</span><span class="rerr" id="re-${b.key}" role="alert"></span></div>
     <div class="log" id="log-${b.key}"></div>
     <div class="viz" id="viz-${b.key}">${vizMarkup(b.key)}</div>
     <details class="json" id="json-${b.key}" hidden><summary>View JSON output</summary><pre></pre></details>
@@ -766,7 +792,7 @@ function drawChart(packet, out, P){
       ex=cx(i-1)+(cx(i)-cx(i-1))*seg; ey=y(bars[i-1].close)+(y(bars[i].close)-y(bars[i-1].close))*seg; g.lineTo(ex,ey); }
     g.stroke(); if(lp<1 && !dim){ g.fillStyle="#ffffff"; g.beginPath(); g.arc(ex,ey,3,0,7); g.fill(); g.fillStyle="rgba(255,182,39,.35)"; g.beginPath(); g.arc(ex,ey,8,0,7); g.fill(); }
   }
-  g.fillStyle="#b9ab8e"; g.font="10px monospace"; g.fillText(hi.toFixed(2),4,y(hi)+3); g.fillText(lo.toFixed(2),4,y(lo)+3);
+  g.fillStyle="#b9ab8e"; g.font="10px monospace"; g.fillText(fmtPx(hi),4,y(hi)+3); g.fillText(fmtPx(lo),4,y(lo)+3);
   const sp=Math.max(0,Math.min(1,P-2));
   if(out && sp>0){
     const e=1-Math.pow(1-sp,3);
@@ -859,7 +885,7 @@ async function reveal(rep){
 $("closeReveal").onclick=()=>{ $("reveal").classList.remove("show"); $("call").classList.remove("show"); };
 
 async function run(){
-  if(running) return; running=true; setRunChip("running"); $("runBtn").disabled=true; $("resetBtn").disabled=true; resetFloor();
+  if(running) return; running=true; setRunChip("running"); $("runBtn").disabled=true; $("resetBtn").disabled=true; resetFloor(); setCoinLine("Analyzing: "+((currentPacket&&currentPacket.market)||"—")+" · example data");
   const q=[]; let finished=false;
   const pump=(async()=>{ while(!finished||q.length){ if(q.length) await onEvent(q.shift()); else await sleep(30); } })();
   try{
@@ -910,6 +936,7 @@ function buildTape(){
 
 
 /* ---------------------------------------------------------------- demo session (virtual balance, fictional paths) */
+function fmtPx(v){ v=+v; return !isFinite(v)?"—": v>=1000?v.toFixed(2): v>=1?v.toFixed(3): v>=0.01?v.toFixed(5): v.toPrecision(4); }
 const money = v => (v<0?"-":"")+"$"+Math.abs(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const sgn = v => (v>0?"+":"")+money(v);
 const cls = v => v>0.004?"pos":v<-0.004?"neg":"flat";
@@ -946,16 +973,14 @@ function genPacket(rng,round,kind,seed){
   return pk;
 }
 function gauss(rng){let u=0,v=0;while(!u)u=rng();while(!v)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
-function planTrade(rng,entry,size,maxLoss,support){
-  const stopRisk=entry*(1-Math.min(.5,maxLoss/size));
-  let stop=Math.max(stopRisk,(support&&support<entry)?support*0.997:stopRisk);
-  stop=Math.min(stop,entry*0.985); stop=Math.max(stop,stopRisk);
+function planStop(entry,support){ let stop=(support&&support<entry)?support*0.997:entry*0.97; return Math.max(entry*0.95,Math.min(stop,entry*0.985)); }
+function planTrade(rng,entry,size,stop){
   const target=entry+2*(entry-stop), maxSteps=40, vol=.006+.008*rng(), drift=-.002+.006*rng();
   const path=[entry]; let px=entry, exit=null, how="timeout";
   for(let i=0;i<maxSteps;i++){ px=px*Math.exp(drift+vol*gauss(rng));
     if(px<=stop){exit=stop;how="stop";path.push(stop);break;} if(px>=target){exit=target;how="target";path.push(target);break;} path.push(px); }
   if(exit===null) exit=px;
-  const pnl=r2s(Math.max(-maxLoss,size*(exit/entry-1)));
+  const pnl=r2s(size*(exit/entry-1));
   return {entry,stop,target,path,exit,how,pnl,maxSteps};
 }
 function drawPos(t,k,msg,frac,lv){
@@ -971,7 +996,7 @@ function drawPos(t,k,msg,frac,lv){
   const e=1-Math.pow(1-lv,3);
   const lvl=(v,col,lab,dir)=>{ const x0=46, x1=w-66, a=dir>0? x0 : x1-(x1-x0)*e, b=dir>0? x0+(x1-x0)*e : x1;
     g.setLineDash([5,4]);g.strokeStyle=col;g.lineWidth=1;g.beginPath();g.moveTo(a,y(v));g.lineTo(b,y(v));g.stroke();g.setLineDash([]);
-    g.globalAlpha=e; g.fillStyle=col;g.font="10px monospace";g.fillText(lab,w-62,y(v)+3);g.fillText(v.toFixed(2),4,y(v)+3); g.globalAlpha=1; };
+    g.globalAlpha=e; g.fillStyle=col;g.font="10px monospace";g.fillText(lab,w-62,y(v)+3);g.fillText(fmtPx(v),4,y(v)+3); g.globalAlpha=1; };
   lvl(t.target,"#8fe388","TARGET",1); lvl(t.entry,"#ffb627","ENTRY",-1); lvl(t.stop,"#ff6b6b","STOP",1);
   if(lv<1) return;
   const pts=t.path.slice(0,k+1); let lx=x(k), ly=y(pts[k]), lastV=pts[k];
@@ -999,19 +1024,81 @@ async function animEquity(n){ const t0=performance.now(), d=450*SPEED+50; while(
 let balShown=0;
 async function animBalance(to){ const from=balShown, t0=performance.now(), d=700*SPEED+80; while(true){ const p=Math.min(1,(performance.now()-t0)/d), e=1-Math.pow(1-p,3); balShown=from+(to-from)*e; $("balNum").textContent=money(balShown); if(p>=1) break; await sleep(25);} }
 let sessionStop=false;
-function tradeSize(bal,risk){
-  const mode=$("inMode").value, v=Math.max(0,parseFloat($("inSize").value)||0);
-  let want = mode==="fixed"? v : mode==="pct"? bal*v/100 : risk.maximum_simulated_size;
-  return r2s(Math.max(0,Math.min(want,risk.maximum_simulated_size,bal)));
-}
+/* ---- per-bot risk % (0.1-10, of the CURRENT virtual balance); Risk bot's % is the ceiling ---- */
+const RISK_KEYS=["scout","news","sentiment","charts","risk","decision"], VOTERS=["scout","news","sentiment","charts","decision"];
+function validRisk(v){ const t=String(v??"").trim().replace(/\s*%$/,"");
+  if(t==="") return {ok:false,msg:"Enter a % from 0.1 to 10"};
+  if(!/^[-+]?(\d+\.?\d*|\.\d+)$/.test(t)) return {ok:false,msg:"Numbers only, e.g. 1.5"};
+  const n=+t; if(n<=0) return {ok:false,msg:"Must be above 0 (min 0.1%)"}; if(n<0.1) return {ok:false,msg:"Minimum is 0.1%"}; if(n>10) return {ok:false,msg:"Maximum is 10%"};
+  if((t.split(".")[1]||"").length>2) return {ok:false,msg:"Use at most 2 decimals"}; return {ok:true,v:n}; }
+let RISKP=(()=>{ const r={}; let o={}; try{ o=JSON.parse(LS.getItem("g6_risk")||"{}")||{}; }catch(e){} RISK_KEYS.forEach(k=>{ const c=validRisk(o[k]); r[k]=c.ok?c.v:1; }); return r; })();
+const balOk=b=>typeof b==="number"&&isFinite(b)&&b>0;
+function curBal(){ return S ? S.bal : parseFloat($("inBal").value); }
+function effRisk(paused){ paused=paused||PAUSED; const act=VOTERS.filter(k=>!paused.has(k)); const avg=act.length? act.reduce((a,k)=>a+RISKP[k],0)/act.length : RISKP.risk;
+  const pct=Math.min(avg,RISKP.risk); return {pct:Math.round(pct*10000)/10000, avg:Math.round(avg*10000)/10000, cap:RISKP.risk, capped:avg>RISKP.risk, active:act}; }
+function capValue(bal){ const m=$("inMode").value, v=Math.max(0,parseFloat($("inSize").value)||0); return m==="fixed"? v : m==="pct"? bal*v/100 : 0; }
+// position size so that a stop-out loses about riskUsd: size = riskUsd / (stop distance / entry); never above the balance or the optional cap
+function riskSize(bal,pct,entry,stop,cap){ const riskUsd=balOk(bal)?r2s(bal*pct/100):0, dist=(entry-stop)/entry;
+  if(!balOk(bal)||!(dist>0)||!(pct>0)) return {riskUsd,size:0,capped:false,dist};
+  let size=riskUsd/dist, capped=false; const lim=Math.min(bal, cap>0?cap:Infinity); if(size>lim){ size=lim; capped=true; }
+  return {riskUsd, size:r2s(size), capped, dist}; }
+const fmtPct=n=>(+n.toFixed(2))+"%";
+function renderRisk(){ const bal=curBal(), ok=balOk(bal);
+  RISK_KEYS.forEach(k=>{ const el=$("rs-"+k); if(!el) return; const v=RISKP[k];
+    el.textContent= ok ? `${fmtPct(v)} · ${money(bal*v/100)}` : `${fmtPct(v)} · trading disabled`;
+    const i=$("ri-"+k); if(i && document.activeElement!==i) i.value=String(v);
+    $("rk-"+k).querySelectorAll(".rq").forEach(b=>b.classList.toggle("on",+b.dataset.v===v));
+    $("bot-"+k).classList.toggle("guard",!ok); });
+  const e=effRisk(), kr=$("kRisk"); if(kr){ kr.textContent= ok ? `${fmtPct(e.pct)} · ${money(bal*e.pct/100)}${e.capped?" (Risk cap)":""}` : "disabled"; kr.className= ok?"":"neg"; }
+  const g=$("guardChip"); if(g) g.hidden=ok; }
+function setRisk(k,raw){ const c=validRisk(raw), er=$("re-"+k), i=$("ri-"+k);
+  if(!c.ok){ er.textContent="✖ "+c.msg+" · kept "+fmtPct(RISKP[k]); i.classList.add("bad"); i.value=String(RISKP[k]); return false; }
+  RISKP[k]=c.v; er.textContent=""; i.classList.remove("bad"); LS.setItem("g6_risk",JSON.stringify(RISKP)); renderRisk(); return true; }
+function wireRisk(){ RISK_KEYS.forEach(k=>{ $("rk-"+k).querySelectorAll(".rq").forEach(b=>b.onclick=()=>setRisk(k,b.dataset.v));
+  const i=$("ri-"+k); i.onchange=()=>setRisk(k,i.value); i.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); setRisk(k,i.value); } }; }); renderRisk(); }
+/* ---- token manager ---- */
+function saveTok(){ LS.setItem("g6_tokens",JSON.stringify(TOK)); }
+function selTokens(){ const s=TOK.list.filter(x=>TOK.sel.includes(x)); return s.length?s:[TOK.list[0]||"BTC"]; }
+function tokMsg(t,cls){ const m=$("tokMsg"); m.textContent=t; m.className="tokmsg "+(cls||""); }
+function renderTok(){ $("tokChips").innerHTML=TOK.list.map(x=>`<span class="tok${TOK.sel.includes(x)?" on":""}" data-s="${x}"><button class="tk" aria-pressed="${TOK.sel.includes(x)}" title="Include ${x} in the session">${x}</button><button class="tx" aria-label="Remove ${x}" title="Remove ${x}">×</button></span>`).join("");
+  $("tokChips").querySelectorAll(".tok").forEach(c=>{ const x=c.dataset.s;
+    c.querySelector(".tk").onclick=()=>{ if(TOK.sel.includes(x)){ if(TOK.sel.length<=1){ tokMsg("Keep at least one token selected.","bad"); return; } TOK.sel=TOK.sel.filter(y=>y!==x); } else TOK.sel.push(x); saveTok(); renderTok(); tokMsg(""); };
+    c.querySelector(".tx").onclick=()=>{ if(TOK.list.length<=1){ tokMsg("Keep at least one token in the list.","bad"); return; } TOK.list=TOK.list.filter(y=>y!==x); TOK.sel=TOK.sel.filter(y=>y!==x); if(!TOK.sel.length) TOK.sel=[TOK.list[0]]; saveTok(); renderTok(); tokMsg(`Removed ${x}.`); }; });
+  $("tradeLine").textContent="Bots trade: "+selTokens().map(x=>x+"/USD").join(" · "); }
+async function addToken(raw){ const x=String(raw||"").trim().toUpperCase().replace(/[-\/ ]?USDT?$/,"");
+  if(!validSym(x)){ tokMsg(`“${String(raw||"").trim()||"(blank)"}” is not a token symbol (2–10 letters/digits).`,"bad"); return false; }
+  if(TOK.list.includes(x)){ if(!TOK.sel.includes(x)) TOK.sel.push(x); saveTok(); renderTok(); tokMsg(`${x} is already in the list (selected).`,"ok"); return true; }
+  tokMsg(`Checking ${x}/USD on Coinbase Exchange, then Kraken…`); const c=await Feed.check(x);
+  if(!c.ok){ tokMsg(`✖ ${x} rejected: ${c.why}.`,"bad"); return false; }
+  TOK.list.push(x); TOK.sel.push(x); TOK.src[x]=c.src; saveTok(); renderTok(); tokMsg(`✔ Added ${x} · USD market on ${c.name}.`,"ok"); return true; }
+async function addMajors(){ const b=$("tokMajors"); b.disabled=true; const todo=Object.keys(MAJORS).filter(x=>!TOK.list.includes(x)), added=[], skipped=[];
+  for(const x of todo){ tokMsg(`Re-checking majors… ${x} (${added.length+skipped.length+1}/${todo.length})`); const c=await Feed.check(x,MAJORS[x]);
+    if(c.ok){ TOK.list.push(x); TOK.src[x]=c.src; added.push(x); } else skipped.push(x); }
+  saveTok(); renderTok(); b.disabled=false;
+  tokMsg(todo.length ? `✔ Added ${added.length} major(s)${added.length?": "+added.join(", "):""}.${skipped.length?" Skipped (no USD price right now): "+skipped.join(", ")+".":""} Tap a chip to include it in the session.` : "All majors are already in your list.", added.length||!todo.length?"ok":"bad");
+  return {added,skipped}; }
+window.G6_TOKENS=()=>({list:TOK.list.slice(),sel:selTokens(),src:{...TOK.src}});
+window.G6_RISK={size:riskSize,validate:validRisk,eff:()=>effRisk(),set:setRisk,get:()=>({...RISKP})};
 /* ---- per-bot toggles (take effect next round) ---- */
 const PAUSED=new Set();
-function markPaused(){ BOTS.forEach(b=>{ const on=!PAUSED.has(b.key), t=$("tg-"+b.key); if(!t) return; t.classList.toggle("on",on); t.textContent=on?"ON":"OFF"; t.setAttribute("aria-pressed",String(on)); $("bot-"+b.key).classList.toggle("off",!on); }); }
+function markPaused(){ BOTS.forEach(b=>{ const on=!PAUSED.has(b.key), t=$("tg-"+b.key); if(!t) return; t.classList.toggle("on",on); t.textContent=on?"ON":"OFF"; t.setAttribute("aria-pressed",String(on)); $("bot-"+b.key).classList.toggle("off",!on); }); if(typeof renderRisk==="function" && $("rs-risk")) renderRisk(); }
 function wireToggles(){ BOTS.forEach(b=>{ $("tg-"+b.key).onclick=()=>{ PAUSED.has(b.key)?PAUSED.delete(b.key):PAUSED.add(b.key); markPaused(); }; }); }
 /* ---- header status ---- */
 function setRunChip(st){ const c=$("runChip"); c.className="chip run "+st; c.textContent= st==="running"?"● Running": st==="stopped"?"■ Stopped": st==="stopping"?"■ Stopping…":"● Idle"; }
 /* ---- live public price feed: Coinbase Exchange (primary), Kraken (fallback); no keys, no sign-in ---- */
-const COINS={BTC:{cb:"BTC-USD",kr:"XBTUSD"},ETH:{cb:"ETH-USD",kr:"ETHUSD"},SOL:{cb:"SOL-USD",kr:"SOLUSD"}};
+/* ---- tokens: any symbol with a USD market on Coinbase Exchange (BASE-USD) or Kraken (BASEUSD) ---- */
+const KR_ALIAS={BTC:"XBT",DOGE:"XDG"};   // Kraken legacy names; every other symbol maps 1:1
+const coinIds=s=>({cb:s+"-USD", kr:(KR_ALIAS[s]||s)+"USD"});
+// "Majors": CoinGecko top 30 by market cap (2026-11-25), minus stablecoins/gold-backed/wrapped, each checked for a USD market.
+// value = where the USD market was found (cb = Coinbase Exchange, kr = Kraken only)
+const MAJORS={BTC:"cb",ETH:"cb",BNB:"cb",XRP:"cb",SOL:"cb",TRX:"kr",HYPE:"cb",ZEC:"cb",XMR:"kr",DOGE:"cb",WBT:"kr",LINK:"cb",ADA:"cb",XLM:"cb",BCH:"cb",NEAR:"cb",LTC:"cb",CC:"kr",AVAX:"cb",UNI:"cb"};
+const TOK_DEFAULT=["BTC","ETH","SOL","XRP","XLM","DOGE","ADA","AVAX","LINK"];
+const validSym=x=>typeof x==="string"&&/^[A-Z0-9]{2,10}$/.test(x);
+let TOK=(()=>{ try{ const o=JSON.parse(LS.getItem("g6_tokens")||"null");
+    if(o&&Array.isArray(o.list)){ const list=o.list.filter(validSym); if(list.length) return {list, sel:(o.sel||[]).filter(x=>list.includes(x)), src:o.src||{}}; } }catch(e){}
+  return {list:TOK_DEFAULT.slice(), sel:["BTC","ETH","SOL"], src:{}}; })();
+TOK_DEFAULT.forEach(x=>{ if(!TOK.src[x]) TOK.src[x]="cb"; });
+const tokSrc=x=>TOK.src[x]||MAJORS[x]||"cb";
 const Feed=(()=>{
   let ctl=new AbortController(), source=null, lastOk=0, primaryFail=0, offline=false;
   const FORCE_OFF=new URLSearchParams(location.search).has("offline");
@@ -1020,20 +1107,20 @@ const Feed=(()=>{
   const CB="https://api.exchange.coinbase.com/products/", KR="https://api.kraken.com/0/public/";
   const krRes=j=>{ if(j.error&&j.error.length) throw new Error(j.error.join(",")); const k=Object.keys(j.result).find(x=>x!=="last"); return j.result[k]; };
   const coinbase={name:"Coinbase Exchange",
-    candles:async(c,g)=>{ const a=await get(`${CB}${COINS[c].cb}/candles?granularity=${g}`); if(!Array.isArray(a)||!a.length) throw new Error("no candles");
+    candles:async(c,g)=>{ const a=await get(`${CB}${coinIds(c).cb}/candles?granularity=${g}`); if(!Array.isArray(a)||!a.length) throw new Error("no candles");
       return a.map(x=>({t:x[0],low:+x[1],high:+x[2],open:+x[3],close:+x[4],volume:+x[5]})).sort((p,q)=>p.t-q.t); },
-    ticker:async c=>{ const j=await get(`${CB}${COINS[c].cb}/ticker`); const p=parseFloat(j.price); if(!(p>0)) throw new Error("bad price"); return p; },
-    volume:async c=>{ const j=await get(`${CB}${COINS[c].cb}/stats`); return {v24:parseFloat(j.volume), avg30:parseFloat(j.volume_30day)/30}; } };
+    ticker:async c=>{ const j=await get(`${CB}${coinIds(c).cb}/ticker`); const p=parseFloat(j.price); if(!(p>0)) throw new Error("bad price"); return p; },
+    volume:async c=>{ const j=await get(`${CB}${coinIds(c).cb}/stats`); return {v24:parseFloat(j.volume), avg30:parseFloat(j.volume_30day)/30}; } };
   const kraken={name:"Kraken",
-    candles:async(c,g)=>krRes(await get(`${KR}OHLC?pair=${COINS[c].kr}&interval=${g/60}`)).map(x=>({t:x[0],open:+x[1],high:+x[2],low:+x[3],close:+x[4],volume:+x[6]})),
-    ticker:async c=>{ const p=parseFloat(krRes(await get(`${KR}Ticker?pair=${COINS[c].kr}`)).c[0]); if(!(p>0)) throw new Error("bad price"); return p; },
-    volume:async c=>{ const v24=parseFloat(krRes(await get(`${KR}Ticker?pair=${COINS[c].kr}`)).v[1]); const d=krRes(await get(`${KR}OHLC?pair=${COINS[c].kr}&interval=1440`)).slice(-31,-1);
+    candles:async(c,g)=>krRes(await get(`${KR}OHLC?pair=${coinIds(c).kr}&interval=${g/60}`)).map(x=>({t:x[0],open:+x[1],high:+x[2],low:+x[3],close:+x[4],volume:+x[6]})),
+    ticker:async c=>{ const p=parseFloat(krRes(await get(`${KR}Ticker?pair=${coinIds(c).kr}`)).c[0]); if(!(p>0)) throw new Error("bad price"); return p; },
+    volume:async c=>{ const v24=parseFloat(krRes(await get(`${KR}Ticker?pair=${coinIds(c).kr}`)).v[1]); const d=krRes(await get(`${KR}OHLC?pair=${coinIds(c).kr}&interval=1440`)).slice(-31,-1);
       return {v24, avg30:d.reduce((a,x)=>a+(+x[6]),0)/Math.max(1,d.length)}; } };
   async function call(fn,...a){
     if(FORCE_OFF) throw new Error("offline (forced by ?offline)");
-    const order = Date.now()-primaryFail<60000 ? [kraken,coinbase] : [coinbase,kraken]; let err;
+    const order = tokSrc(a[0])==="kr" ? [kraken] : Date.now()-primaryFail<60000 ? [kraken,coinbase] : [coinbase,kraken]; let err;
     for(const s of order){ try{ const v=await s[fn](...a); source=s.name; lastOk=Date.now(); offline=false; paint(); return v; }
-      catch(e){ if(ctl.signal.aborted) throw e; err=e; if(s===coinbase) primaryFail=Date.now(); } }
+      catch(e){ if(ctl.signal.aborted) throw e; err=e; if(s===coinbase && order.length>1) primaryFail=Date.now(); } }
     offline=true; paint(); throw err; }
   function paint(){ const c=$("feedChip"); if(!c) return; if($("inFeed").value!=="live"){ c.className="chip feed"; c.textContent="Feed: fictional paths"; return; }
     if(offline){ c.className="chip feed off"; c.textContent="Offline: simulated prices"; return; }
@@ -1041,7 +1128,11 @@ const Feed=(()=>{
     const age=(Date.now()-lastOk)/1000, tm=new Date(lastOk).toLocaleTimeString();
     c.className="chip feed "+(age>30?"stale":"live"); c.textContent=(age>30?"◌ STALE · ":"● LIVE · ")+source+" · updated "+tm; }
   setInterval(paint,5000);
-  return {candles:(c,g)=>call("candles",c,g), ticker:c=>call("ticker",c), volume:c=>call("volume",c), abort(){ ctl.abort(); ctl=new AbortController(); },
+  async function check(sym,pref){ if(FORCE_OFF) return {ok:false,why:"price feeds are offline (?offline)"}; let reached=false;
+    if(pref!=="kr") try{ const r=await fetch(CB+coinIds(sym).cb,{cache:"no-store"}); reached=true; if(r.ok){ const j=await r.json(); if(j&&j.id&&j.status!=="delisted"&&!j.trading_disabled) return {ok:true,src:"cb",name:"Coinbase Exchange"}; } }catch(e){}
+    try{ const r=await fetch(KR+"Ticker?pair="+coinIds(sym).kr,{cache:"no-store"}); reached=true; const j=await r.json(); if(!(j.error&&j.error.length)&&j.result&&Object.keys(j.result).length){ const k=Object.values(j.result)[0]; if(k&&parseFloat(k.c[0])>0) return {ok:true,src:"kr",name:"Kraken"}; } }catch(e){}
+    return {ok:false,why: reached ? "no USD market on Coinbase Exchange or Kraken" : "could not reach the price feeds"}; }
+  return {check, candles:(c,g)=>call("candles",c,g), ticker:c=>call("ticker",c), volume:c=>call("volume",c), abort(){ ctl.abort(); ctl=new AbortController(); },
     get source(){return source;}, get offline(){return offline;}, setOffline(v){offline=v; paint();}, paint};
 })();
 async function livePacket(coin){
@@ -1049,15 +1140,15 @@ async function livePacket(coin){
   const hb=h1.slice(-6), mm=m1.slice(-30), prev=hb[hb.length-2].close;
   const iso=t=>new Date(t*1000).toISOString().slice(0,16).replace("T"," ")+"Z";
   const tr=mm.slice(-14).map(b=>b.high-b.low), atr=tr.reduce((a,b)=>a+b,0)/Math.max(1,tr.length);
-  return {_label:`LIVE PUBLIC PRICES - ${COINS[coin].cb} from ${Feed.source}, fetched ${new Date().toLocaleTimeString()}. Six hourly candles + 1-minute candles; 24h volume vs 30-day average. No news or forum data in live mode. Not a prediction.`,
-    market:COINS[coin].cb, name:`${coin} / USD (live public price)`, asset_type:"crypto", as_of:new Date().toISOString(), currency:"USD",
+  return {_label:`LIVE PUBLIC PRICES - ${coinIds(coin).cb} from ${Feed.source}, fetched ${new Date().toLocaleTimeString()}. Six hourly candles + 1-minute candles; 24h volume vs 30-day average. No news or forum data in live mode. Not a prediction.`,
+    market:coinIds(coin).cb, name:`${coin} / USD (live public price)`, asset_type:"crypto", as_of:new Date().toISOString(), currency:"USD",
     price:{last:px, previous_close:prev, change_pct:r2s((px/prev-1)*100)},
     volume:{today:r2s(vol.v24), avg_30d:r2s(vol.avg30)}, avg_daily_dollar_volume_usd:Math.round(vol.v24*px),
     daily_bars:hb.map(b=>({date:iso(b.t),open:b.open,high:b.high,low:b.low,close:b.close,volume:r2s(b.volume)})),
     intraday_bars:mm.map(b=>({time:iso(b.t),open:b.open,high:b.high,low:b.low,close:b.close})),
     headlines:[], forum_posts:[], _live:{coin, atr, source:Feed.source}};
 }
-const fmtPx=v=>v>=1000?v.toFixed(2):v>=1?v.toFixed(3):v.toFixed(5);
+
 function sleepStop(ms){ return new Promise(res=>{ const t0=Date.now(); const iv=setInterval(()=>{ if(sessionStop||Date.now()-t0>=ms){ clearInterval(iv); res(); } },50); }); }
 let S=null, sessState="idle";
 function sessLabel(){ const live=$("inFeed").value==="live";
@@ -1077,15 +1168,16 @@ function setSessState(st){ sessState=st;
   ["inFeed","inSeed"].forEach(id=>$(id).disabled = run || !!S);
 }
 function newSession(){
-  const start=Math.max(100,parseFloat($("inBal").value)||10000), seed=parseInt($("inSeed").value)||7, rng=mulberry32(seed), lim=Math.max(0,parseInt($("inRounds").value)||0);
+  const rawBal=parseFloat($("inBal").value), start=isFinite(rawBal)?rawBal:NaN, seed=parseInt($("inSeed").value)||7, rng=mulberry32(seed), lim=Math.max(0,parseInt($("inRounds").value)||0);
   S={start,bal:start,seed,rng,deck:makeDeck(rng,lim||8),round:0,rows:[],trades:0,wins:0,feed:$("inFeed").value};
-  eqPts=[start]; balShown=start; $("balNum").textContent=money(start); $("ledger").innerHTML=""; $("sumLine").textContent=""; $("kPnl").textContent="$0.00"; $("kPnl").className="flat"; $("kWins").textContent="0 · 0";
+  eqPts=[balOk(start)?start:0]; balShown=balOk(start)?start:0; $("balNum").textContent=balOk(start)?money(start):"unavailable"; renderRisk(); $("ledger").innerHTML=""; $("sumLine").textContent=""; $("kPnl").textContent="$0.00"; $("kPnl").className="flat"; $("kWins").textContent="0 · 0";
 }
 function eqN(){ const lim=Math.max(0,parseInt($("inRounds").value)||0); return lim||Math.max(10,eqPts.length); }
-function sumLine(frozenAt){ if(!S) return; const c={BUY:0,WAIT:0,SKIP:0}; S.rows.forEach(x=>c[x.call.startsWith("BUY")?"BUY":x.call]++); const tot=S.bal-S.start;
-  $("sumLine").innerHTML=`${S.rows.length} rounds · ${c.BUY} BUY · ${c.WAIT} WAIT · ${c.SKIP} SKIP · win rate ${S.trades?Math.round(S.wins/S.trades*100)+"% ("+S.wins+"/"+S.trades+")":"—"} · total <b class="${cls(tot)}">${sgn(tot)} (${(tot/S.start*100).toFixed(3)}%)</b> · max DD ${maxDrawdown(eqPts).toFixed(3)}%`
+function sumLine(frozenAt){ if(!S) return; const c={BUY:0,WAIT:0,SKIP:0}; S.rows.forEach(x=>c[x.call.startsWith("BUY")?"BUY":x.call]++); const tot=balOk(S.start)&&isFinite(S.bal)?S.bal-S.start:0;
+  $("sumLine").innerHTML=`${S.rows.length} rounds · ${c.BUY} BUY · ${c.WAIT} WAIT · ${c.SKIP} SKIP · win rate ${S.trades?Math.round(S.wins/S.trades*100)+"% ("+S.wins+"/"+S.trades+")":"—"} · total <b class="${cls(tot)}">${balOk(S.start)?sgn(tot)+" ("+(tot/S.start*100).toFixed(3)+"%)":"—"}</b> · max DD ${maxDrawdown(eqPts).toFixed(3)}%`
     + (frozenAt?` · <span class="frozen">STOPPED — figures frozen at ${frozenAt}</span>`:""); }
-async function playLive(t,coin,size,r,lim,callCls,call,pkt){
+function setCoinLine(txt){ RISK_KEYS.forEach(k=>{ const e=$("cl-"+k); if(e) e.textContent=txt; }); }
+async function playLive(t,coin,size,r,lim,callCls,call,pkt,rinfo){
   // t.entry/stop/target set; poll live price every 3 s for the window; close at SL/TP or at the last live price
   const win=Math.max(10,parseFloat($("inWin").value)||60), POLL=3000, steps=Math.ceil(win*1000/POLL); t.maxSteps=steps; t.path=[t.entry];
   let exit=null, how="window ended · closed at last live price";
@@ -1097,7 +1189,7 @@ async function playLive(t,coin,size,r,lim,callCls,call,pkt){
     if(!REDUCED){ const t1=performance.now(); while(true){ const f=Math.min(1,(performance.now()-t1)/400); drawPos(t,t.path.length-2,null,f,1); if(f>=1||sessionStop) break; await frame(); } }
     drawPos(t,t.path.length-1);
     const open=r2s(size*(px/t.entry-1)); $("kOpen").textContent=sgn(open); $("kOpen").className=cls(open);
-    $("pnlTape").innerHTML=`ROUND ${r}${lim?"/"+lim:""} · ${esc(pkt.market)} <span class="stamp ${callCls}">${esc(call)}</span> · size ${money(size)} · entry ${fmtPx(t.entry)} · live ${fmtPx(px)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · ${k*3}s/${steps*3}s`;
+    $("pnlTape").innerHTML=`ROUND ${r}${lim?"/"+lim:""} · ${esc(pkt.market)} <span class="stamp ${callCls}">${esc(call)}</span> · ${rinfo||"size "+money(size)} · entry ${fmtPx(t.entry)} · stop ${fmtPx(t.stop)} · live ${fmtPx(px)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · ${k*3}s/${steps*3}s`;
     if(px<=t.stop){ exit=px; how="stop hit (live poll)"; break; } if(px>=t.target){ exit=px; how="target hit (live poll)"; break; }
   }
   if(sessionStop){ exit=t.path[t.path.length-1]; how="stopped by user · marked to last live price"; }
@@ -1109,47 +1201,60 @@ async function runLoop(){
   const savedBal=BOOT.static.balance; SPEED = FAST?0.05:0.12;
   const lim=Math.max(0,parseInt($("inRounds").value)||0);
   while(!sessionStop && (!lim || S.round<lim)){
-    const r=S.round+1, coins=["BTC","ETH","SOL"].filter(c=>$("coin"+c).checked), coin=(coins.length?coins:["BTC"])[(r-1)%Math.max(1,coins.length)];
+    const r=S.round+1, coins=selTokens(), coin=coins[(r-1)%coins.length], roundPaused=new Set(PAUSED), rk=effRisk(roundPaused);
     while(S.deck.length<r) S.deck.push(...makeDeck(S.rng,8));
     let pkt, live=false;
     $("kRound").textContent=`${r}${lim?" / "+lim:" · ∞"}`;
+    if(!balOk(S.bal)){ // guard: balance unavailable / NaN / <= 0 -> trading disabled, call is SKIP
+      renderRisk(); resetFloor(); setCoinLine("Trading disabled · balance unavailable");
+      BOTS.forEach(b=>setState(b.key,"no","DISABLED")); drawPos(null,0,"TRADING DISABLED · BALANCE UNAVAILABLE");
+      const res="Balance unavailable · trading disabled"; S.round=r;
+      S.rows.push({r,tk:coin+"-USD",call:"SKIP",feed:"—",riskPct:null,riskUsd:null,size:0,entry:null,exit:null,result:res,pnl:0,bal:S.bal});
+      const tr=document.createElement("tr"); tr.className="new"; tr.innerHTML=`<td>${r}</td><td>${esc(coin)}-USD</td><td class="res-SKIP">SKIP</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>${res}</td><td class="flat">$0.00</td><td>${isFinite(S.bal)?money(S.bal):"unavailable"}</td>`;
+      $("ledger").appendChild(tr); $("pnlTape").innerHTML=`ROUND ${r} · <span class="stamp res-SKIP">SKIP</span> · ${res}`; sumLine(); eqPts.push(isFinite(S.bal)?S.bal:0);
+      if(sessionStop) break; await sleepStop(1500); continue; }
     if(S.feed==="live"){
       $("pnlTape").textContent=`ROUND ${r} · ${coin} · fetching live candles…`;
       try{ pkt=await livePacket(coin); live=true; }
       catch(e){ if(sessionStop) break; pkt=genPacket(S.rng,r,S.deck[r-1],S.seed); pkt._label="OFFLINE: SIMULATED PRICES (live feed unavailable) - "+pkt._label; }
     } else pkt=genPacket(S.rng,r,S.deck[r-1],S.seed);
     sessLabel();
-    currentPacket=pkt; resetFloor(); markPaused();
+    currentPacket=pkt; resetFloor(); markPaused(); setCoinLine(`Analyzing: ${live?coin+"/USD · live":pkt.market+" · "+(S.feed==="live"?"offline simulated":"fictional")}`);
     $("pnlTape").textContent=`ROUND ${r} · ${pkt.market}${live?" (live)":" (simulated)"} · bots researching…`;
     BOOT.static.balance=S.bal;
     const q=[]; let fin=false; lastReport=null;
     const pump=(async()=>{ while((!fin||q.length) && !sessionStop){ if(q.length) await onEvent(q.shift()); else await sleep(20);} })();
-    await Engine.run(pkt,ev=>q.push(ev),{paused:new Set(PAUSED)}); fin=true; await pump;
+    await Engine.run(pkt,ev=>q.push(ev),{paused:roundPaused}); fin=true; await pump;
     if(sessionStop || !lastReport) break;                    // round discarded: nothing was booked
     const rep=lastReport, call=rep.final_result, risk=rep.outputs.risk;
-    let size=0,pnl=0,entry=null,exit=null,result = rep.stopped_at==="risk_paused"?"Risk paused · no trade":rep.stopped_at==="decision_paused"?"Decision paused · no trade":"no trade · $0";
+    let size=0,pnl=0,entry=null,exit=null,riskPct=null,riskUsd=null,result = rep.stopped_at==="risk_paused"?"Risk paused · no trade":rep.stopped_at==="decision_paused"?"Decision paused · no trade":"no trade · $0";
     const callCls=call.startsWith("BUY")?"res-BUY":"res-"+call;
     if(call===BUY && risk && risk.status==="approve" && !rep.stopped_at){
-      size=tradeSize(S.bal,risk);
-      if(size>0 && live){
+      riskPct=rk.pct; const cap=capValue(S.bal);
+      if(live){
         let e0; try{ e0=await Feed.ticker(pkt._live.coin); }catch(err){ e0=pkt.price.last; }
-        const stopRisk=e0*Math.min(.5,risk.maximum_simulated_loss/size), dist=Math.min(Math.max(1.5*pkt._live.atr,e0*0.0006),stopRisk);
+        const dist=Math.min(Math.max(1.5*pkt._live.atr,e0*0.0006),e0*0.5);
+        const sz=riskSize(S.bal,rk.pct,e0,e0-dist,cap); size=sz.size; riskUsd=sz.riskUsd;
+        const rinfo=`risk ${fmtPct(rk.pct)} · ${money(riskUsd)} · size ${money(size)}${sz.capped?" (capped)":""}`;
         const t={entry:e0,stop:e0-dist,target:e0+2*dist,path:[e0],maxSteps:20};
-        const o=await playLive(t,pkt._live.coin,size,r,lim,callCls,call,pkt); entry=e0; exit=o.exit; pnl=o.pnl; result=o.how;
-      } else if(size>0){
-        const sup=(rep.outputs.charts.support_levels||[])[0];
-        const t=planTrade(S.rng,pkt.price.last,size,risk.maximum_simulated_loss,sup); entry=t.entry;
+        if(size>0){ const o=await playLive(t,pkt._live.coin,size,r,lim,callCls,call,pkt,rinfo); entry=e0; exit=o.exit; pnl=o.pnl; result=o.how+(sz.capped?" · size capped":""); }
+      } else {
+        const sup=(rep.outputs.charts.support_levels||[])[0], e0=pkt.price.last, stop=planStop(e0,sup);
+        const sz=riskSize(S.bal,rk.pct,e0,stop,cap); size=sz.size; riskUsd=sz.riskUsd;
+      }
+      if(size>0 && !live){
+        const t=planTrade(S.rng,pkt.price.last,size,planStop(pkt.price.last,(rep.outputs.charts.support_levels||[])[0])); entry=t.entry;
         await slideLevels(t); let k=0;
         for(k=0;k<t.path.length;k++){
           if(sessionStop) break;
           if(k>0 && !REDUCED){ const t1=performance.now(), d=70*(FAST?0.3:1); while(true){ const f=Math.min(1,(performance.now()-t1)/d); drawPos(t,k-1,null,f,1); if(f>=1) break; await frame(); } }
           drawPos(t,k); const open=r2s(size*(t.path[k]/t.entry-1));
           $("kOpen").textContent=sgn(open); $("kOpen").className=cls(open);
-          $("pnlTape").innerHTML=`ROUND ${r} · ${esc(pkt.market)} <span class="stamp ${callCls}">${esc(call)}</span> · size ${money(size)} · entry ${t.entry.toFixed(2)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · session <b class="${cls(S.bal-S.start)}">${sgn(S.bal-S.start)}</b>`;
+          $("pnlTape").innerHTML=`ROUND ${r} · ${esc(pkt.market)} <span class="stamp ${callCls}">${esc(call)}</span> · risk ${fmtPct(riskPct)} · ${money(riskUsd)} · size ${money(size)} · entry ${fmtPx(t.entry)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · session <b class="${cls(S.bal-S.start)}">${sgn(S.bal-S.start)}</b>`;
           if(REDUCED) await sleep(70*(FAST?0.3:1)); }
         if(sessionStop){ exit=t.path[Math.max(0,Math.min(k,t.path.length-1))]; pnl=r2s(size*(exit/t.entry-1)); result="stopped by user · marked to last price"; }
-        else { exit=t.exit; pnl=t.pnl; result = t.how==="target"?"target hit":t.how==="stop"?"stopped (max loss)":"timed out"; }
-      } else result="size $0 · no trade";
+        else { exit=t.exit; pnl=t.pnl; result = t.how==="target"?"target hit":t.how==="stop"?"stop hit (≈ risk $)":"timed out"; }
+      } else if(!(size>0)) result="size $0 · no trade";
       if(size>0){ S.trades++; if(pnl>0) S.wins++; }
     } else {
       drawPos(null,0,`NO POSITION · ${rep.stopped_at==="risk_paused"?"RISK PAUSED · SKIP":rep.stopped_at==="decision_paused"?"DECISION PAUSED · SKIP":call==="SKIP"&&rep.stopped_at==="risk"?"RISK REJECTED · SKIP":call} · $0 CHANGE`);
@@ -1158,12 +1263,12 @@ async function runLoop(){
     $("kOpen").textContent="none"; $("kOpen").className="flat";
     S.round=r; S.bal=r2s(S.bal+pnl); eqPts.push(S.bal);
     const feedTag = live ? `live · ${pkt._live.source}` : (S.feed==="live" ? "offline · simulated" : "fictional");
-    S.rows.push({r,tk:pkt.market,call,feed:feedTag,size,entry,exit,result,pnl,bal:S.bal});
+    S.rows.push({r,tk:pkt.market,call,feed:feedTag,riskPct:size?riskPct:null,riskUsd:size?riskUsd:null,size,entry,exit,result,pnl,bal:S.bal});
     const tr=document.createElement("tr"); tr.className="new";
-    tr.innerHTML=`<td>${r}</td><td>${esc(pkt.market)}</td><td class="${callCls}">${esc(call)}</td><td>${esc(feedTag)}</td><td>${size?money(size):"—"}</td><td>${entry!=null?fmtPx(entry):"—"}</td><td>${exit!=null?fmtPx(exit):"—"}</td><td>${esc(result)}</td><td class="${cls(pnl)}">${sgn(pnl)}</td><td>${money(S.bal)}</td>`;
+    tr.innerHTML=`<td>${r}</td><td>${esc(pkt.market)}</td><td class="${callCls}">${esc(call)}</td><td>${esc(feedTag)}</td><td>${size?fmtPct(riskPct):"—"}</td><td>${size?money(riskUsd):"—"}</td><td>${size?money(size):"—"}</td><td>${entry!=null?fmtPx(entry):"—"}</td><td>${exit!=null?fmtPx(exit):"—"}</td><td>${esc(result)}</td><td class="${cls(pnl)}">${sgn(pnl)}</td><td>${money(S.bal)}</td>`;
     $("ledger").appendChild(tr); tr.scrollIntoView({block:"nearest"});
     $("kPnl").textContent=sgn(S.bal-S.start); $("kPnl").className=cls(S.bal-S.start); $("kWins").textContent=`${S.trades} · ${S.wins}`;
-    sumLine();
+    sumLine(); renderRisk();
     await Promise.all([animBalance(S.bal),animEquity(eqN())]);
     if(sessionStop) break;
     await sleepStop(live&&!size ? 3000 : 300*SPEED);
@@ -1171,12 +1276,12 @@ async function runLoop(){
   BOOT.static.balance=savedBal; SPEED=BASE_SPEED; running=false; FX.setActive(null);
   BOTS.forEach(b=>{ const el=$("bot-"+b.key); if(el.classList.contains("work")) setState(b.key,"no","STOPPED"); });
   if(sessionStop){ $("balNum").textContent=money(S.bal); balShown=S.bal; drawEquity(eqN()); sumLine(new Date().toLocaleTimeString()); setSessState("stopped"); }
-  else { setSessState("complete"); sumLine(); if(S.rows.length) await showSummary(S.start,S.bal,S.rows,S.trades,S.wins, S.feed==="live" ? "live public prices from "+(Feed.source||"Coinbase Exchange") : "seed "+S.seed); }
+  else { setSessState("complete"); sumLine(); if(S.rows.length && balOk(S.start)) await showSummary(S.start,S.bal,S.rows,S.trades,S.wins, S.feed==="live" ? "live public prices from "+(Feed.source||"Coinbase Exchange") : "seed "+S.seed); }
   loadHistory();
 }
 function stopSession(){ if(sessState!=="running") return; sessionStop=true; Feed.abort(); setSessState("stopping"); }
 function resetSession(){ if(running) return; S=null; eqPts=[]; $("ledger").innerHTML=""; $("sumLine").textContent=""; $("kRound").textContent="0 / 0"; $("kPnl").textContent="$0.00"; $("kPnl").className="flat"; $("kWins").textContent="0 · 0";
-  $("balNum").textContent=money(parseFloat($("inBal").value)||10000); balShown=0; drawEquity(1); drawPos(null,0,"PRESS RUN DEMO SESSION"); $("pnlTape").textContent="Press Run demo session."; setSessState("idle"); sessLabel(); resetFloor(); markPaused(); }
+  $("balNum").textContent=balOk(parseFloat($("inBal").value))?money(parseFloat($("inBal").value)):"unavailable"; balShown=0; drawEquity(1); drawPos(null,0,"PRESS RUN DEMO SESSION"); $("pnlTape").textContent="Press Run demo session."; setSessState("idle"); sessLabel(); resetFloor(); markPaused(); renderRisk(); setCoinLine("Analyzing: —"); }
 window.G6_SESSION=()=>S && {start:S.start,bal:S.bal,round:S.round,rows:S.rows.map(x=>({...x})),trades:S.trades,wins:S.wins,state:sessState,eq:eqPts.slice()};
 function maxDrawdown(pts){ let peak=pts[0], dd=0; for(const v of pts){ peak=Math.max(peak,v); dd=Math.max(dd,(peak-v)/peak); } return dd*100; }
 async function showSummary(start,end,rows,trades,wins,seed){
@@ -1206,7 +1311,11 @@ $("stopSess").onclick=stopSession;
 $("resetSess").onclick=resetSession;
 $("sumBtn").onclick=()=>{ if(S&&S.rows.length) showSummary(S.start,S.bal,S.rows,S.trades,S.wins,S.feed==="live"?"live public prices from "+(Feed.source||"Coinbase Exchange"):"seed "+S.seed); };
 $("inFeed").onchange=()=>{ if($("inFeed").value==="sim" && $("inRounds").value==="0") $("inRounds").value="8"; sessLabel(); };
-$("inMode").onchange=()=>{ const m=$("inMode").value; $("inSize").disabled=m==="max"; $("inSize").value=m==="pct"?"1.5":m==="fixed"?"150":$("inSize").value; };
+$("inMode").onchange=()=>{ const m=$("inMode").value; $("inSize").disabled=m==="none"; $("inSize").value=m==="pct"?"50":m==="fixed"?"5000":$("inSize").value; };
+$("inBal").addEventListener("input",()=>{ if(!S) renderRisk(); });
+$("tokAddBtn").onclick=async()=>{ const b=$("tokAddBtn"); b.disabled=true; if(await addToken($("tokIn").value)) $("tokIn").value=""; b.disabled=false; };
+$("tokIn").onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); $("tokAddBtn").click(); } };
+$("tokMajors").onclick=()=>addMajors();
 function setMode(sess){ if(running) return; document.body.classList.toggle("session-mode",sess); $("modeSession").classList.toggle("on",sess); $("modeSingle").classList.toggle("on",!sess);
   if(sess){ if(!S){ $("balNum").textContent=money(parseFloat($("inBal").value)||10000); drawPos(null,0,"PRESS RUN DEMO SESSION"); drawEquity(1); } sessLabel(); setSessState(sessState); }
   else if(markets.length){ selectMarket(current); } }
@@ -1245,8 +1354,59 @@ const FX=(()=>{
     g.fillStyle="rgba(26,18,6,.85)"; g.fillRect(-k*.35,-k*.75,k*.28,k*1.5); g.fillRect(k*.25,-k*.7,k*.25,k*1.4);
     g.restore(); }
   function dot(x,y,s,c,a){ g.globalAlpha=a*.28; g.fillStyle=c; g.beginPath(); g.arc(x,y,s*3.2,0,6.283); g.fill(); g.globalAlpha=a; g.beginPath(); g.arc(x,y,s,0,6.283); g.fill(); }
+
+  // ---- honey drips (background canvas, same animation loop, ~30fps) ----
+  const hc=document.getElementById("honey"), hg=hc.getContext("2d"), gp=document.querySelector(".gridplane");
+  let HW=0,HH=0,hdpr=1,hTop=0,hLast=0,hT=0; const drips=[],drops=[],pools=[]; const HMAX=MOBILE?4:12;
+  const HONEY="#ffaa23", GLOSS="#fff0c8", DEEP="#e88a12";
+  function hResize(){ hdpr=MOBILE?1:Math.min(1.5,window.devicePixelRatio||1); HW=innerWidth; HH=innerHeight; hc.width=HW*hdpr; hc.height=HH*hdpr;
+    const hd=document.querySelector("header"); hTop=hd?Math.round(hd.getBoundingClientRect().height):0; if(REDUCED) honeyStatic(); }
+  function gridY(){ const m=getComputedStyle(gp).transform; if(!m||m==="none") return 0; const v=m.slice(m.indexOf("(")+1,-1).split(","); return parseFloat(v[v.length===6?5:13])||0; }
+  function anchor(d){ if(d.top) return {x:d.x,y:hTop}; return {x:-92+56*d.k, y:64.7+97*d.j-120+gridY()}; }
+  function spawn(pre){ const top=Math.random()<.5, r=4+Math.random()*4;
+    const d={top,r,w:r*1.25,L:0,Lmax:40+Math.random()*80,grow:3+Math.random()*4,st:"ooze",a:1,ph:Math.random()*6.283};
+    const mainEl=document.querySelector("main"), mr=mainEl?mainEl.getBoundingClientRect():{left:0,right:HW}, side=mr.left>50&&Math.random()<.6;
+    const rx=side ? (Math.random()<.5 ? 10+Math.random()*(mr.left-20) : mr.right+10+Math.random()*(HW-mr.right-20)) : 20+Math.random()*(HW-40);
+    if(top) d.x=rx; else { d.k=Math.round((rx+92)/56); d.j=Math.floor((hTop+160+Math.random()*Math.max(60,HH*.6-hTop))/97); }
+    if(pre) d.L=Math.random()*d.Lmax*.8; drips.push(d); }
+  function strand(x,y0,L,r,w){ const re=Math.min(r,L*.5+1), by=y0+Math.max(L-re,re*.4), nk=re*.55;
+    hg.beginPath(); hg.moveTo(x-w*1.7,y0); hg.bezierCurveTo(x-w*.55,y0,x-nk,by-re*1.5,x-re,by); hg.arc(x,by,re,Math.PI,0,true);
+    hg.bezierCurveTo(x+nk,by-re*1.5,x+w*.55,y0,x+w*1.7,y0); hg.closePath(); hg.fill(); return {by,re}; }
+  function tear(x,y,r,st){ hg.beginPath(); hg.moveTo(x,y-r*st*1.6); hg.bezierCurveTo(x+r*1.1,y-r*st*.4,x+r,y+r,x,y+r); hg.bezierCurveTo(x-r,y+r,x-r*1.1,y-r*st*.4,x,y-r*st*1.6); hg.fill(); }
+  function gloss(x,y,r){ hg.fillStyle=GLOSS; hg.beginPath(); hg.ellipse(x-r*.35,y-r*.3,r*.24,r*.42,-.35,0,6.283); hg.fill(); }
+  function rim(t){ hg.fillStyle=DEEP; hg.beginPath(); hg.moveTo(0,hTop-2);
+    for(let x=0;x<=HW+20;x+=20){ let y=hTop+3+2.5*Math.sin(x/110+t*.25)+1.5*Math.sin(x/37-t*.4);
+      for(const d of drips) if(d.top){ const dx=x-d.x; y+=Math.min(9,d.L*.18)*Math.exp(-dx*dx/(2*(d.w*3)*(d.w*3))); }
+      hg.lineTo(x,y); }
+    hg.lineTo(HW,hTop-2); hg.closePath(); hg.fill(); }
+  function honeyDraw(t){ hg.setTransform(hdpr,0,0,hdpr,0,0); hg.clearRect(0,0,HW,HH); rim(t);
+    for(const d of drips){ const p=anchor(d); if(p.y<hTop-10||p.y>HH) continue; hg.globalAlpha=d.a; hg.fillStyle=HONEY; const b=strand(p.x,p.y,d.L,d.r,d.w); if(d.L>d.r) gloss(p.x,b.by,b.re); hg.globalAlpha=1; }
+    for(const q of drops){ const st=1+q.v/240; hg.fillStyle=HONEY; tear(q.x,q.y,q.r,st); gloss(q.x,q.y,q.r); }
+    for(const o of pools){ hg.globalAlpha=Math.max(0,o.a); hg.fillStyle=DEEP; hg.beginPath(); hg.ellipse(o.x,o.y,o.w,o.h,0,0,6.283); hg.fill();
+      hg.fillStyle=GLOSS; hg.globalAlpha=Math.max(0,o.a)*.6; hg.beginPath(); hg.ellipse(o.x-o.w*.3,o.y-o.h*.3,o.w*.25,o.h*.25,0,0,6.283); hg.fill(); hg.globalAlpha=1; } }
+  function honeyStep(now){ if(now-hLast<33) return; const dt=Math.min(.1,(now-hLast)/1000); hLast=now; hT+=dt;
+    if(!drips.length) for(let i=0;i<Math.ceil(HMAX*.6);i++) spawn(true);
+    if(drips.length<HMAX && Math.random()<dt*.35) spawn(false);
+    for(let i=drips.length-1;i>=0;i--){ const d=drips[i];
+      if(d.st==="ooze"){ d.grow+=dt*(.6+.5*Math.sin(hT+d.ph)); d.L+=d.grow*dt*(.7+.3*Math.sin(hT*1.3+d.ph));
+        if(d.L>=d.Lmax){ const p=anchor(d); drops.push({x:p.x,y:p.y+d.L-d.r,v:12,r:d.r*.95}); d.st="snap"; } }
+      else { d.L-=Math.max(4,d.L*1.6)*dt; d.a-=dt*.35; if(d.a<=0||d.L<=0) drips.splice(i,1); } }
+    for(let i=drops.length-1;i>=0;i--){ const q=drops[i]; q.v=Math.min(230,q.v+120*dt); q.y+=q.v*dt;
+      if(q.y>HH-14-Math.random()*6){ pools.push({x:q.x,y:HH-8,w:q.r*1.6,h:q.r*.55,a:1}); drops.splice(i,1); } }
+    for(let i=pools.length-1;i>=0;i--){ const o=pools[i]; o.w+=dt*7*o.a; o.h+=dt*.6*o.a; o.a-=dt*.12; if(o.a<=0) pools.splice(i,1); }
+    honeyDraw(hT); }
+  function honeyStatic(){ // reduced motion: one still silhouette, no animation
+    drips.length=drops.length=pools.length=0; const n=MOBILE?3:6;
+    for(let i=0;i<n;i++){ const r=3.5+(i%3); drips.push({top:i%2===0,x:(i+.5)*HW/n,k:Math.floor(((i+.5)*HW/n+92)/56),j:Math.floor((hTop+200+(i*53)%240)/97),r,w:r*1.25,L:18+(i*17)%40,a:1}); }
+    pools.push({x:HW*.3,y:HH-8,w:22,h:4,a:.8},{x:HW*.72,y:HH-8,w:16,h:3,a:.7}); honeyDraw(0); }
+  function honeyClear(){ hg.setTransform(1,0,0,1,0,0); hg.clearRect(0,0,hc.width,hc.height); drips.length=drops.length=pools.length=0; }
+  let fxClean=true;
   function loop(now){
     const dt=Math.min(.05,(now-last)/1000); last=now;
+    if(!REDUCED) honeyStep(now);
+    const busy=active||links.length||stream.length||sparks.length||hexes.length;
+    if(!busy){ if(!fxClean){ g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); fxClean=true; } orb.length=0; raf=REDUCED?0:requestAnimationFrame(loop); return; }
+    fxClean=false;
     g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); g.globalCompositeOperation="lighter";
     // glowing connector lines into Risk / Decision
     for(const [f,t] of links){ const a=center(f), b=center(t); if(!a||!b) continue;
@@ -1266,13 +1426,15 @@ const FX=(()=>{
     for(let i=sparks.length-1;i>=0;i--){ const p=sparks[i]; p.life-=dt*1.1; if(p.life<=0){ sparks.splice(i,1); continue; } p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=.96; p.vy=p.vy*.96+30*dt; if(p.s>2.4){ g.globalAlpha=Math.min(1,p.life); g.strokeStyle=p.c; g.lineWidth=1.4; hexPath(p.x,p.y,p.s*1.6,p.life*3); g.stroke(); } else dot(p.x,p.y,p.s,p.c,Math.min(1,p.life)); }
     for(let i=hexes.length-1;i>=0;i--){ const h=hexes[i]; h.life-=dt; if(h.life<=0){ hexes.splice(i,1); continue; } h.r+=h.v*dt; h.v*=.97; h.rot+=dt*.6; g.globalAlpha=Math.min(1,h.life)*.85; g.strokeStyle=h.c; g.lineWidth=h.w; hexPath(h.x,h.y,h.r,h.rot); g.stroke(); g.globalAlpha*=.25; g.lineWidth=h.w*5; g.stroke(); }
     g.globalCompositeOperation="source-over"; g.globalAlpha=1;
-    if(active||links.length||stream.length||sparks.length||hexes.length){ raf=requestAnimationFrame(loop); } else { raf=0; g.clearRect(0,0,W,H); }
+    raf=REDUCED?0:requestAnimationFrame(loop); if(!(active||links.length||stream.length||sparks.length||hexes.length)){ g.clearRect(0,0,W,H); fxClean=true; }
   }
   function stop(){ cancelAnimationFrame(raf); raf=0; orb.length=stream.length=sparks.length=hexes.length=0; g.clearRect(0,0,W,H); }
-  resize();
-  return {resize,setActive,handoff,burst,explode,ring,stop,get active(){return active;}};
+  function motion(reduced){ if(reduced){ stop(); honeyStatic(); } else { honeyClear(); hLast=performance.now(); kick(); } }
+  window.G6_HONEY=()=>({drips:drips.length,drops:drops.length,pools:pools.length,max:HMAX,looping:!!raf});
+  resize(); hResize();
+  return {resize(){ resize(); hResize(); },setActive,handoff,burst,explode,ring,stop,motion,get active(){return active;}};
 })();
-function applyMotion(reduced){ REDUCED=reduced; document.body.classList.toggle("reduced",reduced); $("motionBtn").textContent="Motion: "+(reduced?"reduced":"full"); if(reduced) FX.stop(); LS.setItem("g6_motion",reduced?"reduced":"full"); }
+function applyMotion(reduced){ REDUCED=reduced; document.body.classList.toggle("reduced",reduced); $("motionBtn").textContent="Motion: "+(reduced?"reduced":"full"); FX.motion(reduced); LS.setItem("g6_motion",reduced?"reduced":"full"); }
 (()=>{ const mq=matchMedia("(prefers-reduced-motion: reduce)"), saved=LS.getItem("g6_motion");
   applyMotion(saved? saved==="reduced" : mq.matches);
   mq.addEventListener && mq.addEventListener("change",e=>{ if(!LS.getItem("g6_motion_user")) applyMotion(e.matches); });
@@ -1290,7 +1452,8 @@ $("resetBtn").onclick=()=>{ if(!running) resetFloor(); };
 window.addEventListener("resize",()=>{ if(!running) drawChart(currentPacket,chartOut,chartOut?3:0); FX.resize(); });
 
 (async()=>{
-  buildTape(); buildFloor(); wireToggles(); markPaused(); setRunChip("idle");
+  if(/\/terminal\/?$/.test(location.pathname.replace(/index\.html$/,""))) $("homeLink").hidden=false;
+  buildTape(); buildFloor(); wireToggles(); wireRisk(); renderTok(); markPaused(); setRunChip("idle");
   $("modeChip").textContent = BOOT.mode==="static" ? "Mock bots · in-browser" : (BOOT.provider==="GROK" ? "Grok · "+BOOT.model : "Local server · mock");
   if(BOOT.mode==="static") markets=BOOT.static.markets.map(m=>({file:m.file,packet:m.packet}));
   else markets=(await (await fetch("api/markets")).json()).map(m=>({file:m.file,label:m.label,market:m.market,packet:null}));

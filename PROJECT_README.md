@@ -1,6 +1,6 @@
 # Alpha Hive: Six-Bot AI Trading Team (Grok) — Simulation Only
 
-**Live demo:** https://yogibear1323.github.io/alpha-hive/ · source: https://github.com/yogibear1323/alpha-hive
+**Live site:** https://yogibear1323.github.io/alpha-hive/ (landing page) · **terminal:** https://yogibear1323.github.io/alpha-hive/terminal/ · source: https://github.com/yogibear1323/alpha-hive
 
 > **Educational simulation only. Not financial advice.** This project cannot predict markets,
 > guarantee profits, verify every online claim, or replace professional advice. It contains **no
@@ -97,7 +97,9 @@ countdown, an amber glitch and a hexagon burst. Each panel has an expandable JSO
 history lists past reports you can click to reopen. It uses the same `agents/` code as `run_demo.py`
 (mock unless you switch to Grok). It only listens on your own computer. Stop it with Ctrl+C. Use
 `python web/app.py --port 9000` if 8642 is busy. The **Motion** button in the header switches to
-reduced motion, and the page starts that way when your device asks for less motion.
+reduced motion, and the page starts that way when your device asks for less motion. Honey slowly drips
+down the hex-grid background, behind every panel. It shows as a still silhouette in reduced motion,
+and phones get fewer drips.
 
 **Pausing bots.** Every bot panel has an **ON/OFF** switch. A change takes effect on the next round, even
 while a session is running:
@@ -106,36 +108,60 @@ while a session is running:
 - Pausing Risk blocks all trades: every call becomes `SKIP` with the reason "Risk paused".
 - Pausing Decision means no new trades.
 
+**Per-bot risk.** Each bot panel also has a risk setting: one-tap **1%** or **2%**, or a custom value
+from **0.1% to 10%** (up to 2 decimals). Blank, 0, negative, non-numeric or over-10% entries are refused
+with an inline message, and the last valid value is kept. Settings are saved in your browser and apply
+from the next round. Each panel shows its % and the dollars it stands for, taken from the **current**
+virtual balance (for example `1% · $99.98`).
+- Effective risk per trade = the average of the *active* Scout, News, Sentiment, Charts and Decision
+  settings, never above the Risk bot's % (the ceiling, which can't be bypassed).
+- Risk $ = current balance × effective risk.
+- Position size = risk $ ÷ (stop distance ÷ entry), capped at the balance and at the optional
+  **Max position cap**. A stopped-out trade therefore loses about the risk $.
+- In demo sessions this replaces the fixed size cap from the risk-rules file. The Risk gate still
+  decides approve / reduce / reject, and only an approved BUY trades.
+- If the balance is unavailable, NaN or ≤ 0, trading is disabled. Every call becomes `SKIP`
+  ("Balance unavailable · trading disabled"), and the header and panels say so.
+
 **Demo session (virtual balance, live public prices).** Switch Mission control to **Demo session**.
 
 Settings:
 - A starting virtual balance (default $10,000).
-- An optional trade size: the most Risk allows, a fixed $ amount, or a % of the balance.
-- The coins to cycle through: BTC, ETH, SOL.
+- An optional **Max position cap**: a fixed $ amount, or a % of the balance.
+- **Tokens:** the chips start with BTC, ETH and SOL selected, plus XRP, XLM, DOGE, ADA, AVAX and LINK.
+  - Tap a chip to include it, or × to remove it.
+  - Type any symbol in **Add token** to add it. It is accepted only if it has a USD market on Coinbase
+    Exchange (`BASE-USD`) or, failing that, Kraken.
+  - **Add all majors** adds 20 large coins. They are CoinGecko's top 30 by market cap on 2026-11-25,
+    with stablecoins and a gold-backed token left out, and each was checked for a USD market:
+    BTC ETH BNB XRP SOL TRX HYPE ZEC XMR DOGE WBT LINK ADA XLM BCH NEAR LTC CC AVAX UNI.
+    TRX, XMR, WBT and CC price via Kraken. Each is re-checked when you tap, so a delisted coin is skipped.
+  - "Bots trade:" shows the tokens the session cycles through. The list is saved in your browser.
 - Rounds: **0 = run continuously until you press Stop**.
 - A trade window in seconds (default 60).
 
 How a round works:
-- Each round loads **real public candles** for the next coin. These are free endpoints that need no key
-  and no sign-in.
+- Each round loads **real public candles** for the next selected token. These are free endpoints that
+  need no key and no sign-in.
   - **Coinbase Exchange** is the primary feed.
-  - **Kraken** is the automatic fallback.
-- The six bots analyse those candles: 6 hourly bars for trend/levels and the last 30 one-minute bars
-  for the intraday check. News and forum inputs stay empty, so Sentiment is neutral.
-- A `BUY — SIMULATION ONLY` call opens a virtual position. Its size is capped by the Risk bot.
+  - **Kraken** is the automatic fallback, and the only feed for Kraken-only tokens.
+- All six bots analyse those candles: 6 hourly bars for trend/levels and the last 30 one-minute bars for
+  the intraday check. Each panel shows "Analyzing: <coin>/USD".
+  - Price levels keep enough significant digits for sub-$1 coins.
+  - News and forum inputs stay empty, so Sentiment is "unknown".
+- A `BUY — SIMULATION ONLY` call opens a virtual position, sized as above.
   - Entry is a fresh live price.
-  - The stop is about 1.5× the recent one-minute range below entry. It is never wider than the Risk
-    bot's max simulated loss.
+  - The stop is about 1.5× the recent one-minute range below entry.
   - The target is twice the stop distance above entry.
 - Live prices are then polled every 3 seconds for the trade window.
-  - The first poll at or below the stop closes the trade at the stop (a loss).
-  - The first poll at or above the target closes it at the target (a win).
+  - The first poll at or below the stop closes the trade (a loss of about the risk $).
+  - The first poll at or above the target closes it (a win).
   - If neither is hit, the trade closes at the last live price.
 - P&L is `size × (exit ÷ entry − 1)`. WAIT and SKIP rounds change nothing.
 
 What you see:
-- A balance counter, a running P&L line and the coin being traded.
-- A per-round ledger that shows which feed priced each row.
+- A balance counter, the effective risk % and $, a running P&L line and the coin being traded.
+- A per-round ledger with the feed, risk %, risk $, size, entry, exit, result, P&L and balance.
 - An equity curve and a summary.
 - A header chip showing the feed and when it last updated (LIVE / STALE).
 - A Running/Stopped indicator.

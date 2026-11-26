@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Alpha Hive: six AI bots work as one hive mind to research crypto on live public prices with a virtual balance. Educational simulation, no real orders, not financial advice.">
+<link rel="icon" href="data:,">
+<title>Alpha Hive · Six AI bots, one hive mind · Educational simulation</title>
+<style>
+:root{--bg:#14120f;--honey:#ffb627;--orange:#ff8c42;--gold:#ffd84d;--green:#8fe388;--red:#ff6b6b;--text:#f4ead4;--mute:#b9ab8e;
+  --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;color:var(--text);font:16px/1.6 var(--sans);overflow-x:hidden}
+.bg{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+.bg .glow{position:absolute;inset:-10%;background:radial-gradient(1100px 600px at 12% -10%,rgba(255,182,39,.14),transparent 60%),radial-gradient(900px 520px at 100% 0%,rgba(255,140,66,.10),transparent 60%),radial-gradient(900px 640px at 50% 118%,rgba(255,200,80,.10),transparent 62%)}
+.bg .grid{position:absolute;inset:-120px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cg fill='none' stroke='%23ffb627' stroke-opacity='.10' stroke-width='1'%3E%3Cpath d='M28 0 56 16.2v32.3L28 64.7 0 48.5V16.2z'/%3E%3Cpath d='M0 64.7v32.3M56 64.7v32.3'/%3E%3C/g%3E%3C/svg%3E") 0 0/56px 97px;animation:drift 40s linear infinite}
+@keyframes drift{to{transform:translate3d(0,97px,0)}}
+#honey{position:absolute;inset:0;width:100%;height:100%;opacity:.32}
+a{color:var(--honey)}
+.wrap{max-width:1120px;margin:0 auto;padding:0 22px}
+nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 0}
+.brand{display:flex;align-items:center;gap:10px;font:800 15px var(--mono);letter-spacing:3px;text-transform:uppercase;color:var(--text);text-decoration:none}
+.brand b{color:var(--honey)}
+.brand svg{width:32px;height:32px}
+.navlinks{display:flex;gap:16px;font:600 13px var(--mono)} .navlinks a{color:var(--mute);text-decoration:none} .navlinks a:hover{color:var(--honey)}
+.hex-btn{display:inline-block;font:800 15px var(--mono);letter-spacing:2px;text-transform:uppercase;text-decoration:none;color:#1a1206;background:linear-gradient(180deg,#ffc94f,#ffb627);
+  padding:16px 40px;clip-path:polygon(16px 0,calc(100% - 16px) 0,100% 50%,calc(100% - 16px) 100%,16px 100%,0 50%);transition:filter .15s}
+.hex-btn:hover,.hex-btn:focus-visible{filter:brightness(1.12)} .hex-btn:focus-visible{outline:3px solid var(--gold);outline-offset:4px}
+.ghost{display:inline-block;font:700 13px var(--mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--honey);text-decoration:none;padding:14px 22px;border-bottom:1px dashed rgba(255,182,39,.5)}
+.hero{padding:64px 0 40px;text-align:center}
+.hero .logo{width:96px;height:96px;margin:0 auto 10px;display:block;animation:float 6s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-8px)}}
+h1{font:900 clamp(46px,9vw,96px)/1 var(--mono);letter-spacing:6px;text-transform:uppercase;margin:6px 0 14px}
+h1 span{color:var(--honey);text-shadow:0 0 28px rgba(255,182,39,.35)}
+.pitch{font-size:clamp(18px,2.4vw,22px);max-width:760px;margin:0 auto 26px;color:var(--text)}
+.cta{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;align-items:center}
+.disclaim{margin:30px auto 0;max-width:820px;border:2px solid var(--gold);background:rgba(26,19,6,.92);padding:14px 20px;font:700 14px/1.5 var(--mono);color:var(--gold);border-radius:6px}
+section{padding:46px 0}
+h2{font:800 clamp(24px,3.6vw,34px)/1.2 var(--mono);letter-spacing:2px;text-transform:uppercase;margin:0 0 10px}
+h2 small{display:block;font:700 12px var(--mono);letter-spacing:3px;color:var(--honey);margin-bottom:6px}
+.lead{color:var(--mute);max-width:820px;margin:0 0 22px}
+.bots{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 18px}
+.bots .cell:nth-child(3n+2){transform:translateY(40px)} .bots{padding-bottom:40px}
+@media(max-width:900px){.bots{grid-template-columns:repeat(2,1fr)} .bots .cell:nth-child(3n+2){transform:none} .bots .cell:nth-child(2n){transform:translateY(34px)}}
+@media(max-width:600px){.bots{grid-template-columns:1fr;padding-bottom:0} .bots .cell:nth-child(n){transform:none}}
+.cell{position:relative;background:linear-gradient(180deg,rgba(38,32,23,.92),rgba(27,23,17,.92));padding:34px 22px 34px;
+  clip-path:polygon(50% 0,100% 26px,100% calc(100% - 26px),50% 100%,0 calc(100% - 26px),0 26px)}
+.cell::after{content:"";position:absolute;inset:0;pointer-events:none;background:var(--bc,rgba(255,182,39,.38));
+  clip-path:polygon(evenodd,50% 0,100% 26px,100% calc(100% - 26px),50% 100%,0 calc(100% - 26px),0 26px,50% 0,50% 2px,2px 27px,2px calc(100% - 27px),50% calc(100% - 2px),calc(100% - 2px) calc(100% - 27px),calc(100% - 2px) 27px,50% 2px)}
+.cell.key{--bc:var(--gold)}
+.cell h3{display:flex;align-items:center;gap:10px;font:800 16px var(--mono);letter-spacing:2px;text-transform:uppercase;margin:0 0 8px}
+.cell h3 svg{width:34px;height:34px;flex:none;color:var(--c,var(--honey))}
+.cell p{margin:0;color:var(--text);font-size:15px}
+.cell .tag{display:inline-block;margin-top:10px;font:700 11px var(--mono);letter-spacing:1px;color:#1a1206;background:var(--gold);padding:2px 8px}
+.panel{position:relative;background:linear-gradient(180deg,rgba(38,32,23,.92),rgba(27,23,17,.92));padding:26px 40px;
+  clip-path:polygon(22px 0,calc(100% - 22px) 0,100% 50%,calc(100% - 22px) 100%,22px 100%,0 50%)}
+.panel::after{content:"";position:absolute;inset:0;pointer-events:none;background:rgba(255,182,39,.34);
+  clip-path:polygon(evenodd,22px 0,calc(100% - 22px) 0,100% 50%,calc(100% - 22px) 100%,22px 100%,0 50%,22px 0,23px 2px,calc(100% - 23px) 2px,calc(100% - 2px) 50%,calc(100% - 23px) calc(100% - 2px),23px calc(100% - 2px),2px 50%,23px 2px)}
+@media(max-width:600px){.panel{padding:22px 26px;clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%)} .panel::after{display:none} .panel{border-top:2px solid rgba(255,182,39,.4);border-bottom:2px solid rgba(255,182,39,.4)}}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px} @media(max-width:800px){.two{grid-template-columns:1fr}}
+.panel h3{font:800 17px var(--mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--honey);margin:0 0 8px}
+.panel ul{margin:8px 0 0;padding-left:20px} .panel li{margin:5px 0}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font:700 13px var(--mono);margin:12px 0 4px}
+.flow span{padding:6px 14px;background:rgba(255,182,39,.14);color:var(--honey);clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,8px 100%,0 50%)}
+.flow i{font-style:normal;color:var(--mute)}
+code{font:13px var(--mono);background:rgba(0,0,0,.4);padding:1px 6px;color:var(--gold)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chips b{font:700 12px var(--mono);padding:3px 10px;border:1px solid rgba(255,182,39,.35);border-radius:999px;color:var(--honey)}
+.chips b.kr{border-style:dashed}
+.roadmap{border:2px dashed rgba(255,182,39,.45);padding:22px 26px;background:rgba(26,19,6,.85)}
+.roadmap .planned{display:inline-block;font:800 12px var(--mono);letter-spacing:2px;color:#1a1206;background:var(--honey);padding:3px 10px;margin-bottom:8px}
+.big-disclaim{border:3px solid var(--gold);background:rgba(26,19,6,.95);padding:24px 28px}
+.big-disclaim h2{color:var(--gold)}
+.big-disclaim ul{margin:0;padding-left:20px} .big-disclaim li{margin:6px 0}
+.bottom-cta{text-align:center;padding:40px 0 30px}
+footer{padding:24px 0 50px;text-align:center;color:var(--mute);font:13px var(--mono);background:rgba(20,18,15,.9)}
+footer a{color:var(--honey)}
+.motion{white-space:nowrap;cursor:pointer;font:600 12px var(--mono);background:transparent;color:var(--mute);border:1px solid rgba(255,182,39,.3);border-radius:999px;padding:4px 12px}
+body.reduced *,body.reduced *::before,body.reduced *::after{animation:none!important;transition:none!important}
+@media(max-width:600px){ .navlinks a.hide-s{display:none} .navlinks{gap:10px} .brand{letter-spacing:2px;font-size:14px} .brand svg{width:26px;height:26px} .hero{padding:36px 0 26px} h1{letter-spacing:3px} .hex-btn{padding:15px 30px} }
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true"><div class="glow"></div><div class="grid"></div><canvas id="honey"></canvas></div>
+<div class="wrap">
+<nav>
+  <a class="brand" href="./"><svg viewBox="0 0 40 40" fill="none" stroke="#ffb627" stroke-width="2"><polygon points="20,2 36,11 36,29 20,38 4,29 4,11"/><polygon points="20,11 27,15 27,23 20,27 13,23 13,15" stroke="#ff8c42" stroke-width="1.6"/><circle cx="20" cy="19" r="2.4" fill="#ffd84d" stroke="none"/></svg>Alpha <b>Hive</b></a>
+  <div class="navlinks"><a class="hide-s" href="#bots">Bots</a><a class="hide-s" href="#features">Features</a><a href="#disclaimer">Disclaimer</a><button class="motion" id="motionBtn">Motion: full</button></div>
+</nav>
+
+<header class="hero">
+  <svg class="logo" viewBox="0 0 40 40" fill="none" stroke="#ffb627" stroke-width="1.6" aria-hidden="true"><polygon points="20,2 36,11 36,29 20,38 4,29 4,11"/><polygon points="20,11 27,15 27,23 20,27 13,23 13,15" stroke="#ff8c42" stroke-width="1.3"/><circle cx="20" cy="19" r="2.4" fill="#ffd84d" stroke="none"/></svg>
+  <h1>Alpha <span>Hive</span></h1>
+  <p class="pitch">Six AI bots think as one hive mind. Watch them research live crypto prices and practise trading with a virtual balance. Every step is visible.</p>
+  <div class="cta"><a class="hex-btn" id="enterTop" href="terminal/">Enter the Hive →</a><a class="ghost" href="#bots">How it works</a></div>
+  <div class="disclaim" role="note">Educational simulation · virtual balance only · no real orders · not financial advice</div>
+</header>
+
+<section id="bots">
+  <h2><small>The team</small>Six bots, one brain</h2>
+  <p class="lead">Each round, four researchers look at one coin from different angles. Their work goes to a Risk gate that can only make things safer. Only then does the Decision bot make the call. Every output is checked against a strict schema, and anything malformed is treated as a safe “skip”.</p>
+  <div class="bots">
+    <div class="cell"><h3><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="14" cy="14" r="8"/><path d="M20 20l7 7"/></svg>1 · Scout</h3><p>Asks whether the market is worth researching at all. Checks the price data, trading volume against its 30-day average, liquidity, and how complete the data is.</p></div>
+    <div class="cell"><h3><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="6" width="22" height="20" rx="2"/><path d="M9 12h14M9 17h14M9 22h8"/></svg>2 · News</h3><p>Separates real reported news from forum chatter. Anything that looks like an instruction (“ignore your rules…”) is stored as data and never obeyed.</p></div>
+    <div class="cell"><h3><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 22a12 12 0 0 1 24 0"/><path d="M16 22l6-7"/></svg>3 · Sentiment</h3><p>Reads the crowd’s mood and discounts hype such as “to the moon” or “guaranteed 1000%”. On live prices, with no news feed, it reports “unknown” rather than guessing.</p></div>
+    <div class="cell"><h3><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 26V14M12 26V8M18 26V16M24 26V5"/></svg>4 · Charts</h3><p>Numbers only. Reads trend, support and resistance from real hourly and one-minute candles, with price precision that adapts to the coin, from $90,000 BTC down to sub-$1 coins like DOGE and XLM.</p></div>
+    <div class="cell key"><h3><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3l11 4v8c0 7-5 12-11 14C10 27 5 22 5 15V7z"/><path d="M11 16l4 4 6-8"/></svg>5 · Risk gate</h3><p>Applies human-written rules in code: approve, reduce or reject. It can tighten limits but never loosen them, and its risk % is the ceiling for every trade. <b>It cannot be bypassed:</b> if Risk rejects or is paused, there is no trade.</p><span class="tag">Can’t be bypassed</span></div>
+    <div class="cell key"><h3><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><circle cx="16" cy="16" r="5"/></svg>6 · Decision</h3><p>Makes the final call, and only after Risk approves: <code>BUY — SIMULATION ONLY</code>, <code>WAIT</code> or <code>SKIP</code>. Every result is marked for human review. A BUY opens a <i>virtual</i> position, never a real order.</p><span class="tag">Final call</span></div>
+  </div>
+</section>
+
+<section id="features">
+  <h2><small>Inside the terminal</small>What you can do</h2>
+  <div class="two">
+    <div class="panel"><h3>Live crypto prices</h3>
+      <p>Demo sessions use free public market data that needs no key and no sign-in.</p>
+      <div class="flow"><span>Coinbase Exchange</span><i>→ if unavailable →</i><span>Kraken</span><i>→ if both fail →</i><span>Offline: simulated prices</span></div>
+      <ul><li>Every round, the bots analyse real candles for the coin.</li><li>A virtual BUY is tracked against live prices, polled every 3 seconds. It closes at its stop or target, or at the last live price when the window ends.</li><li>A header chip always shows which feed is in use and when it last updated. If prices are simulated, the page says so.</li></ul></div>
+    <div class="panel"><h3>Run · Stop · Resume</h3>
+      <ul><li><b>Continuous mode</b> (rounds = 0) keeps the hive working round after round until you stop it.</li><li><b>Stop</b> halts at once. Any open virtual trade is marked to the last live price, and the balance, equity curve, ledger and summary freeze.</li><li><b>Resume</b> carries on from the frozen balance. <b>Reset</b> starts over.</li><li>A single-run mode lets you watch one example market step by step.</li></ul></div>
+    <div class="panel"><h3>Per-bot on/off switches</h3>
+      <ul><li>Pause any bot from its panel. The change applies from the next round, even mid-session.</li><li>A paused researcher is skipped, and its input counts as missing/neutral.</li><li>Pausing <b>Risk</b> blocks all trades (every call becomes SKIP, “Risk paused”). Pausing <b>Decision</b> means no new trades.</li></ul></div>
+    <div class="panel"><h3>Per-bot risk: 0.1–10%</h3>
+      <ul><li>Each bot has a risk setting: one-tap 1% or 2%, or any custom value from 0.1% to 10%. It is saved in your browser.</li><li>The % is of your <b>current</b> virtual balance and updates as the balance changes: “1% · $99.98”.</li><li>Trade risk = the average of the active researchers and Decision, <b>capped by the Risk bot’s %</b>.</li><li>Size = risk $ ÷ stop distance, so a stopped-out trade loses about the risk $. Size is never more than the balance or your optional cap.</li><li>If the balance is unavailable or $0, trading is disabled and calls become SKIP.</li></ul></div>
+    <div class="panel"><h3>Expandable token list</h3>
+      <p>The list starts with BTC, ETH and SOL selected, plus XRP, XLM, DOGE, ADA, AVAX and LINK ready to tap. You can add any symbol. The terminal checks that it has a USD market on Coinbase Exchange, then on Kraken, and rejects unknown symbols. You can remove tokens and choose which ones a session cycles through.</p>
+      <p><b>Add all majors</b> adds 20 large coins in one tap. They come from CoinGecko’s top 30 by market cap, with stablecoins and pegged tokens left out, and each one has a confirmed USD price. They are re-checked when you tap, so a delisted coin is skipped.</p>
+      <div class="chips" aria-label="Majors"><b>BTC</b><b>ETH</b><b>BNB</b><b>XRP</b><b>SOL</b><b class="kr">TRX</b><b>HYPE</b><b>ZEC</b><b class="kr">XMR</b><b>DOGE</b><b class="kr">WBT</b><b>LINK</b><b>ADA</b><b>XLM</b><b>BCH</b><b>NEAR</b><b>LTC</b><b class="kr">CC</b><b>AVAX</b><b>UNI</b></div>
+      <p style="font-size:13px;color:var(--mute);margin:8px 0 0">Dashed = priced via Kraken (no Coinbase USD market). All six bots work with every token on the list.</p></div>
+    <div class="panel"><h3>The hive theme</h3>
+      <ul><li>Amber and honey on charcoal, with a honeycomb of hexagonal bot panels.</li><li>Worker-bee particles fly along shared paths and swarm into the Risk gate and Decision.</li><li>Scout runs a hex-pulse scan, and honey drips slowly down the background.</li><li>The final call arrives with a countdown, an amber glitch and a hexagon burst.</li><li>The <b>Motion</b> button and your device’s reduced-motion setting turn all of this off.</li></ul></div>
+  </div>
+</section>
+
+<section id="next">
+  <h2><small>Roadmap</small>Coming next</h2>
+  <div class="roadmap"><span class="planned">PLANNED · NOT BUILT YET</span>
+    <h3 style="margin:0 0 6px;font:800 17px var(--mono);color:var(--honey);text-transform:uppercase;letter-spacing:1.5px">Read-only wallet connection</h3>
+    <p style="margin:0">An idea for a future version: let you <i>view</i> your own holdings next to the hive’s research. It would be read-only, never move funds, and never place orders. <b>None of this exists today.</b> The current terminal has no wallet, deposit or real-money feature of any kind.</p></div>
+</section>
+
+<section id="disclaimer">
+  <div class="big-disclaim" role="note">
+    <h2><small>Please read</small>Honest disclaimer</h2>
+    <ul>
+      <li><b>Educational simulation.</b> Alpha Hive shows how a team of AI bots could structure market research. It is not a trading product.</li>
+      <li><b>Virtual balance only.</b> Every balance, position and profit or loss is pretend money in your browser.</li>
+      <li><b>No real orders.</b> There is no broker, exchange account, wallet or order code. It only reads free public prices.</li>
+      <li><b>Not financial advice.</b> It cannot predict markets or guarantee anything. Past simulated results mean nothing for real trading. Talk to a qualified professional before making money decisions.</li>
+    </ul>
+  </div>
+</section>
+
+<div class="bottom-cta"><a class="hex-btn" id="enterBottom" href="terminal/">Enter the Hive →</a><p style="color:var(--mute);font-size:14px;margin:14px 0 0">Opens the terminal: single runs, demo sessions with live public prices, per-bot switches and risk settings.</p></div>
+</div>
+<footer><div class="wrap">Alpha Hive · educational simulation · virtual balance · no real orders · not financial advice<br>Source code on GitHub: <a href="https://github.com/yogibear1323/alpha-hive">github.com/yogibear1323/alpha-hive</a></div></footer>
+<script>
+(()=>{
+  const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+  const mq=matchMedia("(prefers-reduced-motion: reduce)"), MOBILE=matchMedia("(max-width:680px)").matches;
+  let REDUCED = LS.get("g6_motion") ? LS.get("g6_motion")==="reduced" : mq.matches;
+  const cv=document.getElementById("honey"), g=cv.getContext("2d"); let W=0,H=0,dpr=1,raf=0,last=0,t=0; const drips=[],drops=[],pools=[], MAX=MOBILE?4:10;
+  const HONEY="#ffaa23",GLOSS="#fff0c8",DEEP="#e88a12";
+  function size(){ dpr=MOBILE?1:Math.min(1.5,devicePixelRatio||1); W=innerWidth; H=innerHeight; cv.width=W*dpr; cv.height=H*dpr; if(REDUCED) still(); }
+  function spawn(pre){ const r=4+Math.random()*4, top=Math.random()<.5; const d={x:top?20+Math.random()*(W-40):-92+56*Math.round((Math.random()*W+92)/56), y0:top?0:64.7+97*Math.floor((120+Math.random()*H*.6)/97)-120, r, w:r*1.25, L:pre?Math.random()*40:0, Lmax:40+Math.random()*80, grow:3+Math.random()*4, st:"ooze", a:1, ph:Math.random()*6.3}; drips.push(d); }
+  function strand(x,y0,L,r,w){ const re=Math.min(r,L*.5+1), by=y0+Math.max(L-re,re*.4), nk=re*.55; g.beginPath(); g.moveTo(x-w*1.7,y0); g.bezierCurveTo(x-w*.55,y0,x-nk,by-re*1.5,x-re,by); g.arc(x,by,re,Math.PI,0,true); g.bezierCurveTo(x+nk,by-re*1.5,x+w*.55,y0,x+w*1.7,y0); g.closePath(); g.fill(); return {by,re}; }
+  function gloss(x,y,r){ g.fillStyle=GLOSS; g.beginPath(); g.ellipse(x-r*.35,y-r*.3,r*.24,r*.42,-.35,0,6.283); g.fill(); }
+  function draw(){ g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+    g.fillStyle=DEEP; g.beginPath(); g.moveTo(0,0); for(let x=0;x<=W+20;x+=20){ let y=4+2.5*Math.sin(x/110+t*.25); for(const d of drips) if(d.y0===0){ const dx=x-d.x; y+=Math.min(9,d.L*.18)*Math.exp(-dx*dx/(18*d.w*d.w)); } g.lineTo(x,y); } g.lineTo(W,0); g.closePath(); g.fill();
+    for(const d of drips){ g.globalAlpha=d.a; g.fillStyle=HONEY; const b=strand(d.x,d.y0,d.L,d.r,d.w); if(d.L>d.r) gloss(d.x,b.by,b.re); g.globalAlpha=1; }
+    for(const q of drops){ const st=1+q.v/240, r=q.r; g.fillStyle=HONEY; g.beginPath(); g.moveTo(q.x,q.y-r*st*1.6); g.bezierCurveTo(q.x+r*1.1,q.y-r*st*.4,q.x+r,q.y+r,q.x,q.y+r); g.bezierCurveTo(q.x-r,q.y+r,q.x-r*1.1,q.y-r*st*.4,q.x,q.y-r*st*1.6); g.fill(); gloss(q.x,q.y,r); }
+    for(const o of pools){ g.globalAlpha=Math.max(0,o.a); g.fillStyle=DEEP; g.beginPath(); g.ellipse(o.x,o.y,o.w,o.h,0,0,6.283); g.fill(); g.globalAlpha=1; } }
+  function step(now){ raf=0; if(REDUCED) return; if(now-last>=33){ const dt=Math.min(.1,(now-last)/1000); last=now; t+=dt;
+      if(!drips.length) for(let i=0;i<Math.ceil(MAX*.6);i++) spawn(true); if(drips.length<MAX&&Math.random()<dt*.35) spawn(false);
+      for(let i=drips.length-1;i>=0;i--){ const d=drips[i]; if(d.st==="ooze"){ d.grow+=dt*(.6+.5*Math.sin(t+d.ph)); d.L+=d.grow*dt; if(d.L>=d.Lmax){ drops.push({x:d.x,y:d.y0+d.L-d.r,v:12,r:d.r*.95}); d.st="snap"; } } else { d.L-=Math.max(4,d.L*1.6)*dt; d.a-=dt*.35; if(d.a<=0||d.L<=0) drips.splice(i,1); } }
+      for(let i=drops.length-1;i>=0;i--){ const q=drops[i]; q.v=Math.min(230,q.v+120*dt); q.y+=q.v*dt; if(q.y>H-14){ pools.push({x:q.x,y:H-8,w:q.r*1.6,h:q.r*.55,a:1}); drops.splice(i,1); } }
+      for(let i=pools.length-1;i>=0;i--){ const o=pools[i]; o.w+=dt*7*o.a; o.a-=dt*.12; if(o.a<=0) pools.splice(i,1); }
+      draw(); }
+    raf=requestAnimationFrame(step); }
+  function still(){ drips.length=drops.length=pools.length=0; const n=MOBILE?3:6; for(let i=0;i<n;i++){ const r=4+(i%3); drips.push({x:(i+.5)*W/n,y0:i%2?64.7+97*(2+i%3)-120:0,r,w:r*1.25,L:20+(i*17)%40,a:1}); } pools.push({x:W*.3,y:H-8,w:22,h:4,a:.8}); draw(); }
+  function apply(red){ REDUCED=red; document.body.classList.toggle("reduced",red); document.getElementById("motionBtn").textContent="Motion: "+(red?"reduced":"full");
+    if(red){ cancelAnimationFrame(raf); raf=0; still(); } else { drips.length=0; last=performance.now(); if(!raf) raf=requestAnimationFrame(step); } }
+  document.getElementById("motionBtn").onclick=()=>{ LS.set("g6_motion_user","1"); LS.set("g6_motion",REDUCED?"full":"reduced"); apply(!REDUCED); };
+  mq.addEventListener&&mq.addEventListener("change",e=>{ if(!LS.get("g6_motion_user")) apply(e.matches); });
+  addEventListener("resize",size); size(); apply(REDUCED);
+  window.AH_LANDING=()=>({reduced:REDUCED,drips:drips.length,looping:!!raf});
+})();
+</script>
+</body>
+</html>
