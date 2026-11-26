@@ -442,6 +442,42 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
 .rolenote.guard{border-left-color:#8fe388}
 .node.qn{color:#ffd84d;border-color:#ffd84d;background:rgba(40,28,8,.92)}
 .pipenote{margin-top:8px;padding:6px 10px;font:600 11.5px/1.5 var(--mono);color:#e9dcbc;background:rgba(18,14,9,.85);border:1px solid rgba(255,216,77,.35);border-radius:6px}
+
+/* ---- stellar wallet ---- */
+.stellar{margin-top:10px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;display:flex;flex-direction:column;gap:8px}
+.stellar-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.stellar-head .stellar-lbl{font:700 11px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--text)}
+.stellar-net{display:inline-flex;align-items:center;gap:6px;margin-left:auto;font:700 11px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--text);cursor:pointer}
+.stellar-net input{accent-color:var(--amber);width:16px;height:16px}
+.stellar-note{color:var(--text);font:12px/1.45 var(--sans);margin:0}
+.stellar-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.stellar-stat{font:12px var(--mono);color:var(--text)}
+.stellar-stat.ok{color:#8fe388}
+.stellar-stat.err{color:#ff8a80}
+.stellar-stat.warn{color:#ffd84d}
+.stellar-addr{font:700 13px var(--mono);color:var(--text)}
+.stellar-addrfull{display:block;font:11px var(--mono);color:#d8ccb1;word-break:break-all;margin-top:2px}
+.stellar-bals{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.stellar-bals div{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#15120d}
+.stellar-bals small{display:block;font:700 10px var(--mono);letter-spacing:1px;text-transform:uppercase;color:#d8ccb1}
+.stellar-bals b{display:block;font:800 16px var(--mono);color:var(--text);margin-top:2px}
+.stellar-source{margin:4px 0 0;font:12px/1.45 var(--sans);color:var(--text)}
+.stellar-other{margin:0;padding:0;list-style:none;font:12px var(--mono);color:var(--text)}
+.stellar-other li{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.stellar-lookup{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.stellar-lookup .fld{flex:1 1 220px;margin:0}
+.stellar-sec{margin:4px 0 0;font:12px/1.5 var(--sans);color:var(--text);border-left:3px solid #ffd84d;padding:6px 9px;background:rgba(18,14,9,.88);border-radius:6px}
+.stellar-send{position:fixed;inset:0;z-index:45;display:none;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 45%,rgba(40,30,14,.93),rgba(10,8,5,.98))}
+.stellar-send.show{display:flex}
+.stellar-send-card{width:min(520px,100%);border:1px solid var(--cyan);background:rgba(32,26,17,.96);padding:20px 22px;border-radius:14px;color:var(--text);box-shadow:0 0 40px rgba(255,182,39,.2)}
+.stellar-send-card h3{margin:0 0 8px;font:800 14px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--cyan)}
+.stellar-send-card .fld{margin-top:10px}
+.stellar-send-net{margin:8px 0 0;font:12px var(--mono);color:#d8ccb1}
+.stellar-send-msg{margin:8px 0 0;font:12px var(--mono);color:var(--text);min-height:1.2em}
+.stellar-warn{margin:8px 0 0;font:600 12px/1.45 var(--sans);color:#1a1206;background:#ffd84d;border-radius:8px;padding:8px 10px}
+.stellar-warn.strong{background:#ffb627}
+.stellar-warn[hidden]{display:none}
+@media(max-width:680px){.stellar-actions .btn,.stellar-lookup .btn{flex:1 1 100%}}
 </style>
 </head>
 <body>
@@ -491,13 +527,45 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
           <span class="tokmsg" id="tokMsg" role="status"></span><span class="tradeline" id="tradeLine">Bots trade: —</span></div>
         <div class="broker" id="brokerBox" role="group" aria-labelledby="brokerLbl">
           <label id="brokerLbl" for="brokerSel">Broker</label>
-          <select id="brokerSel"><option value="sim">Simulation</option><option value="demo">Crucial demo</option></select>
+          <select id="brokerSel"><option value="sim">Simulation</option><option value="demo">Crucial demo</option><option value="coinbase">Coinbase (live)</option></select>
           <input id="bridgeUrl" type="url" value="http://127.0.0.1:8765" spellcheck="false" aria-label="Bridge URL (must be localhost)">
           <input id="bridgeTok" type="password" placeholder="Bridge token" autocomplete="off" aria-label="Bridge token from bridge/.env">
           <button class="btn ghost sm" id="bridgeConnect">Connect</button>
           <span class="bstat" id="brokerStat" role="status" aria-live="polite">Simulation · no broker</span>
           <label class="livearm" id="liveRow" hidden><input type="checkbox" id="liveArm"> Arm LIVE · real money</label>
-          <div class="bnote" id="brokerNote">Simulation is the default. “Crucial demo” mirrors each live-price LONG/SHORT to your Crucial TradeLocker <b>demo</b> account through the local bridge, only after Risk approves; the bridge applies its own hard limits.</div>
+          <div class="bnote" id="brokerNote">Simulation is the default. “Crucial demo” mirrors Risk-approved live-price calls to a TradeLocker <b>demo</b> account. “Coinbase (live)” uses Coinbase Advanced Trade and stays in <b>preview-only</b> (no real orders) until you arm LIVE; Coinbase spot is long-only (no shorts). Both need the local bridge.</div>
+        </div>
+
+        <div class="stellar" id="stellarBox" role="region" aria-labelledby="stellarLbl">
+          <div class="stellar-head">
+            <span class="stellar-lbl" id="stellarLbl">Stellar wallet</span>
+            <label class="stellar-net"><input type="checkbox" id="stellarTestnet"> Testnet</label>
+          </div>
+          <p class="stellar-note" id="stellarNote">Balances are shown only. They do not change the virtual trading balance. Alpha Hive never asks for or stores your secret key. Simulation · demo funds for the hive itself.</p>
+          <div class="stellar-actions">
+            <button class="btn" id="stellarConnect">Connect wallet</button>
+            <button class="btn ghost sm" id="stellarDisconnect" hidden>Disconnect</button>
+            <button class="btn ghost sm" id="stellarSend" hidden>Send</button>
+          </div>
+          <div class="stellar-stat" id="stellarStat" role="status" aria-live="polite">Not connected</div>
+          <div id="stellarBalances" hidden>
+            <div class="stellar-addr" id="stellarAddr"></div>
+            <span class="stellar-addrfull" id="stellarAddrFull"></span>
+            <p class="stellar-source" id="stellarSource"></p>
+            <div class="stellar-bals">
+              <div><small>XLM</small><b id="stellarXlm">—</b></div>
+              <div><small>USDC</small><b id="stellarUsdc">—</b></div>
+              <div><small>Approx. USD</small><b id="stellarUsd">—</b></div>
+            </div>
+            <div id="stellarOtherWrap" hidden><div class="label">Other balances</div><ul class="stellar-other" id="stellarOther"></ul></div>
+            <div class="stellar-actions"><button class="btn ghost sm" id="stellarUseBal" hidden>Use this USD value as the starting virtual balance</button></div>
+          </div>
+          <div class="stellar-lookup">
+            <div class="fld"><label for="stellarLookup">Look up a public address (read-only)</label><input id="stellarLookup" type="text" spellcheck="false" autocomplete="off" inputmode="text" placeholder="Public address (starts with G)" aria-label="Stellar public address to look up"></div>
+            <button class="btn ghost sm" id="stellarLookupBtn">Look up</button>
+            <button class="btn ghost sm" id="stellarLookupSdf">Look up SDF</button>
+          </div>
+          <p class="stellar-sec">Security: never type a Stellar secret key (it starts with S) into a website, including this one. Connect with Varial (formerly Freighter), xBull, LOBSTR, Albedo, Hana or another wallet instead.</p>
         </div>
         <div class="label" id="sessHelp">Live rounds read real recent candles for each selected token. The ♛ Queen goes <b class="dir long">▲ LONG</b> (BUY) when the analysts expect a rise and <b class="dir short">▼ SHORT</b> (SELL/SHORT) when charts, sentiment and news are bearish, only after the Risk gate fully approves; a “reduce” becomes WAIT and never flips direction. Each trade risks the effective % of the <b>current</b> balance: the average of the active bots’ risk settings, never above the Risk bot’s %. Notional size = risk $ ÷ stop distance, capped at balance × <b>virtual leverage</b> and the optional max position cap, so a stop-out loses about the risk $; margin used = notional ÷ leverage. Longs: stop below, target above; shorts: stop above, target below, P&amp;L = size × (1 − exit/entry). Virtual margin call: a loss can never exceed the balance; the trade closes at the balance limit and later rounds SKIP. Live prices are polled every 3 s for the trade window. Virtual leverage · simulation only, no real orders.</div>
         <div class="actions" id="sessControls"><button class="btn" id="startSess">▶ Run demo session</button><button class="btn stop" id="stopSess" disabled>■ Stop</button><button class="btn ghost" id="resetSess">Reset</button><button class="btn ghost" id="sumBtn" disabled>Summary</button></div>
@@ -557,6 +625,21 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
     <div class="sumgrid" id="sumGrid"></div>
     <div class="sub mono" style="color:var(--text);letter-spacing:1.5px;font-weight:700">Human review required · No order placed</div>
     <div class="actions"><button class="btn ghost" id="closeSum">Back to the hive</button></div>
+  </div>
+</div>
+
+<div class="stellar-send" id="stellarSendDlg" role="dialog" aria-modal="true" aria-labelledby="stellarSendTitle" hidden>
+  <div class="stellar-send-card">
+    <h3 id="stellarSendTitle">Send from connected wallet</h3>
+    <p class="stellar-note">Your wallet signs this payment. Alpha Hive never sees your secret key. This is a real payment on the selected Stellar network.</p>
+    <p class="stellar-send-net" id="stellarSendNet">Network: Public</p>
+    <div class="fld"><label for="stellarDest">Destination</label><input id="stellarDest" type="text" spellcheck="false" autocomplete="off" placeholder="Public address (starts with G)" aria-label="Payment destination public address"></div>
+    <div class="fld"><label for="stellarAsset">Asset</label><select id="stellarAsset"></select></div>
+    <div class="fld"><label for="stellarAmt">Amount</label><input id="stellarAmt" type="number" min="0" step="any"></div>
+    <div class="fld"><label for="stellarMemo">Memo (required if sending to an exchange)</label><input id="stellarMemo" type="text" maxlength="28" autocomplete="off" placeholder="Memo or destination tag" aria-label="Payment memo or destination tag"></div>
+    <p class="stellar-warn" id="stellarMemoWarn">If you are sending to an exchange or hosted wallet, a memo is usually required. Funds can be lost without it.</p>
+    <div class="actions" style="margin-top:14px"><button class="btn" id="stellarSendGo">Sign in wallet</button><button class="btn ghost" id="stellarSendCancel">Cancel</button></div>
+    <p class="stellar-send-msg" id="stellarSendMsg" role="status"></p>
   </div>
 </div>
 <div class="flash" id="flash"></div>
@@ -1337,30 +1420,39 @@ const Broker=(()=>{ const st={mode:"sim",ok:false,status:null};
     let j={}; try{ j=await r.json(); }catch(e){}
     if(!r.ok){ const d=j.detail; throw new Error(typeof d==="string"?d:(d&&d.reason)||("HTTP "+r.status)); } return j; }
   async function connect(){ if(PUBLIC) return; show("connecting…","warn");
-    try{ const s=await call("/status"); st.status=s; st.ok=!!s.connected;
-      $("liveRow").hidden=!(s.backend==="live"&&s.live_allowed); $("liveArm").checked=!!s.live_armed;
+    try{ const s=await call("/status"); st.status=s; const kind=s.broker_id||((s.broker||"").toLowerCase().includes("coinbase")?"coinbase":"tradelocker");
+      if(st.mode==="coinbase"&&kind!=="coinbase"){ st.ok=false; show("bridge is on Crucial, not Coinbase. Set BRIDGE_BROKER=coinbase in bridge/.env and restart.","warn"); $("liveRow").hidden=true; return; }
+      if(st.mode==="demo"&&kind==="coinbase"){ st.ok=false; show("bridge is on Coinbase, not Crucial. Set BRIDGE_BROKER=tradelocker (or unset it) and restart.","warn"); $("liveRow").hidden=true; return; }
+      st.ok=!!s.connected;
+      $("liveRow").hidden=!(s.live_allowed && (s.backend==="live" || kind==="coinbase")); $("liveArm").checked=!!s.live_armed;
       if(!s.credentials_set){ show("bridge up · credentials not set in bridge/.env","warn"); st.ok=false; }
       else if(!s.connected){ show("bridge up · broker login failed: "+(s.last_error||"unknown"),"err"); }
-      else { const a=s.account||{}; show(`Crucial ${s.backend==="live"?"LIVE backend":"demo"} · acct ${a.id} · ${money(+a.balance||0)} · ${s.mode}${s.kill_switch?" · KILL SWITCH ON":""}`, s.kill_switch?"err":"ok"); }
+      else { const a=s.account||{}; const who=kind==="coinbase"?"Coinbase":"Crucial";
+        const env=kind==="coinbase"?(s.mode==="LIVE"?"LIVE":"preview-only"):(s.backend==="live"?"LIVE backend":"demo");
+        show(`${who} ${env} · acct ${a.id||"—"} · ${money(+a.balance||0)} · ${s.mode}${s.kill_switch?" · KILL SWITCH ON":""}`, s.kill_switch?"err":(s.mode==="PREVIEW"?"warn":"ok")); }
     }catch(e){ st.ok=false; show("not connected · "+e.message,"err"); } }
   function init(){ const sel=$("brokerSel"); if(!sel) return;
     if(PUBLIC){ ["brokerSel","bridgeUrl","bridgeTok","bridgeConnect"].forEach(id=>$(id).disabled=true);
-      $("brokerNote").innerHTML="Public site: <b>simulation only</b>. To mirror trades to a Crucial TradeLocker demo account, run the terminal locally (<code>python web/app.py</code>) and start the bridge (<code>python -m bridge</code>); see the README."; show("Simulation · public site",""); return; }
+      $("brokerNote").innerHTML="Public site: <b>simulation only</b>. To use Crucial demo or Coinbase, run the terminal locally (<code>python web/app.py</code>) and start the bridge (<code>python -m bridge</code>); see the README."; show("Simulation · public site",""); return; }
     sel.addEventListener("change",()=>{ st.mode=sel.value; if(st.mode==="sim"){ st.ok=false; show("Simulation · no broker",""); } else connect(); });
-    $("bridgeConnect").addEventListener("click",()=>{ sel.value="demo"; st.mode="demo"; connect(); });
+    $("bridgeConnect").addEventListener("click",()=>{ if(sel.value==="sim"){ show("Pick Crucial demo or Coinbase (live) first","warn"); return; } st.mode=sel.value; connect(); });
     $("liveArm").addEventListener("change",async e=>{ const on=e.target.checked;
-      if(on && !confirm("Arm LIVE trading on your real Crucial account? Real money is at risk. Only continue after testing on demo.")){ e.target.checked=false; return; }
-      try{ await call("/mode",{method:"POST",body:JSON.stringify(on?{mode:"LIVE",confirm:LIVE_PHRASE}:{mode:"DEMO"})}); }catch(err){ e.target.checked=false; show("LIVE not armed · "+err.message,"err"); return; }
+      const cb=st.mode==="coinbase"||(st.status&&st.status.broker_id==="coinbase");
+      const msg=cb?"Arm LIVE trading on your real Coinbase account? This is real money. Coinbase has no demo — only continue after preview-only checks look right.":"Arm LIVE trading on your real Crucial account? Real money is at risk. Only continue after testing on demo.";
+      if(on && !confirm(msg)){ e.target.checked=false; return; }
+      try{ await call("/mode",{method:"POST",body:JSON.stringify(on?{mode:"LIVE",confirm:LIVE_PHRASE}:{mode:cb?"PREVIEW":"DEMO"})}); }catch(err){ e.target.checked=false; show("LIVE not armed · "+err.message,"err"); return; }
       connect(); }); }
-  async function mirror(o){ if(st.mode!=="demo"||!st.ok) return null;
+  async function mirror(o){ if((st.mode!=="demo"&&st.mode!=="coinbase")||!st.ok) return null;
     if(o.risk!=="approve") return null;   // the guard's verdict is checked here and again, independently, by the bridge
+    if(st.mode==="coinbase"&&!(o.dir>0)){ show("Coinbase spot is long-only · SHORT not sent","warn"); return null; }
     try{ const j=await call("/orders",{method:"POST",body:JSON.stringify({symbol:o.coin,side:o.dir>0?"buy":"sell",stop:o.stop,target:o.target,
         entry_ref:o.entry,risk_pct:o.pct,risk:{status:o.risk},queen:{call:o.call},client_ref:"terminal-round-"+o.r})});
-      const p=j.plan||{}; show(`${j.mode} order · ${p.instrument} ${p.side} ${p.lots} lot · SL ${p.stop} · TP ${p.target} · risk ${money(p.risk_usd||0)}`,"ok"); return j;
+      const p=j.plan||{}; const tag=j.preview?"PREVIEW (no order placed)":(j.mode+" order");
+      show(`${tag} · ${p.instrument} ${p.side} ${p.lots} · SL ${p.stop} · TP ${p.target} · risk ${money(p.risk_usd||0)}`, j.preview?"warn":"ok"); return j;
     }catch(e){ show("broker: no order · "+e.message,"warn"); return null; } }
   async function close(pid,why){ if(!pid) return; try{ await call(`/positions/${encodeURIComponent(pid)}?reason=${encodeURIComponent(why||"")}`,{method:"DELETE"}); show("broker position closed · "+(why||""),"ok"); }
     catch(e){ show("broker close: "+e.message+" (it may already have hit SL/TP)","warn"); } }
-  return {init,connect,mirror,close,active:()=>st.mode==="demo"&&st.ok,public:PUBLIC};
+  return {init,connect,mirror,close,active:()=>(st.mode==="demo"||st.mode==="coinbase")&&st.ok,public:PUBLIC};
 })();
 window.G6_BROKER=Broker;
 
@@ -1829,6 +1921,32 @@ window.addEventListener("resize",()=>{ if(!running) drawChart(currentPacket,char
   else markets=(await (await fetch("api/markets")).json()).map(m=>({file:m.file,label:m.label,market:m.market,packet:null}));
   markets.forEach(m=>m.practice=true); PRACTICE=markets.slice();
   buildPicker(); await selectMarket(markets.find(m=>m.live).file); loadHistory();
+})();
+</script>
+
+<script>
+/* stellar wallet loader — local vendor files only, no CDNs */
+(function(){
+  var files=["stellar-wallets-kit.js","stellar-wallet.js"];
+  var bases=["vendor/","../terminal/vendor/","../vendor/"];
+  function loadOne(src){
+    return new Promise(function(res,rej){
+      var s=document.createElement("script");
+      s.src=src; s.async=false;
+      s.onload=function(){ res(src); };
+      s.onerror=function(){ s.remove(); rej(); };
+      document.body.appendChild(s);
+    });
+  }
+  function tryFile(i,j){
+    if(i>=files.length){
+      if(window.AlphaHiveStellarWallet && window.AlphaHiveStellarWallet.mount) window.AlphaHiveStellarWallet.mount();
+      return;
+    }
+    if(j>=bases.length){ console.warn("Alpha Hive: missing vendor/"+files[i]); tryFile(i+1,0); return; }
+    loadOne(bases[j]+files[i]).then(function(){ tryFile(i+1,0); }, function(){ tryFile(i,j+1); });
+  }
+  tryFile(0,0);
 })();
 </script>
 </body>

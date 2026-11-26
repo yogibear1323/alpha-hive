@@ -28,6 +28,7 @@ from agents.pipeline import list_reports, report_path_for, run_pipeline, validat
 
 DATA_DIR = ROOT / "data"
 TEMPLATE = Path(__file__).resolve().parent / "templates" / "index.html"
+VENDOR_DIR = ROOT / "terminal" / "vendor"
 MAX_UPLOAD_BYTES = 1_000_000
 
 app = Flask(__name__)
@@ -53,6 +54,16 @@ def index():
             "static": {"markets": [], "rules": rules,
                        "balance": config["simulation"]["starting_balance_usd"]}}
     return Response(render_page(boot), mimetype="text/html")
+
+
+
+@app.get("/vendor/<path:name>")
+def vendor(name):
+    """Serve locally vendored browser scripts from terminal/vendor (no CDNs)."""
+    p = (VENDOR_DIR / name).resolve()
+    if p.parent != VENDOR_DIR.resolve() or not p.is_file() or p.suffix != ".js":
+        abort(404)
+    return send_file(p, mimetype="text/javascript; charset=utf-8")
 
 
 @app.get("/api/markets")
