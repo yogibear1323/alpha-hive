@@ -151,14 +151,19 @@ There is no borrowing, exchange, order or real money anywhere.
 Scout, News, Sentiment and Charts each show their own lean for the current coin (bullish ▲ / bearish ▼ /
 neutral; Scout only screens liquidity, so it stays neutral). "simulation only" is a separate tag.
 
-**Hive scene.** The terminal background is a beehive: a honeycomb dome with a glowing entrance at the
-bottom, comb walls on both sides (blended with the existing hex grid and honey drips), and six chambers, one
-per bot. Each bot's agent bee flies out of the entrance to its panel while the bot is working and flies back
-when it finishes. When a trade opens, the bees return to their chambers and Decision's chamber pulses
-green (long) or red (short). When the trade closes, a win fills honey in Decision's chamber and in each
-analyst whose lean agreed with the trade, and a loss dims those cells; Reset clears them. It runs on two
-canvases with requestAnimationFrame (about 30 fps on phones), pauses while the tab is hidden, and is a
-still picture in reduced motion. It is decorative only: prices, risk, leverage and trades are unchanged.
+**Hive scene.** A hive band at the top of the terminal (visible on the first screen on phones and
+desktop) shows a honeycomb dome, a glowing entrance and six labelled chambers, one per bot; the page
+background is honeycomb with comb walls on both sides (blended with the hex grid and honey drips). Each
+bot's agent bee (striped body, flapping wings, a ring in the bot's colour) flies out of the entrance to its
+panel while the bot is working and flies back when it finishes. Every flight has a minimum out-and-back,
+so the bee always reaches its panel before it turns back, even when a bot finishes instantly. Scout's
+chamber glows when it picks a token (liquidity and data adequate); Risk's chamber fills a little on every
+approval and dims on a rejection. When a trade opens, the bees return to their chambers and Decision's
+chamber pulses green (long) or red (short). When the trade closes, a win fills honey in Decision's chamber
+and in each analyst whose lean agreed with the trade, and a loss dims those cells. Honey levels are kept
+in this browser (localStorage `g6_hive`) across reloads; Reset clears them. It runs on canvases with
+requestAnimationFrame (about 30 fps on phones), pauses while the tab is hidden, and is a still picture in
+reduced motion. It is decorative only: prices, risk, leverage and trades are unchanged.
 
 **Trade timer.** Each open trade shows `TIME LEFT m:ss` with a draining ring and bar in the position panel
 and the round tape. It runs on a wall-clock deadline, repainting several times a second independently

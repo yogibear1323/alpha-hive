@@ -205,6 +205,9 @@ footer{color:var(--mute);font-size:12px;text-align:center;padding:10px 20px 70px
 @keyframes floormove{to{background-position:0 60px,0 0}}
 #fx{position:fixed;inset:0;width:100vw;height:100vh;z-index:45;pointer-events:none}
 #hive{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.hiveband{position:relative;height:178px;margin:0 0 16px;clip-path:polygon(28px 0,calc(100% - 28px) 0,100% 50%,calc(100% - 28px) 100%,28px 100%,0 50%);background:#140d05;box-shadow:0 0 30px rgba(255,170,40,.18)}
+.hiveband canvas{display:block;width:100%;height:100%}
+@media(max-width:680px){ .hiveband{height:132px;margin-bottom:12px;clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,14px 100%,0 50%)} }
 #hivefx{position:fixed;inset:0;width:100vw;height:100vh;z-index:44;pointer-events:none}
 .brand h1 span{animation:textbreathe 4s ease-in-out infinite}
 @keyframes textbreathe{0%,100%{text-shadow:0 0 6px var(--cyan)}50%{text-shadow:0 0 16px var(--cyan),0 0 32px rgba(255,182,39,.5)}}
@@ -440,6 +443,7 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
 </header>
 
 <main>
+  <div class="hiveband" aria-hidden="true"><canvas id="hiveband"></canvas></div>
   <div class="console">
     <div class="card">
       <h2>Mission control</h2>
@@ -911,7 +915,7 @@ async function onEvent(ev){
     if(ev.bot==="charts") await animateChart(currentPacket,o,2,3,650*SPEED+80);
     if(ev.bot==="risk") setShield(o);
     if(ev.bot==="decision"){ $("callbox").innerHTML=dirHTML(o.decision); setDirChip(o.decision,currentPacket&&currentPacket.market); }
-    setLean(ev.bot,leanOf(ev.bot,o));
+    setLean(ev.bot,leanOf(ev.bot,o)); try{ HIVE.output(ev.bot,o); }catch(e){}
     for(const l of summaryLines(ev.bot,o)) await typeLine(ev.bot,l.t,l.c);
     await typeLine(ev.bot,"✔ output validated against schema","g");
     await heartbeat(ev.bot);
@@ -1583,105 +1587,126 @@ const FX=(()=>{
   document.addEventListener("visibilitychange",()=>{ if(document.hidden){ cancelAnimationFrame(raf); raf=0; } else kick(); });
   return {resize(){ resize(); hResize(); },setActive,handoff,burst,explode,ring,stop,motion,get active(){return active;}};
 })();
-/* ---------------------------------------------------------------- hive scene (decorative, simulation only)
-   Background canvas #hive: honeycomb dome, hive entrance/core, one chamber per bot with honey level, resting bees.
-   Foreground canvas #hivefx: the bot's agent bee flying out of the entrance to its panel while it works, and back.
-   Trade open -> bees return to their chambers; trade close -> win fills honey, loss dims the cell
-   (Decision's chamber plus each analyst whose lean agreed with the trade direction). ~30 fps, paused when the tab is hidden,
-   static picture in reduced motion. */
+/* ---------------------------------------------------------------- hive scene v2 (decorative, simulation only)
+   #hiveband (top of the page, in flow): the hive core - comb, glowing entrance, one labelled chamber per bot with its
+   honey level, and the resting bees. #hive (fixed background): comb texture and comb walls, drawn once per resize.
+   #hivefx (above the page): agent bees flying out of the entrance to their bot panel while it works and back to their
+   chamber. Every trip reaches the panel and stays a moment before turning back. Trade open -> bees return; trade close ->
+   win fills honey (Decision + analysts that agreed), loss dims those cells. Risk fills a little on approvals, Scout glows
+   when it picks a token. Honey levels persist in localStorage. ~30 fps, paused when the tab is hidden, still in reduced motion. */
 const HIVE=(()=>{
-  const bc=document.getElementById("hive"), b=bc.getContext("2d"), fc=document.getElementById("hivefx"), f=fc.getContext("2d");
-  const MOB=matchMedia("(max-width:680px)").matches; let W=0,H=0,dpr=1,R=0,D={x:0,y:0},ENT={x:0,y:0,w:0,h:0},stat=null,raf=0,last=0,t=0,trade=null;
-  const KEYS=["scout","news","sentiment","charts","risk","decision"], col=k=>(BOTS.find(x=>x.key===k)||{}).c||"#ffb627";
-  const ch={}, bee={}; KEYS.forEach((k,i)=>{ ch[k]={x:0,y:0,s:0,honey:0,hv:0,dim:0,dv:0,flash:0,paused:false}; bee[k]={st:"rest",x:0,y:0,t:0,from:null,to:null,ang:Math.random()*6.283,ph:i*1.3,carry:null,dir:0}; });
+  const bc=document.getElementById("hive"), b=bc.getContext("2d"), hb=document.getElementById("hiveband"), h=hb.getContext("2d"), fc=document.getElementById("hivefx"), f=fc.getContext("2d");
+  const MOB=matchMedia("(max-width:680px)").matches, MINF=0.9, OUT=0.95, BACK=1.05;
+  let VW=0,VH=0,dpr=1,BW=0,BH=0,bandStat=null,raf=0,last=0,t=0,trade=null,ENT={x:0,y:0,w:0,h:0};
+  const KEYS=["scout","news","sentiment","charts","risk","decision"], NAMES={scout:"SCOUT",news:"NEWS",sentiment:"SENTIMENT",charts:"CHARTS",risk:"RISK",decision:"DECISION"};
+  const col=k=>(BOTS.find(x=>x.key===k)||{}).c||"#ffb627";
+  const ch={}, bee={}; KEYS.forEach((k,i)=>{ ch[k]={x:0,y:0,s:0,honey:0,hv:0,dim:0,dv:0,flash:0,glow:0,paused:false}; bee[k]={st:"rest",x:0,y:0,t:0,ft:0,from:null,to:null,ang:Math.random()*6.283,ph:i*1.3,carry:null,dir:0,pend:null,trips:0,arrived:0,early:0}; });
+  try{ const sv=JSON.parse(LS.getItem("g6_hive")||"{}"); for(const k of KEYS) if(sv[k]){ ch[k].honey=ch[k].hv=Math.min(1,Math.max(0,+sv[k].h||0)); ch[k].dim=ch[k].dv=Math.min(1,Math.max(0,+sv[k].d||0)); } }catch(e){}
+  function save(){ try{ const o={}; for(const k of KEYS) o[k]={h:+ch[k].honey.toFixed(3),d:+ch[k].dim.toFixed(3)}; LS.setItem("g6_hive",JSON.stringify(o)); }catch(e){} }
   function rng(seed){ let x=seed>>>0||1; return ()=>{ x^=x<<13; x^=x>>>17; x^=x<<5; return (x>>>0)/4294967296; }; }
-  function hex(g,x,y,r,rot){ g.beginPath(); for(let i=0;i<6;i++){ const a=(rot||0)+i*1.0472+Math.PI/6; const px=x+Math.cos(a)*r, py=y+Math.sin(a)*r; i?g.lineTo(px,py):g.moveTo(px,py);} g.closePath(); }
-  function layout(){ W=innerWidth; H=innerHeight; dpr=MOB?1:Math.min(1.5,devicePixelRatio||1);
-    for(const c of [bc,fc]){ c.width=W*dpr; c.height=H*dpr; }
-    R=Math.max(150,Math.min(MOB?W*.62:W*.36,MOB?300:440)); D={x:W/2,y:H+R*.30};
-    ENT={x:D.x,y:H-R*.20,w:R*.30,h:R*.085};
-    KEYS.forEach((k,i)=>{ const a=Math.PI+(i+.5)/6*Math.PI, rr=R*.80; const c=ch[k]; c.x=D.x+Math.cos(a)*rr*1.08; c.y=D.y+Math.sin(a)*rr*.78; c.s=Math.max(MOB?16:22,R*.095); });
-    buildStatic(); KEYS.forEach(k=>{ const q=bee[k]; if(q.st==="rest"){ const r=restPt(k); q.x=r.x; q.y=r.y; } }); }
-  function buildStatic(){ stat=document.createElement("canvas"); stat.width=W*dpr; stat.height=H*dpr; const g=stat.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0);
-    // warm core glow behind the dome
-    let gr=g.createRadialGradient(D.x,H-R*.2,R*.05,D.x,H-R*.2,R*1.15); gr.addColorStop(0,"rgba(255,170,40,.28)"); gr.addColorStop(.55,"rgba(200,120,20,.11)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(0,0,W,H);
-    // honeycomb dome: hex cells inside an ellipse, some filled / capped
-    const cs=MOB?11:13, dx=cs*Math.sqrt(3), dy=cs*1.5, rnd=rng(20261126);
-    for(let row=0, y=H+cs; y>D.y-R*.95; row++, y-=dy){ for(let x=(row%2?dx/2:0)-dx; x<W+dx; x+=dx){
-        const ex=(x-D.x)/(R*1.08), ey=(y-D.y)/(R*.86), e=ex*ex+ey*ey; if(e>1) continue; const edge=1-e, v=rnd();
-        g.globalAlpha=.16+.22*edge; g.strokeStyle="#ffb627"; g.lineWidth=1.2; hex(g,x,y,cs-1); g.stroke();
-        if(v<.38){ g.globalAlpha=(.12+.22*edge)*(v<.14?1.3:1); g.fillStyle=v<.14?"#ffcf5c":"#c97a12"; hex(g,x,y,cs-2.2); g.fill(); }
-        else if(v<.47){ g.globalAlpha=.08+.10*edge; g.fillStyle="#fff0c8"; hex(g,x,y,cs-3.5); g.fill(); } } }
-    // comb walls framing both sides: you are inside the hive
-    const wall=Math.max(MOB?46:90,W*.16);
-    for(let row=0,y=-cs; y<H+cs; row++, y+=dy){ for(let x=(row%2?dx/2:0)-dx; x<W+dx; x+=dx){ const dEdge=Math.min(x,W-x); if(dEdge>wall) continue;
-        const ex=(x-D.x)/(R*1.08), ey=(y-D.y)/(R*.86); if(ex*ex+ey*ey<=1) continue; const k=1-dEdge/wall, v=rnd();
-        g.globalAlpha=.06+.20*k; g.strokeStyle="#ffb627"; g.lineWidth=1; hex(g,x,y,cs-1); g.stroke();
-        if(v<.30*k+.05){ g.globalAlpha=(.07+.20*k); g.fillStyle=v<.12?"#ffcf5c":"#b8700f"; hex(g,x,y,cs-2.2); g.fill(); } } }
-    // dark wax vignette at the very edges so the comb reads as a chamber wall
-    let vg=g.createLinearGradient(0,0,wall,0); vg.addColorStop(0,"rgba(40,22,4,.35)"); vg.addColorStop(1,"rgba(40,22,4,0)"); g.globalAlpha=1; g.fillStyle=vg; g.fillRect(0,0,wall,H);
-    vg=g.createLinearGradient(W,0,W-wall,0); vg.addColorStop(0,"rgba(40,22,4,.35)"); vg.addColorStop(1,"rgba(40,22,4,0)"); g.fillStyle=vg; g.fillRect(W-wall,0,wall,H);
-    g.globalAlpha=1;
-    // dome rim
-    g.strokeStyle="rgba(255,182,39,.22)"; g.lineWidth=2; g.beginPath(); g.ellipse(D.x,D.y,R*1.08,R*.86,0,Math.PI,2*Math.PI); g.stroke();
-    // entrance: dark slot with a lit lip
-    g.fillStyle="rgba(8,6,3,.85)"; g.beginPath(); g.ellipse(ENT.x,ENT.y,ENT.w,ENT.h,0,0,6.283); g.fill();
-    g.strokeStyle="rgba(255,190,70,.45)"; g.lineWidth=2; g.beginPath(); g.ellipse(ENT.x,ENT.y-1,ENT.w,ENT.h,0,Math.PI*1.05,Math.PI*1.95); g.stroke(); }
-  const restPt=k=>{ const c=ch[k]; return {x:c.x, y:c.y-c.s*1.35}; };
+  function hex(g,x,y,r){ g.beginPath(); for(let i=0;i<6;i++){ const a=i*1.0472+Math.PI/6; const px=x+Math.cos(a)*r, py=y+Math.sin(a)*r; i?g.lineTo(px,py):g.moveTo(px,py);} g.closePath(); }
+  function comb(g,W,H,cs,alpha,fill,keep){ const dx=cs*Math.sqrt(3), dy=cs*1.5, rnd=rng(20261126+W);
+    for(let row=0,y=-cs; y<H+cs; row++, y+=dy) for(let x=(row%2?dx/2:0)-dx; x<W+dx; x+=dx){ const k=keep(x,y); if(k<=0) continue; const v=rnd();
+      g.globalAlpha=alpha*k; g.strokeStyle="#ffb627"; g.lineWidth=1; hex(g,x,y,cs-1); g.stroke();
+      if(v<fill*k+.04){ g.globalAlpha=(alpha*.9)*k*(v<.12?1.3:1); g.fillStyle=v<.12?"#ffcf5c":"#b8700f"; hex(g,x,y,cs-2.2); g.fill(); }
+      else if(v<fill*k+.10){ g.globalAlpha=alpha*.45*k; g.fillStyle="#fff0c8"; hex(g,x,y,cs-3.5); g.fill(); } }
+    g.globalAlpha=1; }
+  // ---- fixed background: comb texture + walls (static) ----
+  function drawBg(){ VW=innerWidth; VH=innerHeight; dpr=MOB?1:Math.min(1.5,devicePixelRatio||1); bc.width=VW*dpr; bc.height=VH*dpr; fc.width=VW*dpr; fc.height=VH*dpr;
+    b.setTransform(dpr,0,0,dpr,0,0); b.clearRect(0,0,VW,VH); const wall=Math.max(MOB?46:90,VW*.16);
+    comb(b,VW,VH,MOB?11:13,.30,.34,(x,y)=>{ const d=Math.min(x,VW-x); return d<wall ? .25+.75*(1-d/wall) : .22; });
+    let vg=b.createLinearGradient(0,0,wall,0); vg.addColorStop(0,"rgba(40,22,4,.35)"); vg.addColorStop(1,"rgba(40,22,4,0)"); b.fillStyle=vg; b.fillRect(0,0,wall,VH);
+    vg=b.createLinearGradient(VW,0,VW-wall,0); vg.addColorStop(0,"rgba(40,22,4,.35)"); vg.addColorStop(1,"rgba(40,22,4,0)"); b.fillStyle=vg; b.fillRect(VW-wall,0,wall,VH);
+    const gr=b.createRadialGradient(VW/2,VH,10,VW/2,VH,VH*.8); gr.addColorStop(0,"rgba(255,170,40,.12)"); gr.addColorStop(1,"rgba(0,0,0,0)"); b.fillStyle=gr; b.fillRect(0,0,VW,VH); }
+  // ---- hive band: the core ----
+  function layoutBand(){ const r=hb.getBoundingClientRect(); BW=Math.max(200,Math.round(r.width)); BH=Math.max(100,Math.round(r.height)); hb.width=BW*dpr; hb.height=BH*dpr;
+    ENT={x:BW/2,y:BH-MOB*2-16,w:Math.min(BW*.10,64),h:MOB?9:11};
+    const sp=Math.min(BW/(MOB?6.4:7.2),170); KEYS.forEach((k,i)=>{ const u=(i-2.5)/2.5, c=ch[k]; c.s=MOB?Math.min(17,sp*.29):Math.min(30,sp*.25); c.x=BW/2+(i-2.5)*sp; c.y=BH*(MOB?.40:.42)+u*u*BH*.14; });
+    bandStat=document.createElement("canvas"); bandStat.width=BW*dpr; bandStat.height=BH*dpr; const g=bandStat.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0);
+    const bg=g.createLinearGradient(0,0,0,BH); bg.addColorStop(0,"#1c1306"); bg.addColorStop(1,"#120c05"); g.fillStyle=bg; g.fillRect(0,0,BW,BH);
+    const gr=g.createRadialGradient(BW/2,BH,4,BW/2,BH,Math.max(BW*.45,BH*1.4)); gr.addColorStop(0,"rgba(255,175,45,.40)"); gr.addColorStop(.5,"rgba(200,120,20,.14)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(0,0,BW,BH);
+    comb(g,BW,BH,MOB?9:11,.42,.40,(x,y)=>{ const ex=(x-BW/2)/(BW*.55), ey=(y-BH*1.05)/(BH*1.15); const e=ex*ex+ey*ey; return e>1 ? .35 : .55+.45*(1-e); });
+    g.strokeStyle="rgba(255,190,70,.35)"; g.lineWidth=2; g.beginPath(); g.ellipse(BW/2,BH*1.05,BW*.40,BH*.95,0,Math.PI,2*Math.PI); g.stroke();
+    g.fillStyle="rgba(6,4,2,.92)"; g.beginPath(); g.ellipse(ENT.x,ENT.y,ENT.w,ENT.h,0,0,6.283); g.fill();
+    g.strokeStyle="rgba(255,200,90,.6)"; g.lineWidth=2; g.beginPath(); g.ellipse(ENT.x,ENT.y-1,ENT.w,ENT.h,0,Math.PI*1.05,Math.PI*1.95); g.stroke();
+    g.font=`700 ${MOB?8:10}px ui-monospace,Menlo,monospace`; g.textAlign="center"; g.textBaseline="top";
+    for(const k of KEYS){ const c=ch[k], label=NAMES[k]; const w=g.measureText(label).width+8;
+      g.fillStyle="rgba(10,7,3,.88)"; g.fillRect(c.x-w/2,c.y+c.s+5,w,MOB?11:14); g.fillStyle=col(k); g.fillText(label,c.x,c.y+c.s+(MOB?6.5:7)); }
+    KEYS.forEach(k=>{ const q=bee[k]; if(q.st==="rest"){ const p=restLocal(k); q.x=p.x; q.y=p.y; } }); }
+  const restLocal=k=>({x:ch[k].x, y:ch[k].y-ch[k].s-(MOB?6:8)});
+  const bandRect=()=>hb.getBoundingClientRect();
+  const toView=(p,r)=>({x:r.left+p.x*(r.width/BW), y:r.top+p.y*(r.height/BH)});
   function avatarPt(k){ const el=document.querySelector("#bot-"+k+" .av"); if(!el) return null; const r=el.getBoundingClientRect(); if(r.width===0) return null;
-    const hd=document.querySelector("header"), top=(hd?hd.getBoundingClientRect().bottom:0)+24;
-    return {x:Math.min(W-24,Math.max(24,r.left+r.width/2)), y:Math.min(H-ENT.h-60,Math.max(top,r.top+r.height/2)), on:r.bottom>top&&r.top<H}; }
-  function drawBee(g,x,y,k,c,a,dir,ph,carry){ const fl=Math.abs(Math.sin(t*26+ph));
-    g.globalAlpha=a*.25; g.fillStyle=c; g.beginPath(); g.arc(x,y,k*3.2,0,6.283); g.fill();
-    g.save(); g.translate(x,y); g.rotate(dir);
-    g.globalAlpha=a*.6; g.fillStyle="#fff6dc"; g.beginPath(); g.ellipse(-k*.2,-k*.95,k*.95,k*(.3+.5*fl),-.5,0,6.283); g.fill(); g.beginPath(); g.ellipse(-k*.2,k*.95,k*.95,k*(.3+.5*fl),.5,0,6.283); g.fill();
-    g.globalAlpha=a; g.fillStyle=c; g.beginPath(); g.ellipse(0,0,k*1.45,k*.85,0,0,6.283); g.fill();
-    g.fillStyle="rgba(26,18,6,.9)"; g.fillRect(-k*.4,-k*.8,k*.3,k*1.6); g.fillRect(k*.25,-k*.72,k*.27,k*1.44); g.beginPath(); g.arc(k*1.35,0,k*.45,0,6.283); g.fill();
-    g.restore(); if(carry){ g.globalAlpha=a; g.fillStyle=carry; g.beginPath(); g.arc(x,y+k*1.2,k*.55,0,6.283); g.fill(); } g.globalAlpha=1; }
-  function drawChamber(g,k){ const c=ch[k], cl=col(k), s=c.s; hex(g,c.x,c.y,s); g.fillStyle="rgba(14,10,4,.78)"; g.fill();
-    if(c.hv>0.005){ g.save(); hex(g,c.x,c.y,s-2.5); g.clip(); const top=c.y+s-(2*s)*c.hv; const gr=g.createLinearGradient(0,top,0,c.y+s); gr.addColorStop(0,"#ffcf5c"); gr.addColorStop(1,"#c97a12");
-      g.globalAlpha=.75; g.fillStyle=gr; g.fillRect(c.x-s,top+Math.sin(t*2+c.x)*1.2,2*s,c.y+s-top+2); g.restore(); g.globalAlpha=1; }
-    if(c.dv>0.01){ hex(g,c.x,c.y,s-1); g.fillStyle=`rgba(0,0,0,${(.55*c.dv).toFixed(3)})`; g.fill(); }
-    if(c.paused) g.setLineDash([3,3]); g.lineWidth=c.flash>0?3:1.6; g.strokeStyle=cl; g.globalAlpha=(.55-.3*c.dv)+(c.flash>0?.4*c.flash:0); hex(g,c.x,c.y,s); g.stroke(); g.setLineDash([]); g.globalAlpha=1;
-    if(trade && k==="decision"){ g.globalAlpha=.55+.35*Math.sin(t*4); g.strokeStyle=trade.dir>0?"#8fe388":"#ff6b6b"; g.lineWidth=2; hex(g,c.x,c.y,s+5+2*Math.sin(t*4)); g.stroke(); g.globalAlpha=1; } }
-  function bez(a,b,u){ const mx=(a.x+b.x)/2+(a.x<b.x?-1:1)*40, my=Math.min(a.y,b.y)-Math.max(60,Math.abs(a.y-b.y)*.35); const v=1-u; return {x:v*v*a.x+2*v*u*mx+u*u*b.x,y:v*v*a.y+2*v*u*my+u*u*b.y}; }
+    const hd=document.querySelector("header"), top=(hd?hd.getBoundingClientRect().bottom:0)+28; return {x:Math.min(VW-28,Math.max(28,r.left+r.width/2)), y:Math.min(VH-40,Math.max(top,r.top+r.height/2))}; }
+  // a recognisable honeybee: striped abdomen, dark thorax, head with eye and antennae, veined flapping wings, halo in the bot colour
+  function drawBee(g,x,y,k,c,a,dir,ph,carry,still){ const fl=still?.6:Math.abs(Math.sin(t*28+ph));
+    g.globalAlpha=a*.22; g.fillStyle=c; g.beginPath(); g.arc(x,y,k*3,0,6.283); g.fill();
+    g.globalAlpha=a*.7; g.strokeStyle=c; g.lineWidth=Math.max(1,k*.22); g.beginPath(); g.arc(x,y,k*2.55,0,6.283); g.stroke();
+    g.save(); g.translate(x,y); g.rotate(dir); g.globalAlpha=a;
+    g.fillStyle="#f6c234"; g.beginPath(); g.ellipse(-k*.55,0,k*1.35,k*.88,0,0,6.283); g.fill();
+    g.save(); g.beginPath(); g.ellipse(-k*.55,0,k*1.35,k*.88,0,0,6.283); g.clip(); g.fillStyle="#22160a";
+    for(const sx of [-1.55,-.95,-.35]) g.fillRect(k*sx,-k,k*.32,k*2); g.restore();
+    g.fillStyle="#22160a"; g.beginPath(); g.moveTo(-k*1.85,0); g.lineTo(-k*2.35,-k*.12); g.lineTo(-k*2.35,k*.12); g.closePath(); g.fill();
+    g.fillStyle="#3a2610"; g.beginPath(); g.arc(k*.6,0,k*.62,0,6.283); g.fill(); g.fillStyle="#5a3c18"; g.beginPath(); g.arc(k*.5,-k*.18,k*.3,0,6.283); g.fill();
+    g.fillStyle="#22160a"; g.beginPath(); g.arc(k*1.32,0,k*.45,0,6.283); g.fill(); g.fillStyle="#fff6dc"; g.beginPath(); g.arc(k*1.5,-k*.18,k*.13,0,6.283); g.fill();
+    g.strokeStyle="#22160a"; g.lineWidth=Math.max(.8,k*.12); g.beginPath(); g.moveTo(k*1.55,-k*.25); g.quadraticCurveTo(k*2.1,-k*.75,k*2.35,-k*.55); g.moveTo(k*1.55,k*.25); g.quadraticCurveTo(k*2.1,k*.75,k*2.35,k*.55); g.stroke();
+    for(const sgn of [-1,1]){ g.save(); g.translate(k*.35,sgn*k*.4); g.rotate(sgn*(-.35-.5*fl)); g.globalAlpha=a*.55; g.fillStyle="#eaf6ff"; g.beginPath(); g.ellipse(-k*.6,sgn*k*.75,k*1.15,k*.55,0,0,6.283); g.fill();
+      g.globalAlpha=a*.8; g.strokeStyle="rgba(255,255,255,.9)"; g.lineWidth=Math.max(.6,k*.1); g.stroke(); g.globalAlpha=a*.4; g.beginPath(); g.moveTo(0,0); g.lineTo(-k*1.4,sgn*k*.8); g.stroke(); g.restore(); }
+    g.restore(); if(carry){ g.globalAlpha=a; g.fillStyle=carry; g.beginPath(); g.arc(x,y+k*1.35,k*.5,0,6.283); g.fill(); g.strokeStyle="#22160a"; g.lineWidth=1; g.stroke(); } g.globalAlpha=1; }
+  function drawChamber(g,k){ const c=ch[k], cl=col(k), s=c.s; hex(g,c.x,c.y,s); g.fillStyle="rgba(10,7,3,.85)"; g.fill();
+    if(c.hv>0.005){ g.save(); hex(g,c.x,c.y,s-2.5); g.clip(); const top=c.y+s-(2*s)*c.hv; const gr=g.createLinearGradient(0,top,0,c.y+s); gr.addColorStop(0,"#ffd76a"); gr.addColorStop(1,"#c97a12");
+      g.globalAlpha=.9; g.fillStyle=gr; g.fillRect(c.x-s,top+(REDUCED?0:Math.sin(t*2+c.x)*1.2),2*s,c.y+s-top+2); g.restore(); g.globalAlpha=1; }
+    if(c.dv>0.01){ hex(g,c.x,c.y,s-1); g.fillStyle=`rgba(0,0,0,${(.6*c.dv).toFixed(3)})`; g.fill(); }
+    if(c.glow>0){ g.globalAlpha=.5*c.glow; g.fillStyle=cl; hex(g,c.x,c.y,s+8); g.fill(); g.globalAlpha=1; }
+    if(c.paused) g.setLineDash([3,3]); g.lineWidth=c.flash>0?3:2; g.strokeStyle=cl; g.globalAlpha=(.85-.4*c.dv)+(c.flash>0?.15*c.flash:0); hex(g,c.x,c.y,s); g.stroke(); g.setLineDash([]); g.globalAlpha=1;
+    if(trade && k==="decision"){ g.globalAlpha=.6+.35*Math.sin(t*4); g.strokeStyle=trade.dir>0?"#8fe388":"#ff6b6b"; g.lineWidth=2.5; hex(g,c.x,c.y,s+5+(REDUCED?0:2*Math.sin(t*4))); g.stroke(); g.globalAlpha=1; } }
+  function bez(a,b2,u){ const mx=(a.x+b2.x)/2+(a.x<b2.x?-1:1)*50, my=Math.min(a.y,b2.y)-Math.max(50,Math.abs(a.y-b2.y)*.25); const v=1-u; return {x:v*v*a.x+2*v*u*mx+u*u*b2.x,y:v*v*a.y+2*v*u*my+u*u*b2.y}; }
   const ease=u=>u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+  function entranceView(){ const r=bandRect(); return toView({x:ENT.x+(Math.random()-.5)*ENT.w*.8,y:ENT.y},r); }
+  function startBack(k,carry){ const q=bee[k]; q.pend=null; q.carry=carry||null; q.from={x:q.x,y:q.y}; q.to=()=>toView(restLocal(k),bandRect()); q.t=0; q.st="back"; }
+  function flyOut(k){ const q=bee[k]; if(q.st==="out"||q.st==="forage"){ q.pend=null; return; }
+    q.from = q.st==="rest" ? entranceView() : {x:q.x,y:q.y}; q.carry=null; q.pend=null; q.to=()=>avatarPt(k)||{x:VW/2,y:VH/2}; q.t=0; q.st="out"; q.x=q.from.x; q.y=q.from.y; q.trips++; }
+  function flyBack(k,carry){ const q=bee[k]; if(q.st==="rest"){ if(carry!==undefined) q.carry=carry; return; }
+    if(q.st==="out" || (q.st==="forage" && q.ft<MINF)){ q.pend={carry:carry||null}; return; } if(q.st==="forage") startBack(k,carry); }
   function step(dt){ t+=dt;
-    for(const k of KEYS){ const c=ch[k]; c.hv+=(c.honey-c.hv)*Math.min(1,dt*2.5); c.dv+=(c.dim-c.dv)*Math.min(1,dt*2.5); if(c.flash>0) c.flash=Math.max(0,c.flash-dt*.8);
+    for(const k of KEYS){ const c=ch[k]; c.hv+=(c.honey-c.hv)*Math.min(1,dt*2.5); c.dv+=(c.dim-c.dv)*Math.min(1,dt*2.5); if(c.flash>0) c.flash=Math.max(0,c.flash-dt*.8); if(c.glow>0) c.glow=Math.max(0,c.glow-dt*.5);
       const q=bee[k];
-      if(q.st==="out"||q.st==="back"){ q.t+=dt/(q.st==="out"?0.9:1.0); const u=ease(Math.min(1,q.t)); const p=bez(q.from,q.to(),u), p2=bez(q.from,q.to(),Math.max(0,u-.02)); q.dir=Math.atan2(p.y-p2.y,p.x-p2.x); q.x=p.x; q.y=p.y;
-        if(q.t>=1){ if(q.st==="out") q.st="forage"; else { q.st="rest"; const r=restPt(k); q.x=r.x; q.y=r.y; if(q.deposit) { q.deposit(); q.deposit=null; } } } }
-      else if(q.st==="forage"){ const a=avatarPt(k)||{x:W/2,y:H/2}; q.ang+=dt*2.4; const rx=30+6*Math.sin(t*1.7+q.ph), nx=a.x+Math.cos(q.ang)*rx, ny=a.y+Math.sin(q.ang)*rx*.6;
-        q.dir=Math.atan2(ny-q.y,nx-q.x); q.x+= (nx-q.x)*Math.min(1,dt*8); q.y+=(ny-q.y)*Math.min(1,dt*8); }
-      else { const r=restPt(k); q.x=r.x+(c.paused?0:Math.sin(t*2+q.ph)*3); q.y=r.y+(c.paused?0:Math.cos(t*2.6+q.ph)*2); q.dir=Math.sin(t+q.ph)*.4; } } }
-  function draw(){ b.setTransform(dpr,0,0,dpr,0,0); b.clearRect(0,0,W,H); if(stat) b.drawImage(stat,0,0,W,H);
-    const pulse=REDUCED?.5:.5+.5*Math.sin(t*1.6); const gr=b.createRadialGradient(ENT.x,ENT.y,1,ENT.x,ENT.y,ENT.w*1.3); gr.addColorStop(0,`rgba(255,200,90,${(.30+.18*pulse).toFixed(3)})`); gr.addColorStop(1,"rgba(255,170,40,0)"); b.fillStyle=gr; b.beginPath(); b.ellipse(ENT.x,ENT.y,ENT.w*1.3,ENT.h*2.4,0,0,6.283); b.fill();
-    for(const k of KEYS) drawChamber(b,k);
-    const bk=MOB?2.6:3.2; for(const k of KEYS){ const q=bee[k]; if(q.st==="rest") drawBee(b,q.x,q.y,bk,col(k),ch[k].paused?.45:.95,q.dir,q.ph,q.carry); }
-    f.setTransform(dpr,0,0,dpr,0,0); f.clearRect(0,0,W,H);
-    for(const k of KEYS){ const q=bee[k]; if(q.st==="rest") continue; const k2=MOB?3.4:4.6; f.globalAlpha=.35; f.strokeStyle=col(k); f.lineWidth=1.5; f.beginPath(); f.arc(q.x,q.y,k2*4.2,0,6.283); f.stroke(); f.globalAlpha=1;
-      if(q.st!=="forage"){ f.globalAlpha=.35; f.strokeStyle=col(k); f.setLineDash([2,6]); f.lineWidth=1.2; f.beginPath(); const pts=24; for(let i=0;i<=pts;i++){ const u=ease(Math.min(1,q.t))*i/pts, p=bez(q.from,q.to(),u); i?f.lineTo(p.x,p.y):f.moveTo(p.x,p.y);} f.stroke(); f.setLineDash([]); f.globalAlpha=1; }
-      drawBee(f,q.x,q.y,k2,col(k),1,q.dir,q.ph,q.carry); } }
+      if(q.st==="out"||q.st==="back"){ q.t+=dt/(q.st==="out"?OUT:BACK); const u=ease(Math.min(1,q.t)), to=q.to(); const p=bez(q.from,to,u), p2=bez(q.from,to,Math.max(0,u-.02)); q.dir=Math.atan2(p.y-p2.y,p.x-p2.x); q.x=p.x; q.y=p.y;
+        if(q.t>=1){ if(q.st==="out"){ q.st="forage"; q.ft=0; q.arrived++; } else { q.st="rest"; const r=restLocal(k); q.x=r.x; q.y=r.y; } } }
+      else if(q.st==="forage"){ q.ft+=dt; const a=avatarPt(k)||{x:VW/2,y:VH/2}; q.ang+=dt*2.4; const rx=34+6*Math.sin(t*1.7+q.ph), nx=a.x+Math.cos(q.ang)*rx, ny=a.y+Math.sin(q.ang)*rx*.6;
+        q.dir=Math.atan2(ny-q.y,nx-q.x); q.x+=(nx-q.x)*Math.min(1,dt*8); q.y+=(ny-q.y)*Math.min(1,dt*8); if(q.pend && q.ft>=MINF) startBack(k,q.pend.carry); }
+      else { const r=restLocal(k); q.x=r.x+(c.paused?0:Math.sin(t*2+q.ph)*3); q.y=r.y+(c.paused?0:Math.cos(t*2.6+q.ph)*2); q.dir=-Math.PI/2+Math.sin(t+q.ph)*.35; } } }
+  function draw(){ const r=bandRect(), vis=r.bottom>0&&r.top<VH;
+    if(vis||REDUCED){ h.setTransform(dpr,0,0,dpr,0,0); h.clearRect(0,0,BW,BH); if(bandStat) h.drawImage(bandStat,0,0,BW,BH);
+      const pulse=REDUCED?.5:.5+.5*Math.sin(t*1.6); const gr=h.createRadialGradient(ENT.x,ENT.y,1,ENT.x,ENT.y,ENT.w*1.4); gr.addColorStop(0,`rgba(255,205,95,${(.35+.2*pulse).toFixed(3)})`); gr.addColorStop(1,"rgba(255,170,40,0)"); h.fillStyle=gr; h.beginPath(); h.ellipse(ENT.x,ENT.y,ENT.w*1.4,ENT.h*2.6,0,0,6.283); h.fill();
+      for(const k of KEYS) drawChamber(h,k);
+      const bk=MOB?3.4:4.6; for(const k of KEYS){ const q=bee[k]; if(q.st==="rest") drawBee(h,q.x,q.y,bk,col(k),ch[k].paused?.5:1,q.dir,q.ph,q.carry,ch[k].paused||REDUCED); } }
+    f.setTransform(dpr,0,0,dpr,0,0); f.clearRect(0,0,VW,VH);
+    for(const k of KEYS){ const q=bee[k]; if(q.st==="rest") continue; const kk=MOB?6:8;
+      if(q.st!=="forage"){ const to=q.to(); f.globalAlpha=.4; f.strokeStyle=col(k); f.setLineDash([2,7]); f.lineWidth=1.4; f.beginPath(); for(let i=0;i<=24;i++){ const u=ease(Math.min(1,q.t))*i/24, p=bez(q.from,to,u); i?f.lineTo(p.x,p.y):f.moveTo(p.x,p.y);} f.stroke(); f.setLineDash([]); f.globalAlpha=1; }
+      drawBee(f,q.x,q.y,kk,col(k),1,q.dir,q.ph,q.carry,false); } }
   function loop(now){ raf=0; if(document.hidden||REDUCED) return; const el=now-last; if(el<(MOB?33:16)){ raf=requestAnimationFrame(loop); return; } const dt=Math.min(.1,el/1000); last=now; step(dt); draw(); raf=requestAnimationFrame(loop); }
   function kick(){ if(!raf && !REDUCED && !document.hidden){ last=performance.now(); raf=requestAnimationFrame(loop); } }
-  function settleStatic(){ for(const k of KEYS){ const c=ch[k]; c.hv=c.honey; c.dv=c.dim; c.flash=0; const q=bee[k]; q.st="rest"; const r=restPt(k); q.x=r.x; q.y=r.y; q.dir=0; } draw(); }
-  function flyOut(k){ const q=bee[k]; if(q.st==="out"||q.st==="forage") return; q.carry=null; q.from={x:ENT.x+(Math.random()-.5)*ENT.w*.6,y:ENT.y}; q.to=()=>avatarPt(k)||{x:W/2,y:H/2}; q.t=0; q.st="out"; q.x=q.from.x; q.y=q.from.y; }
-  function flyBack(k,carry){ const q=bee[k]; if(q.st==="rest") { if(carry!==undefined) q.carry=carry; return; } q.carry=carry||null; q.from={x:q.x,y:q.y}; const r=restPt(k); q.to=()=>r; q.t=0; q.st="back"; }
-  function leanColor(k){ const el=document.getElementById("lean-"+k); if(!el) return null; return /\bbull\b|\blong\b/.test(el.className)?"#8fe388":/\bbear\b|\bshort\b/.test(el.className)?"#ff6b6b":null; }
+  function settleStatic(){ for(const k of KEYS){ const c=ch[k]; c.hv=c.honey; c.dv=c.dim; c.flash=0; c.glow=0; const q=bee[k]; q.st="rest"; q.pend=null; const r=restLocal(k); q.x=r.x; q.y=r.y; q.dir=-Math.PI/2; } draw(); }
+  const leanColor=k=>{ const el=document.getElementById("lean-"+k); if(!el) return null; return /\bbull\b|\blong\b/.test(el.className)?"#8fe388":/\bbear\b|\bshort\b/.test(el.className)?"#ff6b6b":null; };
   const api={
-    bot(k,state){ if(!ch[k]) return; ch[k].paused=state==="paused"; if(REDUCED){ draw(); return; }
-      if(state==="work") flyOut(k); else if(state==="ok") flyBack(k,leanColor(k)); else flyBack(k,null); kick(); },
+    bot(k,state){ if(!ch[k]) return; ch[k].paused=state==="paused"; if(REDUCED){ draw(); return; } if(state==="work") flyOut(k); else if(state==="ok") flyBack(k,leanColor(k)); else flyBack(k,null); kick(); },
+    output(k,o){ if(!o||!ch[k]) return; const c=ch[k];
+      if(k==="risk"){ if(o.status==="approve"){ c.honey=Math.min(1,c.honey+.1); c.dim=Math.max(0,c.dim-.15); } else if(o.status==="reject") c.dim=Math.min(1,c.dim+.2); c.flash=1; save(); }
+      if(k==="scout" && o.liquidity_status!=="thin" && o.data_quality!=="poor"){ c.glow=1; c.honey=Math.min(1,c.honey+.04); save(); }
+      if(REDUCED) settleStatic(); else kick(); },
     tradeOpen(call){ const dir=dirOf(call); trade={dir}; for(const k of KEYS) flyBack(k, k==="decision"?(dir>0?"#8fe388":"#ff6b6b"):bee[k].carry); if(REDUCED) draw(); else kick(); },
     tradeClose(call,pnl){ const dir=dirOf(call), win=pnl>0; trade=null;
       const agree=k=>{ if(k==="decision") return true; const el=document.getElementById("lean-"+k); if(!el) return false; return dir>0?/\bbull\b/.test(el.className):/\bbear\b/.test(el.className); };
       for(const k of KEYS){ if(!agree(k)) continue; const c=ch[k]; if(win){ c.honey=Math.min(1,c.honey+.25); c.dim=Math.max(0,c.dim-.35); } else if(pnl<0){ c.dim=Math.min(1,c.dim+.35); c.honey=Math.max(0,c.honey-.1); } c.flash=1; bee[k].carry=null; }
-      if(REDUCED) settleStatic(); else kick(); },
-    reset(){ trade=null; for(const k of KEYS){ Object.assign(ch[k],{honey:0,dim:0,flash:0}); bee[k].carry=null; } if(REDUCED) settleStatic(); else kick(); },
-    resize(){ layout(); if(REDUCED) settleStatic(); },
-    motion(red){ if(red){ cancelAnimationFrame(raf); raf=0; const c=f; c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,fc.width,fc.height); settleStatic(); } else kick(); },
-    state(){ const o={looping:!!raf,hidden:document.hidden,trade:trade&&trade.dir,bees:{},chambers:{}}; for(const k of KEYS){ o.bees[k]=bee[k].st; o.chambers[k]={honey:+ch[k].honey.toFixed(2),dim:+ch[k].dim.toFixed(2)}; } return o; } };
+      save(); if(REDUCED) settleStatic(); else kick(); },
+    reset(){ trade=null; for(const k of KEYS){ Object.assign(ch[k],{honey:0,dim:0,flash:0,glow:0}); bee[k].carry=null; } save(); if(REDUCED) settleStatic(); else kick(); },
+    resize(){ drawBg(); layoutBand(); if(REDUCED) settleStatic(); },
+    motion(red){ if(red){ cancelAnimationFrame(raf); raf=0; f.setTransform(1,0,0,1,0,0); f.clearRect(0,0,fc.width,fc.height); settleStatic(); } else kick(); },
+    state(){ const o={looping:!!raf,hidden:document.hidden,trade:trade&&trade.dir,band:{w:BW,h:BH},bees:{},flights:{},chambers:{}}; for(const k of KEYS){ const q=bee[k]; o.bees[k]=q.st; o.flights[k]={trips:q.trips,arrived:q.arrived}; o.chambers[k]={honey:+ch[k].honey.toFixed(2),dim:+ch[k].dim.toFixed(2)}; } return o; } };
   document.addEventListener("visibilitychange",()=>{ if(document.hidden){ cancelAnimationFrame(raf); raf=0; } else kick(); });
-  layout(); kick();
+  addEventListener("scroll",()=>{ if(REDUCED) draw(); },{passive:true});
+  drawBg(); layoutBand(); if(REDUCED) settleStatic(); kick();
   return api;
 })();
 window.G6_HIVE=()=>HIVE.state();

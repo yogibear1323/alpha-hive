@@ -17,10 +17,12 @@ must review every result.
 - **Status labels:** a header chip, the Decision call, the position panel and the round tape show
   `LONG ▲ BUY` (green) or `SHORT ▼ SELL` (red), or WAIT/SKIP, reset every round; each analyst shows its own
   lean (bullish/bearish/neutral). "simulation only" is a separate tag.
-- **Hive scene (background):** a honeycomb dome with a glowing hive entrance, comb walls framing the
-  sides, and one chamber per bot. Each bot's bee flies out of the entrance to its panel while that bot
-  works and returns when it is done; when a trade opens the bees go back to their chambers; when it closes,
-  a win fills honey in Decision's chamber and in each analyst that agreed, and a loss dims those cells.
+- **Hive scene:** a hive band at the top of the terminal (first screen on phone and desktop) with a
+  honeycomb dome, glowing entrance and six labelled chambers; honeycomb comb walls frame the page. Each
+  bot's striped, winged bee flies out to its panel while that bot works and returns when done, with a
+  minimum out-and-back so it always reaches the panel. Scout's chamber glows when it picks a token, Risk's
+  fills on approvals; when a trade closes, a win fills honey in Decision's chamber and in each analyst that
+  agreed, and a loss dims those cells. Honey persists across reloads (localStorage); Reset clears it.
   Canvas + requestAnimationFrame, paused when the tab is hidden, a still picture in reduced motion.
   Purely decorative: it changes nothing about prices, risk or trades.
 - **Trade timer:** every open trade shows `TIME LEFT m:ss` with a draining ring and bar (amber under 15 s,
