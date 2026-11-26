@@ -1307,6 +1307,7 @@ async function playLive(t,coin,size,r,lim,callCls,call,pkt,rinfo,bal){ const dir
   const win=Math.max(10,parseFloat($("inWin").value)||60), POLL=3000, steps=Math.ceil(win*1000/POLL); t.maxSteps=steps; t.path=[t.entry];
   let exit=null, how="window ended · closed at last live price";
   await slideLevels(t); TT.start(win*1000); const deadline=TT.deadline();
+  $("pnlTape").innerHTML=`ROUND ${r}${lim?"/"+lim:""} · ${esc(pkt.market)} ${dirHTML(call)} · ${TT.html()} · entry ${fmtPx(t.entry)} · stop ${fmtPx(t.stop)} · live ${fmtPx(t.entry)} · open P&amp;L <b class="flat">$0.00</b> · ${rinfo||"size "+money(size)}`;
   for(let k=1;;k++){
     const wait=Math.min(POLL,deadline-Date.now()); if(wait>0) await sleepStop(wait); if(sessionStop) break;
     if(t.path.length>=t.maxSteps+1) t.maxSteps=t.path.length+1;
@@ -1315,7 +1316,7 @@ async function playLive(t,coin,size,r,lim,callCls,call,pkt,rinfo,bal){ const dir
     if(!REDUCED){ const t1=performance.now(); while(true){ const f=Math.min(1,(performance.now()-t1)/400); drawPos(t,t.path.length-2,null,f,1); if(f>=1||sessionStop) break; await frame(); } }
     drawPos(t,t.path.length-1);
     const open=pnlOf(dir,size,t.entry,px); $("kOpen").textContent=sgn(open); $("kOpen").className=cls(open);
-    $("pnlTape").innerHTML=`ROUND ${r}${lim?"/"+lim:""} · ${esc(pkt.market)} ${dirHTML(call)} · ${rinfo||"size "+money(size)} · entry ${fmtPx(t.entry)} · stop ${fmtPx(t.stop)} · live ${fmtPx(px)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · ${TT.html()}`;
+    $("pnlTape").innerHTML=`ROUND ${r}${lim?"/"+lim:""} · ${esc(pkt.market)} ${dirHTML(call)} · ${TT.html()} · entry ${fmtPx(t.entry)} · stop ${fmtPx(t.stop)} · live ${fmtPx(px)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · ${rinfo||"size "+money(size)}`;
     if(open<=-bal){ exit=px; how="virtual margin call · closed at balance limit"; break; }
     if(dir>0){ if(px<=t.stop){ exit=px; how="stop hit (live poll)"; break; } if(px>=t.target){ exit=px; how="target hit (live poll)"; break; } }
     else { if(px>=t.stop){ exit=px; how="stop hit (live poll)"; break; } if(px<=t.target){ exit=px; how="target hit (live poll)"; break; } }
@@ -1382,7 +1383,7 @@ async function runLoop(){
           if(k>0 && !REDUCED){ const t1=performance.now(), d=70*(FAST?0.3:1); while(true){ const f=Math.min(1,(performance.now()-t1)/d); drawPos(t,k-1,null,f,1); if(f>=1) break; await frame(); } }
           drawPos(t,k); const open=pnlOf(dir,size,t.entry,t.path[k]);
           $("kOpen").textContent=sgn(open); $("kOpen").className=cls(open);
-          $("pnlTape").innerHTML=`ROUND ${r} · ${esc(pkt.market)} ${dirHTML(call)} · risk ${fmtPct(riskPct)} · ${money(riskUsd)} · ${levUsed}x · notional ${money(size)} · margin ${money(margin)} · entry ${fmtPx(t.entry)} · stop ${fmtPx(t.stop)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · ${TT.html()} · session <b class="${cls(S.bal-S.start)}">${sgn(S.bal-S.start)}</b>`;
+          $("pnlTape").innerHTML=`ROUND ${r} · ${esc(pkt.market)} ${dirHTML(call)} · ${TT.html()} · entry ${fmtPx(t.entry)} · stop ${fmtPx(t.stop)} · open P&amp;L <b class="${cls(open)}">${sgn(open)}</b> · risk ${fmtPct(riskPct)} · ${money(riskUsd)} · ${levUsed}x · notional ${money(size)} · margin ${money(margin)} · session <b class="${cls(S.bal-S.start)}">${sgn(S.bal-S.start)}</b>`;
           if(REDUCED) await sleep(70*(FAST?0.3:1)); }
         if(sessionStop){ exit=t.path[Math.max(0,Math.min(k,t.path.length-1))]; pnl=pnlOf(dir,size,t.entry,exit); result="stopped by user · marked to last price"; }
         else { exit=t.exit; pnl=t.pnl; result = t.how==="target"?"target hit":t.how==="stop"?"stop hit (≈ risk $)":"timed out"; }
