@@ -104,3 +104,27 @@ Caveats: Crucial Markets is **unregulated** (South Africa / Saint Lucia), withdr
 leveraged CFDs can lose money fast. Test on demo before any real money. Not financial advice. Setup steps are in
 `PROJECT_README.md`, section 9.
 
+## Broker bridge (Coinbase Advanced Trade) — preview first
+
+Coinbase is a **regulated US** alternative to Crucial. It has **no demo account**, so the bridge defaults to
+**PREVIEW-ONLY**: it calls Coinbase's `preview_order` endpoint and **never** `create_order` until you set
+`ALPHA_HIVE_ALLOW_LIVE=1` and tick **Arm LIVE** in a locally running terminal. Spot is **long-only** (SHORT
+calls are refused; no margin or perps by default). Conservative default caps are a **$25** max position and a
+**$5** daily loss stop. Keys (`COINBASE_API_KEY_NAME`, `COINBASE_API_PRIVATE_KEY`) live in `bridge/.env`
+(git-ignored). Create a **trade-only** CDP secret API key with Transfer off and an IP allowlist — steps are in
+`PROJECT_README.md`, section 10, and in `bridge/.env.example`. In the terminal, **Broker: Coinbase (live)** only
+works when the page and the bridge both run on `localhost`.
+
+
+## Stellar wallet connect
+
+In the terminal's Demo session view (or add `?session` to the terminal address), you can connect a Stellar wallet (Varial, formerly Freighter; xBull; LOBSTR; Albedo; Hana; and others)
+through a locally vendored copy of [Stellar Wallets Kit](https://stellarwalletskit.dev/). This is read-only by
+default: it shows the public address and balances (XLM, USDC, and other assets) from Horizon, plus an approximate
+USD value using the existing XLM-USD price feed. A **Look up** field can preview any public address (try the SDF
+account) without connecting. Optional **Send** lets the connected wallet sign a payment; Alpha Hive never sees or
+stores a secret key, and there is no secret-key input. Public network is the default, with a testnet toggle.
+Wallet balances do not change the virtual trading balance, though you can copy the USD value into the starting
+simulation balance. Rebuild the vendor bundle with `sh tools/stellar-kit/build.sh` if you update the kit.
+
+

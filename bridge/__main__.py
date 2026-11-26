@@ -29,7 +29,8 @@ def main(argv):
         print(__doc__); return 2
     import uvicorn
     from bridge.server import create_app
-    print(f"Alpha Hive bridge · backend={s.env} · http://{s.host}:{s.port} · credentials "
+    print(f"Alpha Hive bridge · broker={s.broker} · backend={s.env if s.broker != 'coinbase' else 'preview'} · "
+          f"http://{s.host}:{s.port} · credentials "
           f"{'set' if s.has_credentials else 'NOT set (fill bridge/.env)'}")
     if s.token_generated:
         print(f"No BRIDGE_TOKEN in bridge/.env; using a one-time token for this run: {s.bridge_token}")

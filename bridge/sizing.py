@@ -58,6 +58,10 @@ def plan(*, balance, side, entry, stop, target, risk_pct, limits, details: dict,
         raise Blocked("below_min_lot", f"Size {units / lot_size:.6f} lots is below the minimum {min_lot} lots for "
                                        "these limits; the bridge never rounds up.")
     units = lots * lot_size
+    quote_min = _f(details.get("quoteMinSize") or details.get("quote_min_size"))
+    if quote_min and units * entry < quote_min:
+        raise Blocked("below_min_lot", f"Notional ${units * entry:.2f} is below the minimum quote size ${quote_min}; "
+                                       "the bridge never rounds up.")
     return {"side": side, "lots": lots, "units": round(units, 8), "notional_usd": round(units * entry, 2),
             "risk_pct": round(pct, 4), "risk_usd": round(units * dist, 2), "stop": stop, "target": target,
             "entry": entry, "stop_distance": dist, "leverage_cap": lev, "capped": capped,

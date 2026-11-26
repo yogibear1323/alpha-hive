@@ -277,8 +277,8 @@ retried once; a second failure stops the run safely with `SKIP`.
 python -m pytest -q
 ```
 
-Expected: `31 passed` with the bridge's packages installed (`pip install -r bridge/requirements.txt`);
-without them the 13 bridge tests are skipped and you get `18 passed, 1 skipped`. The tests check that the Queen and all five bots load, the sample data is valid, every output
+Expected: `40 passed` with the bridge's packages installed (`pip install -r bridge/requirements.txt`);
+without them the 22 bridge tests are skipped and you get `18 passed, 2 skipped`. The tests check that the Queen and all five bots load, the sample data is valid, every output
 matches its shape, missing data leads to a safe result, a Risk rejection stops the run, the Queen (Decision)
 can't bypass Risk, a short needs full Risk approval (a reduce becomes WAIT), the planted instruction stays data, there is no order code, bad output is retried
 once and then stops, secrets never reach logs or reports, and the program refuses to run if
@@ -306,9 +306,11 @@ prompts/     one .txt per bot
 data/        sample_market.json  ← PRACTICE DATA (fictional ticker EXMP; used by tests and the "Practice (fictional)" option)
 reports/     report-<time>.json (one per run)
 logs/        run-<time>.log (one per run)
-tests/       test_workflow.py (18 safety tests)  test_bridge.py (13 bridge tests, TradeLocker mocked)
-bridge/      the ONLY broker code: settings.py (.env + limits)  tradelocker.py (REST client)  guard.py (kill switch,
-             daily loss stop)  sizing.py  levels.py  server.py (FastAPI)  hive_link.py (Queen -> bridge)  check.py
+tests/       test_workflow.py (18 safety tests)  test_bridge.py (13 TradeLocker tests, mocked)
+             test_coinbase.py (9 Coinbase tests, SDK mocked)
+bridge/      the ONLY broker code: settings.py (.env + limits)  tradelocker.py  coinbase.py (Advanced Trade SDK)
+             guard.py (kill switch, daily loss stop)  sizing.py  levels.py  server.py (FastAPI)  hive_link.py
+             check.py
 web/         app.py (browser UI)  templates/index.html  static-demo.html  build_static.py
 ```
 
@@ -390,4 +392,70 @@ appended to `bridge/state/orders.jsonl` (no secrets). You can also route a Pytho
 Bridge API (all except `/health` need `X-Bridge-Token`): `GET /status`, `GET /instruments`, `GET /account`,
 `GET /positions`, `POST /orders` (`dry_run: true` sizes without placing), `PATCH /positions/{id}` (SL/TP),
 `DELETE /positions/{id}`, `POST /kill`, `POST /mode` (`DEMO`, or `LIVE` with the confirm phrase).
+
+## 10. Broker bridge: Coinbase Advanced Trade, preview first
+
+> **Read this first.** Coinbase Advanced Trade is a regulated US spot exchange and a real-money account.
+> Coinbase **has no demo**. The bridge therefore defaults to **PREVIEW-ONLY**: it calls `preview_order` (a
+> dry run against Coinbase) and **never** `create_order` until you opt in as described below. Spot is
+> **long-only** — a SHORT/SELL call is refused (this adapter does not enable margin or perpetuals). Start
+> with an amount you can afford to lose. Nothing here is financial advice. No real orders are placed by
+> `python -m bridge check`.
+
+Set `BRIDGE_BROKER=coinbase` in `bridge/.env` and restart the bridge (if unset, Coinbase is chosen only when
+Coinbase keys are present and a TradeLocker login is not). Pick **Broker: Coinbase (live)** in a locally
+running terminal. The public GitHub Pages site cannot reach the bridge.
+
+| Mode | What happens | How to get it |
+|---|---|---|
+| **PREVIEW** (default) | Risk-approved LONG calls are sized inside the hard limits and sent to Coinbase `preview_order` with a native attached TP/SL bracket (`trigger_bracket_gtc`). `create_order` is never called. SHORT calls are refused. | Run the bridge with `BRIDGE_BROKER=coinbase` and pick **Coinbase (live)**. |
+| **LIVE** | Same payload, but `create_order` places a real spot buy with the attached take-profit and stop. Off by default. Disarmed on every restart. | `ALPHA_HIVE_ALLOW_LIVE=1` in `bridge/.env`, a restart, then tick **Arm LIVE** in the terminal and confirm. |
+
+The same Risk guard and hard limits apply. Coinbase-specific defaults (independent of the TradeLocker ones,
+and tighten-able in `bridge/.env`):
+
+| Limit | Default | Effect |
+|---|---|---|
+| `COINBASE_MAX_POSITION_USD` | $25 | Notional cap per order. |
+| `COINBASE_DAILY_LOSS_STOP_USD` | $5 | Once the day's loss hits $5 (or the % cap, whichever first), new orders stop until the next UTC day. |
+| `COINBASE_MAX_RISK_PCT_PER_TRADE` | 0.5% | Same rule as TradeLocker; size is rounded **down** to `base_increment`. Below `base_min_size` or `quote_min_size` is refused, never rounded up. |
+| `COINBASE_ACCOUNT_MAX_LEVERAGE` | 1 | Spot is unleveraged; the code will not accept a value above 1. |
+| `COINBASE_MAX_OPEN_POSITIONS` | 1 | No new order while this many hive orders are open. |
+
+### Create a trade-only CDP API key
+
+1. Open the [Coinbase Developer Platform API keys](https://portal.cdp.coinbase.com/access/api) page, sign in
+   with your Coinbase account, and choose **Secret API Keys** → **Create API key**.
+2. **Permissions:** enable **View** and **Trade**. Leave **Transfer** and **Receive** **off** so this key
+   cannot withdraw or send funds.
+3. **IP allowlist:** add this computer's public IPv4 (search "what is my IP" if you are unsure). Requests
+   from anywhere else will be rejected.
+4. Algorithm: Ed25519 (recommended) or ECDSA (ES256). Save the **key name**
+   (`organizations/.../apiKeys/...`) and the **private key** when they are shown — Coinbase will not show
+   the private key again. You may also download `cdp_api_key.json`; do not commit it (it is git-ignored).
+5. Fund the Coinbase account with a small amount of USD (or USDC) you are prepared to lose. Preview mode
+   does not spend it; LIVE will.
+
+### Set it up
+
+1. `pip install -r bridge/requirements.txt` (includes the official `coinbase-advanced-py` SDK).
+2. `cp bridge/.env.example bridge/.env` if you do not already have one. Set:
+   - `BRIDGE_BROKER=coinbase`
+   - `COINBASE_API_KEY_NAME` and `COINBASE_API_PRIVATE_KEY` (for a PEM key, keep the BEGIN/END lines and
+     write newlines as `\n` inside quotes). Leave `ALPHA_HIVE_ALLOW_LIVE=0`.
+   - `BRIDGE_TOKEN` to a long random string (`python -c "import secrets;print(secrets.token_urlsafe(24))"`).
+   `bridge/.env` is git-ignored; keys never go to the browser, the repo or GitHub Pages.
+3. **Read-only check (no orders, no preview):** `python -m bridge check` logs in, prints the USD cash
+   balance and looks up BTC-USD, ETH-USD, XLM-USD and SOL-USD with their increments and minimum sizes.
+4. **Run the bridge:** `python -m bridge` (listens on `http://127.0.0.1:8765` only).
+5. **Connect the terminal:** `python web/app.py`, open <http://127.0.0.1:8642/?session>, set **Broker** to
+   **Coinbase (live)**, keep the URL `http://127.0.0.1:8765`, paste the `BRIDGE_TOKEN` and press **Connect**.
+   The status should read preview-only with your USD balance. Run a session on **Live public prices**:
+   approved LONG calls are previewed only; SHORT calls are skipped.
+6. After previews look right, set `ALPHA_HIVE_ALLOW_LIVE=1`, restart the bridge, tick **Arm LIVE** and
+   confirm. That is the first time `create_order` can run. Disarm or restart to return to preview.
+
+Native attached brackets are used (`attached_order_configuration.trigger_bracket_gtc`: take-profit
+`limit_price`, stop `stop_trigger_price`). Closing a position cancels that hive order only — the bridge
+will not market-sell the rest of your Coinbase wallet.
 

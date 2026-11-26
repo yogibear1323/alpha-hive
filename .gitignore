@@ -17,3 +17,7 @@ venv/
 *.zip
 # bridge runtime state (kill switch, daily baseline, order audit)
 bridge/state/
+# downloaded Coinbase CDP API key files (never commit)
+**/cdp_api_key.json
+# local JS tooling (the vendored bundle in terminal/vendor is committed)
+node_modules/

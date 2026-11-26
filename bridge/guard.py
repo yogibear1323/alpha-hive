@@ -63,12 +63,15 @@ class GuardState:
         loss_pct = (loss / start * 100) if start else 0.0
         if start and loss_pct >= self.limits.daily_loss_stop_pct:
             d["stopped"] = True
+        usd_cap = getattr(self.limits, "daily_loss_stop_usd", None)
+        if usd_cap and loss >= usd_cap:
+            d["stopped"] = True
         if d:
             self.dir.mkdir(parents=True, exist_ok=True)
             self.day_file.write_text(json.dumps(d), encoding="utf-8")
         return {"day": d.get("day"), "start_equity": start, "loss_usd": round(loss, 2),
                 "loss_pct": round(loss_pct, 3), "limit_pct": self.limits.daily_loss_stop_pct,
-                "stopped": bool(d.get("stopped"))}
+                "limit_usd": usd_cap, "stopped": bool(d.get("stopped"))}
 
     # ---- pre-trade ----
     def pre_trade(self, equity, today_net, open_positions: int) -> dict:
@@ -77,8 +80,10 @@ class GuardState:
                                          "`python -m bridge release-kill`.")
         daily = self.daily_status(equity, today_net)
         if daily["stopped"]:
-            raise Blocked("daily_loss_stop", f"Daily loss stop hit ({daily['loss_pct']}% >= {daily['limit_pct']}%): "
-                                             "no new orders until the next UTC day.")
+            cap = f"{daily['loss_pct']}% >= {daily['limit_pct']}%"
+            if daily.get("limit_usd") and daily["loss_usd"] >= daily["limit_usd"]:
+                cap = f"${daily['loss_usd']} >= ${daily['limit_usd']}"
+            raise Blocked("daily_loss_stop", f"Daily loss stop hit ({cap}): no new orders until the next UTC day.")
         if open_positions >= self.limits.max_open_positions:
             raise Blocked("max_open_positions", f"{open_positions} position(s) open; the limit is "
                                                 f"{self.limits.max_open_positions}.")

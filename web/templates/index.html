@@ -491,13 +491,13 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
           <span class="tokmsg" id="tokMsg" role="status"></span><span class="tradeline" id="tradeLine">Bots trade: —</span></div>
         <div class="broker" id="brokerBox" role="group" aria-labelledby="brokerLbl">
           <label id="brokerLbl" for="brokerSel">Broker</label>
-          <select id="brokerSel"><option value="sim">Simulation</option><option value="demo">Crucial demo</option></select>
+          <select id="brokerSel"><option value="sim">Simulation</option><option value="demo">Crucial demo</option><option value="coinbase">Coinbase (live)</option></select>
           <input id="bridgeUrl" type="url" value="http://127.0.0.1:8765" spellcheck="false" aria-label="Bridge URL (must be localhost)">
           <input id="bridgeTok" type="password" placeholder="Bridge token" autocomplete="off" aria-label="Bridge token from bridge/.env">
           <button class="btn ghost sm" id="bridgeConnect">Connect</button>
           <span class="bstat" id="brokerStat" role="status" aria-live="polite">Simulation · no broker</span>
           <label class="livearm" id="liveRow" hidden><input type="checkbox" id="liveArm"> Arm LIVE · real money</label>
-          <div class="bnote" id="brokerNote">Simulation is the default. “Crucial demo” mirrors each live-price LONG/SHORT to your Crucial TradeLocker <b>demo</b> account through the local bridge, only after Risk approves; the bridge applies its own hard limits.</div>
+          <div class="bnote" id="brokerNote">Simulation is the default. “Crucial demo” mirrors Risk-approved live-price calls to a TradeLocker <b>demo</b> account. “Coinbase (live)” uses Coinbase Advanced Trade and stays in <b>preview-only</b> (no real orders) until you arm LIVE; Coinbase spot is long-only (no shorts). Both need the local bridge.</div>
         </div>
         <div class="label" id="sessHelp">Live rounds read real recent candles for each selected token. The ♛ Queen goes <b class="dir long">▲ LONG</b> (BUY) when the analysts expect a rise and <b class="dir short">▼ SHORT</b> (SELL/SHORT) when charts, sentiment and news are bearish, only after the Risk gate fully approves; a “reduce” becomes WAIT and never flips direction. Each trade risks the effective % of the <b>current</b> balance: the average of the active bots’ risk settings, never above the Risk bot’s %. Notional size = risk $ ÷ stop distance, capped at balance × <b>virtual leverage</b> and the optional max position cap, so a stop-out loses about the risk $; margin used = notional ÷ leverage. Longs: stop below, target above; shorts: stop above, target below, P&amp;L = size × (1 − exit/entry). Virtual margin call: a loss can never exceed the balance; the trade closes at the balance limit and later rounds SKIP. Live prices are polled every 3 s for the trade window. Virtual leverage · simulation only, no real orders.</div>
         <div class="actions" id="sessControls"><button class="btn" id="startSess">▶ Run demo session</button><button class="btn stop" id="stopSess" disabled>■ Stop</button><button class="btn ghost" id="resetSess">Reset</button><button class="btn ghost" id="sumBtn" disabled>Summary</button></div>
@@ -1337,30 +1337,39 @@ const Broker=(()=>{ const st={mode:"sim",ok:false,status:null};
     let j={}; try{ j=await r.json(); }catch(e){}
     if(!r.ok){ const d=j.detail; throw new Error(typeof d==="string"?d:(d&&d.reason)||("HTTP "+r.status)); } return j; }
   async function connect(){ if(PUBLIC) return; show("connecting…","warn");
-    try{ const s=await call("/status"); st.status=s; st.ok=!!s.connected;
-      $("liveRow").hidden=!(s.backend==="live"&&s.live_allowed); $("liveArm").checked=!!s.live_armed;
+    try{ const s=await call("/status"); st.status=s; const kind=s.broker_id||((s.broker||"").toLowerCase().includes("coinbase")?"coinbase":"tradelocker");
+      if(st.mode==="coinbase"&&kind!=="coinbase"){ st.ok=false; show("bridge is on Crucial, not Coinbase. Set BRIDGE_BROKER=coinbase in bridge/.env and restart.","warn"); $("liveRow").hidden=true; return; }
+      if(st.mode==="demo"&&kind==="coinbase"){ st.ok=false; show("bridge is on Coinbase, not Crucial. Set BRIDGE_BROKER=tradelocker (or unset it) and restart.","warn"); $("liveRow").hidden=true; return; }
+      st.ok=!!s.connected;
+      $("liveRow").hidden=!(s.live_allowed && (s.backend==="live" || kind==="coinbase")); $("liveArm").checked=!!s.live_armed;
       if(!s.credentials_set){ show("bridge up · credentials not set in bridge/.env","warn"); st.ok=false; }
       else if(!s.connected){ show("bridge up · broker login failed: "+(s.last_error||"unknown"),"err"); }
-      else { const a=s.account||{}; show(`Crucial ${s.backend==="live"?"LIVE backend":"demo"} · acct ${a.id} · ${money(+a.balance||0)} · ${s.mode}${s.kill_switch?" · KILL SWITCH ON":""}`, s.kill_switch?"err":"ok"); }
+      else { const a=s.account||{}; const who=kind==="coinbase"?"Coinbase":"Crucial";
+        const env=kind==="coinbase"?(s.mode==="LIVE"?"LIVE":"preview-only"):(s.backend==="live"?"LIVE backend":"demo");
+        show(`${who} ${env} · acct ${a.id||"—"} · ${money(+a.balance||0)} · ${s.mode}${s.kill_switch?" · KILL SWITCH ON":""}`, s.kill_switch?"err":(s.mode==="PREVIEW"?"warn":"ok")); }
     }catch(e){ st.ok=false; show("not connected · "+e.message,"err"); } }
   function init(){ const sel=$("brokerSel"); if(!sel) return;
     if(PUBLIC){ ["brokerSel","bridgeUrl","bridgeTok","bridgeConnect"].forEach(id=>$(id).disabled=true);
-      $("brokerNote").innerHTML="Public site: <b>simulation only</b>. To mirror trades to a Crucial TradeLocker demo account, run the terminal locally (<code>python web/app.py</code>) and start the bridge (<code>python -m bridge</code>); see the README."; show("Simulation · public site",""); return; }
+      $("brokerNote").innerHTML="Public site: <b>simulation only</b>. To use Crucial demo or Coinbase, run the terminal locally (<code>python web/app.py</code>) and start the bridge (<code>python -m bridge</code>); see the README."; show("Simulation · public site",""); return; }
     sel.addEventListener("change",()=>{ st.mode=sel.value; if(st.mode==="sim"){ st.ok=false; show("Simulation · no broker",""); } else connect(); });
-    $("bridgeConnect").addEventListener("click",()=>{ sel.value="demo"; st.mode="demo"; connect(); });
+    $("bridgeConnect").addEventListener("click",()=>{ if(sel.value==="sim"){ show("Pick Crucial demo or Coinbase (live) first","warn"); return; } st.mode=sel.value; connect(); });
     $("liveArm").addEventListener("change",async e=>{ const on=e.target.checked;
-      if(on && !confirm("Arm LIVE trading on your real Crucial account? Real money is at risk. Only continue after testing on demo.")){ e.target.checked=false; return; }
-      try{ await call("/mode",{method:"POST",body:JSON.stringify(on?{mode:"LIVE",confirm:LIVE_PHRASE}:{mode:"DEMO"})}); }catch(err){ e.target.checked=false; show("LIVE not armed · "+err.message,"err"); return; }
+      const cb=st.mode==="coinbase"||(st.status&&st.status.broker_id==="coinbase");
+      const msg=cb?"Arm LIVE trading on your real Coinbase account? This is real money. Coinbase has no demo — only continue after preview-only checks look right.":"Arm LIVE trading on your real Crucial account? Real money is at risk. Only continue after testing on demo.";
+      if(on && !confirm(msg)){ e.target.checked=false; return; }
+      try{ await call("/mode",{method:"POST",body:JSON.stringify(on?{mode:"LIVE",confirm:LIVE_PHRASE}:{mode:cb?"PREVIEW":"DEMO"})}); }catch(err){ e.target.checked=false; show("LIVE not armed · "+err.message,"err"); return; }
       connect(); }); }
-  async function mirror(o){ if(st.mode!=="demo"||!st.ok) return null;
+  async function mirror(o){ if((st.mode!=="demo"&&st.mode!=="coinbase")||!st.ok) return null;
     if(o.risk!=="approve") return null;   // the guard's verdict is checked here and again, independently, by the bridge
+    if(st.mode==="coinbase"&&!(o.dir>0)){ show("Coinbase spot is long-only · SHORT not sent","warn"); return null; }
     try{ const j=await call("/orders",{method:"POST",body:JSON.stringify({symbol:o.coin,side:o.dir>0?"buy":"sell",stop:o.stop,target:o.target,
         entry_ref:o.entry,risk_pct:o.pct,risk:{status:o.risk},queen:{call:o.call},client_ref:"terminal-round-"+o.r})});
-      const p=j.plan||{}; show(`${j.mode} order · ${p.instrument} ${p.side} ${p.lots} lot · SL ${p.stop} · TP ${p.target} · risk ${money(p.risk_usd||0)}`,"ok"); return j;
+      const p=j.plan||{}; const tag=j.preview?"PREVIEW (no order placed)":(j.mode+" order");
+      show(`${tag} · ${p.instrument} ${p.side} ${p.lots} · SL ${p.stop} · TP ${p.target} · risk ${money(p.risk_usd||0)}`, j.preview?"warn":"ok"); return j;
     }catch(e){ show("broker: no order · "+e.message,"warn"); return null; } }
   async function close(pid,why){ if(!pid) return; try{ await call(`/positions/${encodeURIComponent(pid)}?reason=${encodeURIComponent(why||"")}`,{method:"DELETE"}); show("broker position closed · "+(why||""),"ok"); }
     catch(e){ show("broker close: "+e.message+" (it may already have hit SL/TP)","warn"); } }
-  return {init,connect,mirror,close,active:()=>st.mode==="demo"&&st.ok,public:PUBLIC};
+  return {init,connect,mirror,close,active:()=>(st.mode==="demo"||st.mode==="coinbase")&&st.ok,public:PUBLIC};
 })();
 window.G6_BROKER=Broker;
 
