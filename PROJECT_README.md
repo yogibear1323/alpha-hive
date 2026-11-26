@@ -459,3 +459,14 @@ Native attached brackets are used (`attached_order_configuration.trigger_bracket
 `limit_price`, stop `stop_trigger_price`). Closing a position cancels that hive order only — the bridge
 will not market-sell the rest of your Coinbase wallet.
 
+
+## 11. Accuracy scoreboard
+
+The terminal's session dashboard has an **Accuracy scoreboard** card. Every session round is logged in your browser (localStorage key `alphaHive.scoreboard.v1`, last 2,000 rounds). Each row has the time, token, price feed and venue. The venue is **sim**, **crucial-demo** (an order the local bridge actually placed on the Crucial demo) or **live** (an order placed in LIVE mode); Coinbase previews place nothing, so they count as sim. Each row also has the Queen's call (LONG/SHORT/WAIT/SKIP), the views of Scout (screener), News, Sentiment and Charts, the Risk verdict, entry/stop/target/exit, the outcome (target hit, stop hit, timed out) and P&L.
+
+- **Trades:** win rate, number of trades, average R (P&L ÷ risk $) and total P&L.
+- **Would-have hit rate:** for each bot's bullish or bearish lean (and the Queen's LONG/SHORT), did price move that way over the trade window? For trades, the window ends at the exit. For WAIT/SKIP rounds on live prices, the terminal re-checks the price when the window would have closed. Moves under 0.05% count as flat and are not scored, and neither are neutral leans. Fictional-price WAIT/SKIP rounds have no future price and stay unscored.
+- A warning shows while there are fewer than 30 trades or scored leans. A small sample says nothing about skill.
+- **Export CSV** downloads every logged round; **Reset** clears this browser's log.
+
+On the Python side, `agents/scoreboard.py` appends each round to `reports/scoreboard.jsonl` (set `"scoreboard": false` in config to turn it off). `record_outcome()` adds the exit and the would-have grading when a window closes, and `summary()` gives the same numbers as the panel. Tests are in `tests/test_scoreboard.py`.

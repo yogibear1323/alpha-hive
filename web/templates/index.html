@@ -290,6 +290,20 @@ footer{color:var(--mute);font-size:12px;text-align:center;padding:10px 20px 70px
 .chip.run.stopped{color:var(--red);border-color:var(--red)}
 .chip.feed.live{color:var(--lime);border-color:rgba(143,227,136,.5)} .chip.feed.off{color:var(--amber);border-color:var(--amber)} .chip.feed.stale{color:var(--amber)}
 .sumline{margin-top:10px;font:12px var(--mono);color:var(--mute)}
+.card.score{grid-column:1/-1}
+.scorehead{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.scorehead h2{margin:0 auto 0 0}
+.scorehead label{font:700 11px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--text)}
+.scorehead select{background:#0f0d0a;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:12px var(--mono)}
+.scorekpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:12px}
+.scorekpis div{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#15120d}
+.scorekpis small{display:block;font:700 10px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--mute)}
+.scorekpis b{display:block;font:800 18px var(--mono);color:var(--text);margin-top:2px}.scorekpis b.pos{color:#8fe388}.scorekpis b.neg{color:#ff8a80}
+.scorekpis small.kx{text-transform:none;letter-spacing:0;font-weight:600;margin-top:3px}
+.scorewarn{margin:10px 0 0;font:600 12px var(--mono);color:#ffd84d}.scorewarn:empty{display:none}
+.scorewrap{max-height:none}
+@media(max-width:560px){.scoretab th:nth-child(5),.scoretab td:nth-child(5),.scoretab .qx{display:none}}.scoretab td.low{color:#ffd84d}
+.scorenote{margin:10px 0 0;font:12px/1.5 var(--sans,inherit);color:var(--mute)}.scorenote b{color:var(--text)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .frozen{color:var(--red);font-weight:700}
 /* ---- reduced motion ---- */
 body.reduced *,body.reduced *::before,body.reduced *::after{animation:none!important;transition:none!important}
@@ -600,6 +614,15 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
         <canvas class="wide" id="posCanvas"></canvas>
         <div class="ledger-wrap"><table class="ledger"><thead><tr><th>#</th><th>Ticker</th><th>Call</th><th>Dir</th><th>Feed</th><th>Risk %</th><th>Risk $</th><th>Lev</th><th>Notional</th><th>Margin</th><th>Entry</th><th>Exit</th><th>Result</th><th>P&amp;L</th><th>Balance</th></tr></thead><tbody id="ledger"></tbody></table></div>
         <div class="sumline" id="sumLine"></div>
+      </div>
+      <div class="card score" id="scoreBox" role="region" aria-labelledby="scoreTitle">
+        <div class="scorehead"><h2 id="scoreTitle">Accuracy scoreboard</h2>
+          <label for="scoreVenue">Show</label><select id="scoreVenue"><option value="all">All rounds</option><option value="sim">Simulation</option><option value="crucial-demo">Crucial demo</option><option value="live">Live (real money)</option></select>
+          <button class="btn ghost sm" id="scoreCsv">Export CSV</button><button class="btn ghost sm" id="scoreReset">Reset</button></div>
+        <div class="scorekpis" id="scoreKpis"></div>
+        <p class="scorewarn" id="scoreWarn" role="status" aria-live="polite"></p>
+        <div class="ledger-wrap scorewrap"><table class="ledger scoretab"><caption class="vh">Per-bot directional hit rate</caption><thead><tr><th scope="col">Bot</th><th scope="col">Scored leans</th><th scope="col">Hits</th><th scope="col">Hit rate</th><th scope="col">Not scored</th></tr></thead><tbody id="scoreBots"></tbody></table></div>
+        <p class="scorenote">Every session round is logged here and kept in this browser only (localStorage). <b>Hit rate</b> = the share of a bot’s bullish or bearish leans where the price moved that way over the trade window. Moves under 0.05% count as flat and aren’t scored, and neither are neutral leans. For trades the window ends at the exit; for WAIT/SKIP rounds on live prices the price is re-checked when the window would have closed. Fictional-price rounds use invented prices, so their scores say nothing about real markets. Crucial-demo P&amp;L is the terminal’s tracked P&amp;L; broker fills can differ. <b>Educational simulation · not financial advice · past results don’t predict future results.</b></p>
       </div>
     </div>
   </section>
@@ -1452,9 +1475,58 @@ const Broker=(()=>{ const st={mode:"sim",ok:false,status:null};
     }catch(e){ show("broker: no order · "+e.message,"warn"); return null; } }
   async function close(pid,why){ if(!pid) return; try{ await call(`/positions/${encodeURIComponent(pid)}?reason=${encodeURIComponent(why||"")}`,{method:"DELETE"}); show("broker position closed · "+(why||""),"ok"); }
     catch(e){ show("broker close: "+e.message+" (it may already have hit SL/TP)","warn"); } }
-  return {init,connect,mirror,close,active:()=>(st.mode==="demo"||st.mode==="coinbase")&&st.ok,public:PUBLIC};
+  return {init,connect,mirror,close,active:()=>(st.mode==="demo"||st.mode==="coinbase")&&st.ok,venue:()=>!st.ok?"sim":st.status&&st.status.mode==="LIVE"?"live":st.mode==="demo"?"crucial-demo":"sim",public:PUBLIC};
 })();
 window.G6_BROKER=Broker;
+
+// ---- Accuracy scoreboard: every session round, persisted in localStorage ----
+const Score=(()=>{ const KEY="alphaHive.scoreboard.v1", MAX=2000, FLAT=0.0005, MIN_N=30;
+  const WORKERS=["news","sentiment","charts"], NAMES={scout:"Scout",news:"News",sentiment:"Sentiment",charts:"Charts",decision:"♛ Queen"};
+  let rows=[]; try{ const a=JSON.parse(localStorage.getItem(KEY)||"[]"); if(Array.isArray(a)) rows=a; }catch(e){}
+  const save=()=>{ try{ localStorage.setItem(KEY,JSON.stringify(rows.slice(-MAX))); }catch(e){} };
+  const dirNum=k=>k==="bull"||k==="LONG"?1:k==="bear"||k==="SHORT"?-1:0;
+  const moveOf=(p0,p1)=>{ if(!(p0>0)||!(p1>0)) return null; const m=(p1-p0)/p0; return Math.abs(m)<FLAT?0:Math.sign(m); };
+  function outcomeOf(res){ return /target/.test(res)?"target hit":/stop hit/.test(res)?"stop hit":/margin/.test(res)?"margin call":/stopped by user/.test(res)?"stopped":"timed out"; }
+  function grade(rec){ const mv=rec.move;
+    rec.hits={}; for(const b of [...WORKERS,"decision"]){ const d=dirNum(b==="decision"?rec.call:rec.views[b]); rec.hits[b]=(mv===null||mv===undefined||mv===0||!d)?null:(d===mv?1:0); } }
+  function log(o){ const out=(o.rep&&o.rep.outputs)||{}, k=callKey(o.call)==="BUY"?"LONG":callKey(o.call)||"SKIP";
+    const views={}; for(const b of ["scout",...WORKERS]){ const l=out[b]?leanOf(b,out[b]):null; views[b]=b==="scout"?(out.scout?("screener · data "+(out.scout.data_quality||"?")):"—"):(l?l.k:"—"); }
+    const traded=o.size>0, rec={id:Date.now()+"-"+o.r, t:new Date().toISOString(), round:o.r, token:o.market, feed:o.feed, venue:o.venue,
+      mirrored:!!o.mirrored, call:k, views, risk:(out.risk&&out.risk.status)||(o.rep&&o.rep.stopped_at)||"—",
+      entry:traded?o.entry:null, stop:traded?o.stop:null, target:traded?o.target:null, exit:traded?o.exit:null,
+      outcome:traded?outcomeOf(o.result):"no trade", pnl:traded?+o.pnl.toFixed(2):0, riskUsd:traded?o.riskUsd:null,
+      R:traded&&o.riskUsd>0?+(o.pnl/o.riskUsd).toFixed(3):null, p0:traded?o.entry:o.p0, p1:null, move:null, status:"pending", winSec:o.winSec};
+    if(traded){ rec.p1=o.exit; rec.move=moveOf(rec.p0,rec.p1); rec.status="scored"; grade(rec); }
+    else if(o.live && o.coin && rec.p0>0){ setTimeout(async()=>{ let p1=null; try{ p1=await Feed.ticker(o.coin); }catch(e){}
+        const r=rows.find(x=>x.id===rec.id); if(!r) return; if(p1>0){ r.p1=p1; r.move=moveOf(r.p0,p1); r.status="scored"; grade(r); } else r.status="unscored · price unavailable"; save(); render(); }, o.winSec*1000); }
+    else { rec.status="unscored · fictional prices"; grade(rec); }
+    rows.push(rec); if(rows.length>MAX) rows=rows.slice(-MAX); save(); render(); return rec; }
+  function expire(){ const now=Date.now(); let ch=false; for(const r of rows){ if(r.status==="pending" && now-Date.parse(r.t)>Math.max(60,r.winSec||60)*3000){ r.status="unscored · page closed before the window ended"; ch=true; } } if(ch) save(); }
+  function summary(venue){ const R=rows.filter(r=>venue==="all"||r.venue===venue), T=R.filter(r=>r.outcome!=="no trade");
+    const wins=T.filter(r=>r.pnl>0).length, rs=T.map(r=>r.R).filter(x=>x!==null&&isFinite(x));
+    const bots={}; for(const b of [...WORKERS,"decision"]){ const sc=R.filter(r=>r.hits&&r.hits[b]!==null&&r.hits[b]!==undefined); bots[b]={n:sc.length,hits:sc.reduce((a,r)=>a+r.hits[b],0),other:R.length-sc.length}; }
+    const nt=R.filter(r=>r.outcome==="no trade"&&r.status==="scored");
+    return {rounds:R.length, trades:T.length, wins, winRate:T.length?wins/T.length:null, avgR:rs.length?rs.reduce((a,b)=>a+b,0)/rs.length:null,
+      pnl:T.reduce((a,r)=>a+r.pnl,0), bots, pending:R.filter(r=>r.status==="pending").length,
+      noTrade:{scored:nt.length, up:nt.filter(r=>r.move>0).length, down:nt.filter(r=>r.move<0).length, flat:nt.filter(r=>r.move===0).length}}; }
+  const pct=x=>x===null?"—":(100*x).toFixed(1)+"%";
+  function render(){ const box=$("scoreKpis"); if(!box) return; const v=$("scoreVenue").value, s=summary(v);
+    const kp=[["Rounds",s.rounds],["Trades",s.trades],["Win rate",pct(s.winRate)],["Avg R",s.avgR===null?"—":(s.avgR>=0?"+":"")+s.avgR.toFixed(2)+"R"],["P&L",sgn(s.pnl)],["WAIT/SKIP would-have",`${s.noTrade.scored} scored`,`then ▲ up ${s.noTrade.up} · ▼ down ${s.noTrade.down} · flat ${s.noTrade.flat}`]];
+    box.innerHTML=kp.map(([a,b,c],i)=>`<div><small>${a}</small><b class="${i===4?(s.pnl>0?"pos":s.pnl<0?"neg":""):""}">${esc(String(b))}</b>${c?`<small class="kx">${esc(c)}</small>`:""}</div>`).join("");
+    $("scoreBots").innerHTML=[...WORKERS,"decision"].map(b=>{ const x=s.bots[b], low=x.n<MIN_N; return `<tr><td>${NAMES[b]}${b==="decision"?'<span class="qx"> (LONG/SHORT calls)</span>':""}</td><td class="${low?"low":""}">${x.n}${low?" ⚠":""}</td><td>${x.hits}</td><td>${x.n?pct(x.hits/x.n):"—"}</td><td>${x.other}</td></tr>`; }).join("")
+      +`<tr><td>Scout</td><td>—</td><td>—</td><td>—</td><td>screener · no lean</td></tr>`;
+    const small=s.trades<MIN_N||Object.values(s.bots).some(x=>x.n<MIN_N);
+    $("scoreWarn").textContent=s.rounds?(small?`⚠ Small sample: fewer than ${MIN_N} trades or scored leans (⚠ rows). Treat these numbers as noise, not skill.`:"")+(s.pending?` ${s.pending} round(s) waiting for the window to close.`:""):"No rounds logged yet. Run a session to start the scoreboard."; }
+  const COLS=["time","round","token","feed","venue","mirrored","queen_call","scout","news","sentiment","charts","risk","entry","stop","target","exit","outcome","pnl","risk_usd","R","price_start","price_end","move","status","news_hit","sentiment_hit","charts_hit","queen_hit"];
+  function csv(){ const q=v=>{ const t=v===null||v===undefined?"":String(v); return /[",\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t; };
+    const lines=[COLS.join(",")].concat(rows.map(r=>[r.t,r.round,r.token,r.feed,r.venue,r.mirrored,r.call,r.views.scout,r.views.news,r.views.sentiment,r.views.charts,r.risk,r.entry,r.stop,r.target,r.exit,r.outcome,r.pnl,r.riskUsd,r.R,r.p0,r.p1,r.move,r.status,(r.hits||{}).news,(r.hits||{}).sentiment,(r.hits||{}).charts,(r.hits||{}).decision].map(q).join(",")));
+    return lines.join("\n")+"\n"; }
+  function download(){ const b=new Blob([csv()],{type:"text/csv"}), a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=`alpha-hive-scoreboard-${new Date().toISOString().slice(0,10)}.csv`; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); }
+  function init(){ if(!$("scoreBox")) return; expire(); $("scoreVenue").addEventListener("change",render); $("scoreCsv").addEventListener("click",download);
+    $("scoreReset").addEventListener("click",()=>{ if(!rows.length||confirm(`Delete all ${rows.length} logged rounds from this browser?`)){ rows=[]; save(); render(); } }); render(); }
+  return {init,log,summary,csv,render,rows:()=>rows,_moveOf:moveOf};
+})();
+window.G6_SCORE=Score;
 
 function sessLabel(){ const live=$("inFeed").value==="live";
   const txt = !live ? "Virtual balance · fictional price paths · not a backtest or prediction"
@@ -1540,7 +1612,7 @@ async function runLoop(){
     if(sessionStop || !lastReport) break;                    // round discarded: nothing was booked
     const rep=lastReport, call=rep.final_result, risk=rep.outputs.risk;
     let size=0,pnl=0,entry=null,exit=null,riskPct=null,riskUsd=null,dir=0,levUsed=null,margin=0,mcall=false,result = rep.stopped_at==="risk_paused"?"Risk paused · no trade":rep.stopped_at==="decision_paused"?"Queen paused · no trade":"no trade · $0";
-    const callCls="res-"+callKey(call);
+    const callCls="res-"+callKey(call); const sc={stop:null,target:null,mirrored:false,venue:Broker.venue()};
     if((call===BUY||call===SHORT) && risk && risk.status==="approve" && !rep.stopped_at){
       riskPct=rk.pct; const cap=capValue(S.bal), lev=curLev(); dir=dirOf(call); levUsed=lev;
       if(live){
@@ -1551,6 +1623,7 @@ async function runLoop(){
         const t={entry:e0,stop,target:e0+dir*2*dist,path:[e0],maxSteps:20,dir};
         if(size>0){ setPosDir(call,"open"); setDirChip(call,pkt.market,"position open"); HIVE.tradeOpen(call);
           const bro=Broker.active()?await Broker.mirror({coin:pkt._live.coin,dir,stop,target:t.target,entry:e0,pct:rk.pct,risk:risk.status,call,r}):null;
+          sc.stop=stop; sc.target=t.target; sc.mirrored=!!(bro&&bro.placed); if(sc.mirrored) sc.venue=bro.mode==="LIVE"?"live":"crucial-demo";
           const o=await playLive(t,pkt._live.coin,size,r,lim,callCls,call,pkt,rinfo,S.bal); entry=e0; exit=o.exit; pnl=o.pnl; mcall=o.mc; result=o.how+(sz.capped?" · size capped":"");
           if(bro&&bro.position_id&&!/stop hit|target/.test(o.how)) await Broker.close(bro.position_id,o.how); }
       } else {
@@ -1559,7 +1632,7 @@ async function runLoop(){
       }
       if(size>0 && !live){
         setPosDir(call,"open"); setDirChip(call,pkt.market,"position open"); HIVE.tradeOpen(call);
-        const t=planTrade(S.rng,pkt.price.last,size,planStop(pkt.price.last,(rep.outputs.charts.support_levels||[])[0],dir,(rep.outputs.charts.resistance_levels||[])[0]),dir); entry=t.entry;
+        const t=planTrade(S.rng,pkt.price.last,size,planStop(pkt.price.last,(rep.outputs.charts.support_levels||[])[0],dir,(rep.outputs.charts.resistance_levels||[])[0]),dir); entry=t.entry; sc.stop=t.stop; sc.target=t.target;
         await slideLevels(t); let k=0; const simWin=Math.max(10,parseFloat($("inWin").value)||60)*1000; TT.startSim(simWin);
         for(k=0;k<t.path.length;k++){
           if(sessionStop) break; TT.setSim(simWin*(1-k/Math.max(1,t.maxSteps)));
@@ -1584,6 +1657,8 @@ async function runLoop(){
     if(size>0){ HIVE.tradeClose(call,pnl); setPosDir(call,"last · closed "+sgn(pnl)); setDirChip(call,pkt.market,"closed "+sgn(pnl)); }
     const feedTag = live ? `live · ${pkt._live.source}` : (S.feed==="live" ? "offline · simulated" : "fictional");
     S.rows.push({r,tk:pkt.market,call,dir:size?(dir>0?"LONG":"SHORT"):null,feed:feedTag,riskPct:size?riskPct:null,riskUsd:size?riskUsd:null,lev:size?levUsed:null,size,margin:size?margin:0,entry,exit,result,pnl,bal:S.bal,mcall});
+    try{ Score.log({r,market:pkt.market,coin:live?pkt._live.coin:null,live,feed:feedTag,venue:size>0&&!sc.mirrored?"sim":sc.venue,mirrored:sc.mirrored,call,rep,size,entry,exit,stop:sc.stop,target:sc.target,
+      result,pnl,riskUsd,p0:pkt.price&&pkt.price.last,winSec:Math.max(10,parseFloat($("inWin").value)||60)}); }catch(e){ console.warn("scoreboard",e); }
     const tr=document.createElement("tr"); tr.className="new";
     tr.innerHTML=`<td>${r}</td><td>${esc(pkt.market)}</td><td class="${callCls}">${esc(call)}</td><td>${size?(dir>0?'<span class="dir long">▲ LONG</span>':'<span class="dir short">▼ SHORT</span>'):"—"}</td><td>${esc(feedTag)}</td><td>${size?fmtPct(riskPct):"—"}</td><td>${size?money(riskUsd):"—"}</td><td>${size?levUsed+"x":"—"}</td><td>${size?money(size):"—"}</td><td>${size?money(margin):"—"}</td><td>${entry!=null?fmtPx(entry):"—"}</td><td>${exit!=null?fmtPx(exit):"—"}</td><td>${esc(result)}</td><td class="${cls(pnl)}">${sgn(pnl)}</td><td>${money(S.bal)}</td>`;
     $("ledger").appendChild(tr); tr.scrollIntoView({block:"nearest"});
@@ -1627,7 +1702,7 @@ async function showSummary(start,end,rows,trades,wins,seed){
     if(p>=1) break; await sleep(30); }
 }
 $("closeSum").onclick=()=>$("summary").classList.remove("show");
-$("startSess").onclick=runLoop; Broker.init();
+$("startSess").onclick=runLoop; Broker.init(); Score.init();
 $("stopSess").onclick=stopSession;
 $("resetSess").onclick=resetSession;
 $("sumBtn").onclick=()=>{ if(S&&S.rows.length) showSummary(S.start,S.bal,S.rows,S.trades,S.wins,S.feed==="live"?"live public prices from "+(Feed.source||"Coinbase Exchange"):"seed "+S.seed); };

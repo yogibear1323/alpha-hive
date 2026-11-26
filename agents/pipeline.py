@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from agents import scoreboard
 from agents.queen import Queen
 from agents.base import (ROOT, BotError, RiskRejectedError, RunLogger, load_config,
                          load_risk_rules, redact_obj, timestamp)
@@ -104,6 +105,12 @@ def run_pipeline(packet: dict, provider, config: dict | None = None, rules: dict
     safe = redact_obj(report)
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(safe, f, indent=2, ensure_ascii=False)
+    if config.get("scoreboard", True):   # accuracy scoreboard: one line per round (outcome added later)
+        try:
+            scoreboard.log_round(safe, packet if isinstance(packet, dict) else None,
+                                 reports_dir / "scoreboard.jsonl")
+        except Exception as exc:          # logging must never break a round
+            logger.log(f"scoreboard log failed: {exc}")
     emit({"type": "done", "final_result": report["final_result"],
           "report_file": safe["report_file"], "report": safe})
     return safe
