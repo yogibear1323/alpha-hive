@@ -1,4 +1,4 @@
-# Alpha Hive: Six-Bot AI Trading Team (simulation)
+# Alpha Hive: One Queen. Five bots. One hive. (AI trading simulation)
 
 **Live site:** https://yogibear1323.github.io/alpha-hive/ · **Terminal:** https://yogibear1323.github.io/alpha-hive/terminal/
 
@@ -7,7 +7,7 @@
 > account, and is not financial advice.
 
 `index.html` is the landing page, which explains the project, and `terminal/index.html` is the terminal itself. Each is a single, self-contained HTML file (no CDNs); the homepage videos and posters live in `assets/video/`. Add `?session`, `?fast` or `?offline` to the terminal address. Pick a
-live coin (or a Practice packet), press **Run the six bots**, and watch the hive work through it. The ♛ **Queen** (formerly Decision) is the boss: she tasks Scout, dispatches
+live coin (or a Practice packet), press **Run the hive**, and watch the hive work through it. The ♛ **Queen** (formerly Decision) is the boss: she tasks Scout, dispatches
 News, Sentiment and Charts, sends the proposal to the Risk gate and makes the final call of `BUY — SIMULATION ONLY` (▲ long), `SELL/SHORT — SIMULATION ONLY` (▼ short), `WAIT`, or `SKIP`. A human
 must review every result.
 
@@ -44,7 +44,7 @@ or use the controls to hear it. Narration is neural TTS; the music and sound eff
 - **Demo session:** a virtual balance (default $10,000) trades the tokens you pick.
   - Prices are **live public prices**: Coinbase Exchange first, then Kraken. No keys, no sign-in, no
     real orders.
-  - Each round, all six bots analyse real candles for the next token. A BUY opens a virtual long and
+  - Each round, the Queen and all five bots analyse real candles for the next token. A BUY opens a virtual long and
     a SELL/SHORT a virtual short; each closes at the stop, the target, or the last live price when the window ends.
   - It runs continuously until you press **Stop**. Stop freezes the figures; **Resume** continues from
     the frozen balance.
@@ -77,7 +77,7 @@ runs a hex-pulse scan, honey drips down the background, and the final call arriv
 The **Motion** button in the header switches to reduced motion, and the page starts that way when your
 device asks for less motion.
 
-The rest of this repository is the full Python project the page mirrors: six bots, schema checks with one
+The rest of this repository is the full Python project the page mirrors: the Queen and five bots, schema checks with one
 retry, a Risk gate enforced in code, an offline mock, an optional Grok (xAI) provider, a Flask browser
 UI, and 12 safety tests. See [PROJECT_README.md](PROJECT_README.md) for setup on Mac, Linux, and Windows:
 

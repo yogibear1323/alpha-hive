@@ -1,4 +1,4 @@
-# Alpha Hive: Six-Bot AI Trading Team (Grok) — Simulation Only
+# Alpha Hive: One Queen, Five Bots, One Hive (Grok AI trading team) — Simulation Only
 
 **Live site:** https://yogibear1323.github.io/alpha-hive/ (landing page) · **terminal:** https://yogibear1323.github.io/alpha-hive/terminal/ · source: https://github.com/yogibear1323/alpha-hive
 
@@ -6,7 +6,7 @@
 > guarantee profits, verify every online claim, or replace professional advice. It contains **no
 > order, trading-account, or wallet code** and refuses to start unless `TRADING_MODE=SIMULATION_ONLY`.
 
-Six bots look at one market packet and give a research verdict:
+One Queen and five bots look at one market packet and give a research verdict:
 
 | # | Bot | Job | Returns |
 |---|-----|-----|---------|
@@ -101,8 +101,8 @@ Optional: keep the install separate from the rest of your computer with a virtua
 python web/app.py
 ```
 
-Then open <http://127.0.0.1:8642> in your browser. You get **Alpha Hive**, a honeycomb of six hexagonal
-bot panels: pick a packet, press **Run the six bots**, and watch each bot's panel light up and stream its
+Then open <http://127.0.0.1:8642> in your browser. You get **Alpha Hive**, a honeycomb of hexagonal
+bot panels (the ♛ Queen and her five bots): pick a packet, press **Run the hive**, and watch each bot's panel light up and stream its
 log lines. Worker-bee particles fly between panels and report back to the Queen; the proposal swarms into the Risk gate and then to the Queen. The
 Scout runs a hex-pulse scan, the Charts bot draws the price bars, and the Sentiment gauge swings. The Risk
 shield shows APPROVE / REDUCE / REJECT with the size cap. The final call gets a full-screen reveal with a
@@ -151,7 +151,7 @@ There is no borrowing, exchange, order or real money anywhere.
   ("Balance unavailable · trading disabled"), and the header and panels say so.
 
 **Live by default.** The browser terminal runs on live public prices out of the box:
-- Single runs: pick a live coin (your selected tokens) and the six bots analyse its real candles. The
+- Single runs: pick a live coin (your selected tokens) and the Queen and her five bots analyse its real candles. The
   fictional EXMP/EXMQ packets stay available, labelled **Practice (fictional)**. If both feeds are
   unreachable, a run falls back to the practice packet and is labelled "OFFLINE · SIMULATED PRICES".
 - The ticker tape shows live USD prices and 24h change for your token list (Coinbase Exchange `/stats`;
@@ -165,7 +165,7 @@ Scout, News, Sentiment and Charts each show their own lean for the current coin 
 neutral; Scout only screens liquidity, so it stays neutral). "simulation only" is a separate tag.
 
 **Hive scene.** A hive band at the top of the terminal (visible on the first screen on phones and
-desktop) shows a honeycomb dome, a glowing entrance and six labelled chambers, one per bot, with the
+desktop) shows a honeycomb dome, a glowing entrance and six labelled chambers (the Queen's royal cell and one per bot), with the
 ♛ Queen's larger royal chamber at the centre (her bee is bigger and wears a crown) and the Risk guard set
 apart behind a dashed line; the page
 background is honeycomb with comb walls on both sides (blended with the hex grid and honey drips). Each
@@ -211,7 +211,7 @@ How a round works:
   need no key and no sign-in.
   - **Coinbase Exchange** is the primary feed.
   - **Kraken** is the automatic fallback, and the only feed for Kraken-only tokens.
-- All six bots analyse those candles: 6 hourly bars for trend/levels and the last 30 one-minute bars for
+- The Queen and all five bots analyse those candles: 6 hourly bars for trend/levels and the last 30 one-minute bars for
   the intraday check. Each panel shows "Analyzing: <coin>/USD".
   - Price levels keep enough significant digits for sub-$1 coins.
   - News and forum inputs stay empty, so Sentiment is "unknown".
@@ -277,7 +277,7 @@ retried once; a second failure stops the run safely with `SKIP`.
 python -m pytest -q
 ```
 
-Expected: `12 passed`. The tests check that all six bots load, the sample data is valid, every output
+Expected: `18 passed`. The tests check that the Queen and all five bots load, the sample data is valid, every output
 matches its shape, missing data leads to a safe result, a Risk rejection stops the run, the Queen (Decision)
 can't bypass Risk, a short needs full Risk approval (a reduce becomes WAIT), the planted instruction stays data, there is no order code, bad output is retried
 once and then stops, secrets never reach logs or reports, and the program refuses to run if
@@ -300,7 +300,7 @@ once and then stops, secrets never reach logs or reports, and the program refuse
 ```
 agents/      base.py (prompts, mock/Grok calls, schema check, retry, redaction)
              scout.py news.py sentiment.py charts.py risk.py decision.py (one bot each: run() + SCHEMA)
-             mock_responses.py (offline answers)  pipeline.py (runs the six in order)
+             mock_responses.py (offline answers)  pipeline.py (the Queen runs the round)
 prompts/     one .txt per bot
 data/        sample_market.json  ← PRACTICE DATA (fictional ticker EXMP; used by tests and the "Practice (fictional)" option)
 reports/     report-<time>.json (one per run)
