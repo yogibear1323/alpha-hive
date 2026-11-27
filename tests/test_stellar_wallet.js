@@ -144,3 +144,165 @@ describe("formatters", () => {
     assert.equal(w.formatAmount(NaN), "\u2014");
   });
 });
+
+describe("usdc issuers", () => {
+  it("uses Circle mainnet USDC and labels the testnet issuer as test", () => {
+    assert.equal(w.usdcIssuer("public"), w.USDC_ISSUER);
+    assert.equal(w.usdcIssuer("testnet"), w.USDC_ISSUER_TESTNET);
+    assert.equal(w.usdcIssuer("nope"), w.USDC_ISSUER);
+    assert.equal(w.USDC_ISSUER, "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN");
+    assert.equal(w.USDC_ISSUER_TESTNET, "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5");
+    assert.notEqual(w.USDC_ISSUER, w.USDC_ISSUER_TESTNET);
+  });
+
+  it("treats only the official issuer for that network as official USDC", () => {
+    const acc = {
+      balances: [
+        { asset_type: "native", balance: "10" },
+        { asset_type: "credit_alphanum4", asset_code: "USDC", asset_issuer: w.USDC_ISSUER, balance: "3" },
+        { asset_type: "credit_alphanum4", asset_code: "USDC", asset_issuer: w.USDC_ISSUER_TESTNET, balance: "9" },
+      ],
+    };
+    const main = w.parseBalances(acc);
+    assert.equal(main.officialUsdc, true);
+    assert.equal(main.usdc, 3);
+    const test = w.parseBalances(acc, { usdcIssuer: w.USDC_ISSUER_TESTNET });
+    assert.equal(test.officialUsdc, true);
+    assert.equal(test.usdc, 9);
+  });
+});
+
+describe("stroops and min received", () => {
+  it("converts to and from stroops without rounding up", () => {
+    assert.equal(w.toStroops("12.7066798"), 127066798n);
+    assert.equal(w.fromStroops(127066798n), "12.7066798");
+    assert.equal(w.fromStroops(w.toStroops("99.5")), "99.5");
+    assert.equal(w.normalizeAmount("1.2300000"), "1.23");
+    assert.equal(w.toStroops("not-a-number"), null);
+    assert.equal(w.toStroops(""), null);
+  });
+
+  it("floors destMin so 0.5% slippage never rounds up", () => {
+    assert.equal(w.minReceived("100", 0.5), "99.5");
+    assert.equal(w.minReceived("100", 0), "100");
+    assert.equal(w.minReceived("1", 0.5), "0.995");
+    // 12.7066798 * 0.995 floored to 7 decimals = 12.6431464
+    assert.equal(w.minReceived("12.7066798", 0.5), "12.6431464");
+    // 1 stroop at 0.5% floors to 0
+    assert.equal(w.minReceived("0.0000001", 0.5), "0");
+    assert.equal(w.minReceived("10", 100), null);
+    assert.equal(w.minReceived("10", -1), null);
+    assert.equal(w.minReceived("0", 0.5), null);
+  });
+});
+
+describe("reserve and spendable XLM", () => {
+  it("reserves 1 XLM for the account plus 0.5 XLM per entry", () => {
+    const acc = {
+      subentry_count: 1,
+      num_sponsoring: 0,
+      num_sponsored: 0,
+      balances: [
+        { asset_type: "native", balance: "10.0000000", selling_liabilities: "0.5000000" },
+      ],
+    };
+    // 2 (account) + 1 subentry = 3 * 0.5 = 1.5 reserve; cushion 0.01
+    assert.equal(w.reserveXlm(acc), 1.5);
+    assert.equal(w.spendableXlm(acc), 10 - 0.5 - 1.5 - 0.01);
+    assert.equal(w.spendableXlm(acc, { cushion: 0 }), 8);
+    assert.equal(w.spendableXlm({ balances: [] }), 0);
+  });
+});
+
+describe("USDC trustline", () => {
+  it("detects an official USDC trustline even at a zero balance", () => {
+    const acc = {
+      balances: [
+        { asset_type: "native", balance: "5" },
+        { asset_type: "credit_alphanum4", asset_code: "USDC", asset_issuer: w.USDC_ISSUER, balance: "0.0000000" },
+      ],
+    };
+    assert.equal(w.hasUsdcTrustline(acc, w.USDC_ISSUER), true);
+    assert.equal(w.hasUsdcTrustline(acc, w.USDC_ISSUER_TESTNET), false);
+    assert.equal(w.hasUsdcTrustline({ balances: [{ asset_type: "native", balance: "5" }] }, w.USDC_ISSUER), false);
+  });
+});
+
+describe("strict-send quote", () => {
+  it("builds a Horizon strict-send URL for XLM to official USDC", () => {
+    const url = w.strictSendUrl("public", "100.5", w.USDC_ISSUER);
+    assert.match(url, /^https:\/\/horizon\.stellar\.org\/paths\/strict-send\?/);
+    assert.match(url, /source_asset_type=native/);
+    assert.match(url, /source_amount=100\.5/);
+    assert.match(url, /destination_assets=USDC%3AGA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN/);
+    const testUrl = w.strictSendUrl("testnet", "10");
+    assert.match(testUrl, /^https:\/\/horizon-testnet\.stellar\.org\/paths\/strict-send\?/);
+    assert.match(testUrl, /GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5/);
+  });
+
+  it("picks the path with the most USDC out and applies min received", () => {
+    const body = {
+      _embedded: {
+        records: [
+          {
+            source_amount: "100.0000000",
+            destination_amount: "12.7019000",
+            destination_asset_code: "USDC",
+            destination_asset_issuer: w.USDC_ISSUER,
+            path: [],
+          },
+          {
+            source_amount: "100.0000000",
+            destination_amount: "12.7066798",
+            destination_asset_code: "USDC",
+            destination_asset_issuer: w.USDC_ISSUER,
+            path: [
+              { asset_type: "credit_alphanum4", asset_code: "SHX", asset_issuer: "GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH" },
+            ],
+          },
+        ],
+      },
+    };
+    const q = w.parseStrictSendQuote(body, 0.5);
+    assert.equal(q.ok, true);
+    assert.equal(q.destAmount, "12.7066798");
+    assert.equal(q.destMin, "12.6431464");
+    assert.equal(q.route, "XLM \u2192 SHX \u2192 USDC");
+    assert.equal(q.path.length, 1);
+    const empty = w.parseStrictSendQuote({ _embedded: { records: [] } }, 0.5);
+    assert.equal(empty.ok, false);
+    assert.equal(empty.error, "no_path");
+  });
+});
+
+describe("validateConvert", () => {
+  it("requires a positive amount, slippage cap, spendable headroom, trustline and destMin", () => {
+    const goodQuote = { ok: true, destMin: "9.95" };
+    const ok = w.validateConvert({
+      sendAmount: "10",
+      slippagePct: 0.5,
+      spendableXlm: 20,
+      requireTrustline: true,
+      hasTrustline: true,
+      quote: goodQuote,
+    });
+    assert.equal(ok.ok, true);
+    const over = w.validateConvert({ sendAmount: "30", slippagePct: 0.5, spendableXlm: 20 });
+    assert.ok(over.errors.includes("spendable"));
+    const slip = w.validateConvert({ sendAmount: "1", slippagePct: 50 });
+    assert.ok(slip.errors.includes("slippage"));
+    const tl = w.validateConvert({
+      sendAmount: "1",
+      slippagePct: 0.5,
+      requireTrustline: true,
+      hasTrustline: false,
+    });
+    assert.ok(tl.errors.includes("trustline"));
+    const tiny = w.validateConvert({
+      sendAmount: "1",
+      slippagePct: 0.5,
+      quote: { ok: true, destMin: "0" },
+    });
+    assert.ok(tiny.errors.includes("dest_min"));
+  });
+});

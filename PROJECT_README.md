@@ -470,3 +470,25 @@ The terminal's session dashboard has an **Accuracy scoreboard** card. Every sess
 - **Export CSV** downloads every logged round; **Reset** clears this browser's log.
 
 On the Python side, `agents/scoreboard.py` appends each round to `reports/scoreboard.jsonl` (set `"scoreboard": false` in config to turn it off). `record_outcome()` adds the exit and the would-have grading when a window closes, and `summary()` gives the same numbers as the panel. Tests are in `tests/test_scoreboard.py`.
+
+
+## 12. Convert XLM to USDC (Stellar DEX)
+
+The terminal's Stellar wallet panel can swap XLM to official Circle USDC on the Stellar DEX. This is
+step 1 of the on-chain ramp: the resulting USDC is shown as the **Live session balance (Stellar DEX)**
+and is read-only for now (not wired into trading). Live trades, when they are added, will run on
+Stellar DEX pairs only.
+
+- Quotes come from Horizon `/paths/strict-send` (XLM → USDC). The panel shows the amount in, estimated
+  USDC out, the route, slippage (default 0.5%) and min received, plus the 0.5 XLM reserve note.
+- If the account has no USDC trustline, **Add USDC trustline** is a separate wallet-signed
+  `changeTrust` first. The convert is a `pathPaymentStrictSend` to the user's own address, signed in
+  the connected wallet (Varial, xBull, LOBSTR, Albedo, Hana, and others). Alpha Hive never asks for or
+  stores a secret key.
+- Public network uses Circle USDC
+  (`GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`). The testnet toggle uses Circle's
+  testnet issuer (`GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`) and labels those tokens
+  as test (no cash value).
+- Unit tests: `node --test tests/test_stellar_wallet.js`. Testnet end-to-end (Friendbot + a throwaway
+  testnet keypair in the script only, never on the page, never on mainnet):
+  `node --test tests/test_stellar_convert_e2e.js`.

@@ -127,4 +127,19 @@ stores a secret key, and there is no secret-key input. Public network is the def
 Wallet balances do not change the virtual trading balance, though you can copy the USD value into the starting
 simulation balance. Rebuild the vendor bundle with `sh tools/stellar-kit/build.sh` if you update the kit.
 
+### Convert XLM to USDC (Stellar DEX)
+
+With a wallet connected, **Convert XLM to USDC** quotes a swap on the Stellar DEX (Horizon
+`/paths/strict-send`, XLM → official Circle USDC) and shows the amount in, estimated USDC out, the route,
+a slippage setting (default 0.5%) and the min received, plus a 0.5 XLM reserve note. If the account has no
+USDC trustline, **Add USDC trustline** is a separate step the wallet signs first. The convert itself is a
+`pathPaymentStrictSend` to your own address, signed in your wallet and submitted to Horizon. Alpha Hive never
+asks for a secret key. The testnet toggle uses Circle's testnet USDC issuer and labels those tokens as test
+(they have no cash value). After a successful convert, the USDC balance is shown as **Live session balance
+(Stellar DEX)** — read-only for now; it is not wired into trading. Live trades, when they are added, will
+run on Stellar DEX pairs only (no Coinbase transfer). Unit tests cover the quote and min-received math
+(`node --test tests/test_stellar_wallet.js`). A testnet end-to-end script (`node --test tests/test_stellar_convert_e2e.js`)
+uses Friendbot and a throwaway testnet keypair in that script only; it never submits on mainnet and is not
+used by the page.
+
 

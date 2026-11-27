@@ -10,7 +10,14 @@
   root.AlphaHiveStellarWallet = api;
 })(typeof window !== "undefined" ? window : globalThis, function (root) {
   var USDC_ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+  /* Circle testnet USDC (no cash value). Always label it as test. */
+  var USDC_ISSUER_TESTNET = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
   var SDF_ACCOUNT = "GB6NVEN5HSUBKMYCE5ZOWSK5K23TBWRUQLZY3KNMXUZ3AQ2ESC4MY4AQ";
+  var BASE_RESERVE_XLM = 0.5;
+  var DEFAULT_SLIPPAGE_PCT = 0.5;
+  var MAX_SLIPPAGE_PCT = 5;
+  var FEE_CUSHION_XLM = 0.01;
+  var STROOPS = 10000000;
   var NETWORKS = {
     public: {
       id: "public",
@@ -44,6 +51,9 @@
   function accountUrl(network, address) {
     return horizonUrl(network) + "/accounts/" + encodeURIComponent(address);
   }
+  function usdcIssuer(network) {
+    return network === "testnet" ? USDC_ISSUER_TESTNET : USDC_ISSUER;
+  }
   function isValidAddress(addr) {
     if (typeof addr !== "string") return false;
     var a = addr.trim();
@@ -63,7 +73,9 @@
     if (addr.length <= head + tail + 1) return addr;
     return addr.slice(0, head) + "\u2026" + addr.slice(-tail);
   }
-  function parseBalances(account) {
+  function parseBalances(account, opts) {
+    opts = opts || {};
+    var officialIssuer = opts.usdcIssuer || USDC_ISSUER;
     var rows = (account && account.balances) || [];
     var xlm = 0, usdc = 0, officialUsdc = false;
     var others = [], sendable = [], all = [];
@@ -90,7 +102,7 @@
       var code = b.asset_code || "UNKNOWN";
       var issuer = b.asset_issuer || "";
       var rec = { code: code, issuer: issuer, balance: amount, native: false };
-      if (code === "USDC" && issuer === USDC_ISSUER) {
+      if (code === "USDC" && issuer === officialIssuer) {
         usdc = amount;
         officialUsdc = true;
         rec.usdc = true;
@@ -198,6 +210,154 @@
     return { ok: true, value: rounded };
   }
 
+  function toStroops(amount) {
+    if (amount == null || amount === "") return null;
+    var s = String(amount).trim();
+    if (!/^-?\d+(\.\d+)?$/.test(s)) return null;
+    var neg = s.charAt(0) === "-";
+    if (neg) s = s.slice(1);
+    var parts = s.split(".");
+    var whole = parts[0] || "0";
+    var frac = (parts[1] || "").slice(0, 7);
+    while (frac.length < 7) frac += "0";
+    try {
+      var n = BigInt(whole) * BigInt(STROOPS) + BigInt(frac);
+      return neg ? -n : n;
+    } catch (e) {
+      return null;
+    }
+  }
+  function fromStroops(n) {
+    if (n == null) return "";
+    if (typeof n !== "bigint") {
+      try { n = BigInt(n); } catch (e) { return ""; }
+    }
+    var neg = n < 0n;
+    if (neg) n = -n;
+    var whole = n / BigInt(STROOPS);
+    var frac = (n % BigInt(STROOPS)).toString().padStart(7, "0").replace(/0+$/, "");
+    var s = whole.toString() + (frac ? "." + frac : "");
+    return neg ? "-" + s : s;
+  }
+  function normalizeAmount(amount) {
+    var n = toStroops(amount);
+    return n == null ? "" : fromStroops(n);
+  }
+  /* destMin = destAmount * (1 - slippagePct/100), floored to 7 decimals (never rounded up). */
+  function minReceived(destAmount, slippagePct) {
+    var dest = toStroops(destAmount);
+    var slip = toStroops(slippagePct);
+    if (dest == null || dest <= 0n || slip == null || slip < 0n) return null;
+    if (slip >= 100n * BigInt(STROOPS)) return null; /* 100% or more */
+    var slipFrac = slip / 100n; /* 0.5% -> 50_000 of 10_000_000 */
+    var keep = BigInt(STROOPS) - slipFrac;
+    if (keep < 0n) return null;
+    return fromStroops((dest * keep) / BigInt(STROOPS));
+  }
+  function reserveXlm(account, baseReserve) {
+    baseReserve = baseReserve == null ? BASE_RESERVE_XLM : Number(baseReserve);
+    if (!isFinite(baseReserve) || baseReserve < 0) baseReserve = BASE_RESERVE_XLM;
+    var sub = Number((account && account.subentry_count) || 0);
+    var sponsoring = Number((account && account.num_sponsoring) || 0);
+    var sponsored = Number((account && account.num_sponsored) || 0);
+    var entries = 2 + sub + sponsoring - sponsored;
+    if (entries < 0) entries = 0;
+    return entries * baseReserve;
+  }
+  function spendableXlm(account, opts) {
+    opts = opts || {};
+    var baseReserve = opts.baseReserve == null ? BASE_RESERVE_XLM : opts.baseReserve;
+    var cushion = opts.cushion == null ? FEE_CUSHION_XLM : opts.cushion;
+    var rows = (account && account.balances) || [];
+    var native = null;
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].asset_type === "native") { native = rows[i]; break; }
+    }
+    if (!native) return 0;
+    var bal = parseFloat(native.balance);
+    var sell = parseFloat(native.selling_liabilities || "0");
+    if (!isFinite(bal)) return 0;
+    if (!isFinite(sell)) sell = 0;
+    var s = bal - sell - reserveXlm(account, baseReserve) - (isFinite(cushion) ? cushion : 0);
+    return s > 0 ? s : 0;
+  }
+  function hasUsdcTrustline(accountOrBalances, issuer) {
+    issuer = issuer || USDC_ISSUER;
+    var rows;
+    if (!accountOrBalances) return false;
+    if (Array.isArray(accountOrBalances)) rows = accountOrBalances;
+    else if (accountOrBalances.balances) rows = accountOrBalances.balances;
+    else if (accountOrBalances.all) rows = accountOrBalances.all;
+    else return false;
+    for (var i = 0; i < rows.length; i++) {
+      var b = rows[i];
+      var code = b.asset_code || b.code;
+      var iss = b.asset_issuer || b.issuer;
+      if (code === "USDC" && iss === issuer) return true;
+    }
+    return false;
+  }
+  function formatRoute(record) {
+    var parts = ["XLM"];
+    var path = (record && record.path) || [];
+    for (var i = 0; i < path.length; i++) {
+      var p = path[i];
+      parts.push(p.asset_type === "native" ? "XLM" : (p.asset_code || "?"));
+    }
+    parts.push((record && record.destination_asset_code) || "USDC");
+    return parts.join(" \u2192 ");
+  }
+  function strictSendUrl(network, sendAmount, destIssuer) {
+    destIssuer = destIssuer || usdcIssuer(network);
+    var amount = normalizeAmount(sendAmount);
+    return horizonUrl(network) + "/paths/strict-send?source_asset_type=native&source_amount=" +
+      encodeURIComponent(amount) + "&destination_assets=" + encodeURIComponent("USDC:" + destIssuer);
+  }
+  function parseStrictSendQuote(body, slippagePct) {
+    slippagePct = slippagePct == null ? DEFAULT_SLIPPAGE_PCT : slippagePct;
+    var records = (body && body._embedded && body._embedded.records) || (Array.isArray(body) ? body : []);
+    var best = null, bestDest = null;
+    for (var i = 0; i < records.length; i++) {
+      var r = records[i];
+      var dest = toStroops(r && r.destination_amount);
+      if (dest == null) continue;
+      if (bestDest == null || dest > bestDest) { best = r; bestDest = dest; }
+    }
+    if (!best) return { ok: false, error: "no_path", records: records.length };
+    var min = minReceived(best.destination_amount, slippagePct);
+    return {
+      ok: true,
+      sendAmount: best.source_amount,
+      destAmount: best.destination_amount,
+      destMin: min,
+      slippagePct: Number(slippagePct),
+      path: best.path || [],
+      route: formatRoute(best),
+      destCode: best.destination_asset_code || "USDC",
+      destIssuer: best.destination_asset_issuer,
+      record: best
+    };
+  }
+  function validateConvert(fields) {
+    fields = fields || {};
+    var errors = [];
+    var amt = toStroops(fields.sendAmount);
+    if (amt == null || amt <= 0n) errors.push("amount");
+    var slip = toStroops(fields.slippagePct);
+    if (slip == null || slip < 0n || slip > toStroops(MAX_SLIPPAGE_PCT)) errors.push("slippage");
+    if (fields.spendableXlm != null && amt != null) {
+      var cap = toStroops(fields.spendableXlm);
+      if (cap == null || amt > cap) errors.push("spendable");
+    }
+    if (fields.requireTrustline && !fields.hasTrustline) errors.push("trustline");
+    if (fields.quote && !fields.quote.ok) errors.push("quote");
+    if (fields.quote && fields.quote.ok) {
+      var min = toStroops(fields.quote.destMin);
+      if (min == null || min <= 0n) errors.push("dest_min");
+    }
+    return { ok: errors.length === 0, errors: errors };
+  }
+
   function fetchJson(url, timeoutMs) {
     timeoutMs = timeoutMs || 8000;
     var c = new AbortController();
@@ -220,8 +380,9 @@
         ok: true,
         address: addr,
         account: account,
-        balances: parseBalances(account),
-        homeDomain: account.home_domain || ""
+        balances: parseBalances(account, { usdcIssuer: usdcIssuer(network) }),
+        homeDomain: account.home_domain || "",
+        spendableXlm: spendableXlm(account)
       };
     }).catch(function (e) {
       return { ok: false, error: e && e.name === "AbortError" ? "timeout" : "network", address: addr };
@@ -247,12 +408,18 @@
 
   var api = {
     USDC_ISSUER: USDC_ISSUER,
+    USDC_ISSUER_TESTNET: USDC_ISSUER_TESTNET,
     SDF_ACCOUNT: SDF_ACCOUNT,
     NETWORKS: NETWORKS,
     MIN_SIM_USD: MIN_SIM_USD,
+    BASE_RESERVE_XLM: BASE_RESERVE_XLM,
+    DEFAULT_SLIPPAGE_PCT: DEFAULT_SLIPPAGE_PCT,
+    MAX_SLIPPAGE_PCT: MAX_SLIPPAGE_PCT,
+    FEE_CUSHION_XLM: FEE_CUSHION_XLM,
     horizonUrl: horizonUrl,
     networkPassphrase: networkPassphrase,
     accountUrl: accountUrl,
+    usdcIssuer: usdcIssuer,
     isValidAddress: isValidAddress,
     shortenAddress: shortenAddress,
     parseBalances: parseBalances,
@@ -265,6 +432,17 @@
     validatePayment: validatePayment,
     canSetSimBalance: canSetSimBalance,
     applySimStartingBalance: applySimStartingBalance,
+    toStroops: toStroops,
+    fromStroops: fromStroops,
+    normalizeAmount: normalizeAmount,
+    minReceived: minReceived,
+    reserveXlm: reserveXlm,
+    spendableXlm: spendableXlm,
+    hasUsdcTrustline: hasUsdcTrustline,
+    formatRoute: formatRoute,
+    strictSendUrl: strictSendUrl,
+    parseStrictSendQuote: parseStrictSendQuote,
+    validateConvert: validateConvert,
     fetchAccount: fetchAccount,
     fetchXlmUsd: fetchXlmUsd,
     mount: mount
@@ -283,7 +461,12 @@
     xlmSrc: "",
     destHomeDomain: "",
     timer: null,
-    kitReady: false
+    kitReady: false,
+    account: null,
+    spendable: 0,
+    quote: null,
+    quoteSeq: 0,
+    convertTimer: null
   };
 
   function $(id) { return document.getElementById(id); }
@@ -366,6 +549,31 @@
     useBtn.title = "Copies the approximate USD value into the starting virtual balance. The Stellar wallet is not charged.";
     $("stellarDisconnect").hidden = state.source !== "wallet";
     $("stellarSend").hidden = state.source !== "wallet";
+    if ($("stellarConvert")) $("stellarConvert").hidden = state.source !== "wallet";
+    renderLiveBalance();
+  }
+
+  function renderLiveBalance() {
+    var box = $("stellarLiveBox");
+    if (!box) return;
+    var show = state.source === "wallet" && state.address && state.balances;
+    box.hidden = !show;
+    if (!show) return;
+    var usdcEl = $("stellarLiveUsdc");
+    var noteEl = $("stellarLiveNote");
+    var issuer = usdcIssuer(state.network);
+    var hasTl = hasUsdcTrustline(state.account || state.balances, issuer);
+    var amt = state.balances.usdc;
+    var test = state.network === "testnet";
+    if (usdcEl) {
+      if (!hasTl) usdcEl.textContent = "No USDC trustline yet";
+      else usdcEl.textContent = formatAmount(amt) + (test ? " USDC (test)" : " USDC");
+    }
+    if (noteEl) {
+      noteEl.textContent = test
+        ? "Read-only for now. Testnet USDC has no cash value and is not used for trading yet."
+        : "Read-only for now. This USDC is not used for trading yet. Live trades will use Stellar DEX pairs only.";
+    }
   }
 
   function clearWallet(disconnectKit) {
@@ -380,6 +588,7 @@
     $("stellarConnect").hidden = false;
     $("stellarDisconnect").hidden = true;
     $("stellarSend").hidden = true;
+    if ($("stellarConvert")) $("stellarConvert").hidden = true;
     if (!state.address) {
       setStat("", "Not connected");
       renderBalances();
@@ -396,6 +605,7 @@
     $("stellarConnect").hidden = true;
     $("stellarDisconnect").hidden = false;
     $("stellarSend").hidden = false;
+    if ($("stellarConvert")) $("stellarConvert").hidden = false;
     setStat("ok", "Connected \u00b7 " + shortenAddress(address));
     return refreshShown();
   }
@@ -409,6 +619,8 @@
       state.xlmSrc = px.src || "";
       if (!acc.ok) {
         state.balances = null;
+        state.account = null;
+        state.spendable = 0;
         state.usd = null;
         var why = acc.error === "not_found"
           ? "No account on " + (NETWORKS[state.network] || NETWORKS.public).label + " for " + shortenAddress(state.address)
@@ -418,6 +630,8 @@
         return acc;
       }
       state.balances = acc.balances;
+      state.account = acc.account || null;
+      state.spendable = acc.spendableXlm || 0;
       state.homeDomain = acc.homeDomain;
       state.usd = usdValue(acc.balances, px.px);
       setStat(state.source === "wallet" ? "ok" : "", (state.source === "wallet" ? "Connected" : "Looked up") + " \u00b7 " + shortenAddress(state.address));
@@ -461,6 +675,7 @@
     $("stellarConnect").hidden = false;
     $("stellarDisconnect").hidden = true;
     $("stellarSend").hidden = true;
+    if ($("stellarConvert")) $("stellarConvert").hidden = true;
     return refreshShown();
   }
 
@@ -603,12 +818,281 @@
     });
   }
 
+  function usdcLabel(network) {
+    return network === "testnet" ? "USDC (test)" : "USDC";
+  }
+
+  function closeConvert() {
+    var dlg = $("stellarConvertDlg");
+    if (!dlg) return;
+    dlg.classList.remove("show");
+    dlg.hidden = true;
+    if (state.convertTimer) { clearTimeout(state.convertTimer); state.convertTimer = null; }
+  }
+
+  function updateTrustUi() {
+    var issuer = usdcIssuer(state.network);
+    var has = hasUsdcTrustline(state.account || state.balances, issuer);
+    var warn = $("stellarTrustWarn");
+    var trustBtn = $("stellarTrustGo");
+    var go = $("stellarConvertGo");
+    if (warn) {
+      warn.hidden = has;
+      warn.textContent = has ? "" :
+        "This account has no " + usdcLabel(state.network) + " trustline yet. Add one (your wallet will sign) before converting.";
+    }
+    if (trustBtn) trustBtn.hidden = has;
+    if (go) go.disabled = !has;
+    return has;
+  }
+
+  function renderQuote() {
+    var box = $("stellarQuote");
+    if (!box) return;
+    var q = state.quote;
+    if (!q || !q.ok) { box.hidden = true; return; }
+    box.hidden = false;
+    var test = state.network === "testnet";
+    var tag = test ? " (test)" : "";
+    if ($("stellarQuoteOut")) $("stellarQuoteOut").textContent = formatAmount(q.destAmount) + " USDC" + tag;
+    if ($("stellarQuoteRoute")) $("stellarQuoteRoute").textContent = q.route;
+    if ($("stellarQuoteMin")) $("stellarQuoteMin").textContent = formatAmount(q.destMin) + " USDC" + tag +
+      " (slippage " + String(q.slippagePct) + "%)";
+  }
+
+  function scheduleQuote() {
+    if (state.convertTimer) clearTimeout(state.convertTimer);
+    state.convertTimer = setTimeout(runQuote, 400);
+  }
+
+  function runQuote() {
+    var amtRaw = ($("stellarConvertAmt") && $("stellarConvertAmt").value || "").trim();
+    var slipRaw = ($("stellarSlippage") && $("stellarSlippage").value) || String(DEFAULT_SLIPPAGE_PCT);
+    var msg = $("stellarConvertMsg");
+    var box = $("stellarQuote");
+    state.quote = null;
+    var amt = toStroops(amtRaw);
+    if (amt == null || amt <= 0n) {
+      if (box) box.hidden = true;
+      return Promise.resolve();
+    }
+    var check = validateConvert({ sendAmount: amtRaw, slippagePct: slipRaw, spendableXlm: state.spendable });
+    if (check.errors.indexOf("slippage") >= 0) {
+      if (box) box.hidden = true;
+      if (msg) msg.textContent = "Slippage must be between 0 and " + MAX_SLIPPAGE_PCT + "%.";
+      return Promise.resolve();
+    }
+    if (msg) msg.textContent = "Fetching quote\u2026";
+    var seq = (state.quoteSeq = (state.quoteSeq || 0) + 1);
+    var url = strictSendUrl(state.network, fromStroops(amt), usdcIssuer(state.network));
+    return fetchJson(url, 8000).then(function (res) {
+      if (seq !== state.quoteSeq) return;
+      if (!res.ok) {
+        state.quote = { ok: false, error: "http" };
+        if (box) box.hidden = true;
+        if (msg) msg.textContent = "Could not fetch a quote from Horizon.";
+        return;
+      }
+      var q = parseStrictSendQuote(res.body, slipRaw);
+      state.quote = q;
+      renderQuote();
+      if (!q.ok) {
+        if (msg) msg.textContent = "No path found to " + usdcLabel(state.network) + " for that amount. Try a different size.";
+      } else if (check.errors.indexOf("spendable") >= 0) {
+        if (msg) msg.textContent = "Amount is above the spendable XLM. The 0.5 XLM reserve must stay in the account.";
+      } else if (msg) {
+        msg.textContent = "";
+      }
+    }).catch(function () {
+      if (seq !== state.quoteSeq) return;
+      state.quote = { ok: false, error: "network" };
+      if (box) box.hidden = true;
+      if (msg) msg.textContent = "Could not fetch a quote from Horizon.";
+    });
+  }
+
+  function openConvert() {
+    if (state.source !== "wallet" || !state.address) return;
+    if ($("stellarConvertAmt")) $("stellarConvertAmt").value = "";
+    if ($("stellarSlippage")) $("stellarSlippage").value = String(DEFAULT_SLIPPAGE_PCT);
+    if ($("stellarConvertMsg")) $("stellarConvertMsg").textContent = "";
+    state.quote = null;
+    renderQuote();
+    var net = NETWORKS[state.network] || NETWORKS.public;
+    var spendable = formatAmount(state.spendable);
+    if ($("stellarConvertNet")) {
+      $("stellarConvertNet").textContent = "Network: " + net.label +
+        " \u00b7 From " + shortenAddress(state.address) +
+        " \u00b7 Spendable " + spendable + " XLM";
+    }
+    if ($("stellarConvertSpendable")) {
+      $("stellarConvertSpendable").textContent = "Spendable: " + spendable +
+        " XLM (XLM balance minus the Stellar reserve and a small fee cushion).";
+    }
+    if ($("stellarConvertReserve")) {
+      $("stellarConvertReserve").textContent = "A Stellar account must keep a reserve of 0.5 XLM per entry (the account itself holds 1 XLM). Don't convert your entire XLM balance or the account can become unusable.";
+    }
+    if ($("stellarConvertTitle")) {
+      $("stellarConvertTitle").textContent = state.network === "testnet"
+        ? "Convert XLM to USDC (testnet)"
+        : "Convert XLM to USDC";
+    }
+    updateTrustUi();
+    var dlg = $("stellarConvertDlg");
+    if (!dlg) return;
+    dlg.hidden = false;
+    dlg.classList.add("show");
+    if ($("stellarConvertAmt")) $("stellarConvertAmt").focus();
+  }
+
+  function onUseMaxConvert() {
+    if (state.spendable == null) return;
+    var cap = toStroops(state.spendable);
+    if (cap == null || cap <= 0n) return;
+    if ($("stellarConvertAmt")) $("stellarConvertAmt").value = fromStroops(cap);
+    runQuote();
+  }
+
+  function signAndSubmit(operations, pendingMsg, okMsg) {
+    var msg = $("stellarConvertMsg");
+    var K = kit();
+    if (!K || !K.Horizon || !K.TransactionBuilder) {
+      if (msg) msg.textContent = "The Stellar toolkit did not load, so the transaction cannot be built.";
+      return Promise.resolve();
+    }
+    if (msg) msg.textContent = pendingMsg || "Building transaction\u2026";
+    var passphrase = networkPassphrase(state.network);
+    var server = new K.Horizon.Server(horizonUrl(state.network));
+    return server.loadAccount(state.address).then(function (account) {
+      return server.fetchBaseFee().then(function (fee) {
+        var builder = new K.TransactionBuilder(account, { fee: String(fee), networkPassphrase: passphrase });
+        for (var i = 0; i < operations.length; i++) builder.addOperation(operations[i]);
+        builder.setTimeout(180);
+        var tx = builder.build();
+        if (msg) msg.textContent = "Waiting for your wallet to sign\u2026";
+        return K.StellarWalletsKit.signTransaction(tx.toXDR(), { address: state.address, networkPassphrase: passphrase }).then(function (signed) {
+          var xdr = signed && signed.signedTxXdr;
+          if (!xdr) throw new Error("Wallet did not return a signed transaction.");
+          var signedTx = new K.Transaction(xdr, passphrase);
+          if (msg) msg.textContent = "Submitting to Horizon\u2026";
+          return server.submitTransaction(signedTx);
+        });
+      });
+    }).then(function (res) {
+      var hash = res && (res.hash || res.id);
+      if (msg) msg.textContent = hash ? (okMsg || "Submitted.") + " Hash " + hash : (okMsg || "Submitted.");
+      return refreshShown().then(function () {
+        if ($("stellarConvertNet")) {
+          $("stellarConvertNet").textContent = "Network: " + (NETWORKS[state.network] || NETWORKS.public).label +
+            " \u00b7 From " + shortenAddress(state.address) +
+            " \u00b7 Spendable " + formatAmount(state.spendable) + " XLM";
+        }
+        if ($("stellarConvertSpendable")) {
+          $("stellarConvertSpendable").textContent = "Spendable: " + formatAmount(state.spendable) +
+            " XLM (XLM balance minus the Stellar reserve and a small fee cushion).";
+        }
+        updateTrustUi();
+        return res;
+      });
+    }).catch(function (err) {
+      var t = (err && (err.message || err.reason || err.toString())) || "Transaction failed.";
+      if (/closed the modal|User declined|rejected|denied/i.test(t)) t = "Signature cancelled in the wallet.";
+      if (msg) msg.textContent = t;
+    });
+  }
+
+  function onTrustlineGo() {
+    var K = kit();
+    if (!K || !K.Operation || !K.Asset) {
+      if ($("stellarConvertMsg")) $("stellarConvertMsg").textContent = "The Stellar toolkit did not load.";
+      return;
+    }
+    if (hasUsdcTrustline(state.account || state.balances, usdcIssuer(state.network))) {
+      updateTrustUi();
+      return;
+    }
+    var asset = new K.Asset("USDC", usdcIssuer(state.network));
+    signAndSubmit(
+      [K.Operation.changeTrust({ asset: asset })],
+      "Building USDC trustline\u2026",
+      "USDC trustline added."
+    );
+  }
+
+  function onConvertGo() {
+    var amtRaw = ($("stellarConvertAmt") && $("stellarConvertAmt").value || "").trim();
+    var slipRaw = ($("stellarSlippage") && $("stellarSlippage").value) || String(DEFAULT_SLIPPAGE_PCT);
+    var msg = $("stellarConvertMsg");
+    var has = updateTrustUi();
+    var check = validateConvert({
+      sendAmount: amtRaw,
+      slippagePct: slipRaw,
+      spendableXlm: state.spendable,
+      requireTrustline: true,
+      hasTrustline: has,
+      quote: state.quote
+    });
+    if (!check.ok) {
+      if (check.errors.indexOf("trustline") >= 0) {
+        if (msg) msg.textContent = "Add a USDC trustline first. Your wallet will sign that step.";
+      } else if (check.errors.indexOf("spendable") >= 0) {
+        if (msg) msg.textContent = "Amount is above the spendable XLM. The 0.5 XLM reserve must stay in the account.";
+      } else if (check.errors.indexOf("quote") >= 0 || check.errors.indexOf("dest_min") >= 0) {
+        if (msg) msg.textContent = "Get a valid quote before converting.";
+      } else if (check.errors.indexOf("slippage") >= 0) {
+        if (msg) msg.textContent = "Slippage must be between 0 and " + MAX_SLIPPAGE_PCT + "%.";
+      } else {
+        if (msg) msg.textContent = "Enter a valid XLM amount to convert.";
+      }
+      return;
+    }
+    var K = kit();
+    if (!K || !K.Operation || !K.Asset) {
+      if (msg) msg.textContent = "The Stellar toolkit did not load.";
+      return;
+    }
+    if (msg) msg.textContent = "Refreshing quote\u2026";
+    runQuote().then(function () {
+      var q = state.quote;
+      var recheck = validateConvert({
+        sendAmount: amtRaw,
+        slippagePct: slipRaw,
+        spendableXlm: state.spendable,
+        requireTrustline: true,
+        hasTrustline: hasUsdcTrustline(state.account || state.balances, usdcIssuer(state.network)),
+        quote: q
+      });
+      if (!recheck.ok || !q || !q.ok) {
+        if (msg && !msg.textContent) msg.textContent = "Quote is no longer valid. Adjust the amount and try again.";
+        return;
+      }
+      var destAsset = new K.Asset("USDC", usdcIssuer(state.network));
+      var path = (q.path || []).map(function (p) {
+        return p.asset_type === "native" ? K.Asset.native() : new K.Asset(p.asset_code, p.asset_issuer);
+      });
+      var op = K.Operation.pathPaymentStrictSend({
+        sendAsset: K.Asset.native(),
+        sendAmount: normalizeAmount(amtRaw),
+        destination: state.address,
+        destAsset: destAsset,
+        destMin: q.destMin,
+        path: path
+      });
+      return signAndSubmit(
+        [op],
+        "Building path payment\u2026",
+        "Converted to " + usdcLabel(state.network) + ". Live session balance updated."
+      );
+    });
+  }
+
   function onNetworkToggle() {
     var test = $("stellarTestnet") && $("stellarTestnet").checked;
     state.network = test ? "testnet" : "public";
     if (state.kitReady) {
       try { ensureKit(); } catch (e) {}
     }
+    closeConvert();
     if (state.address) refreshShown();
   }
 
@@ -620,6 +1104,7 @@
     $("stellarConnect").addEventListener("click", onConnect);
     $("stellarDisconnect").addEventListener("click", onDisconnect);
     $("stellarSend").addEventListener("click", openSend);
+    if ($("stellarConvert")) $("stellarConvert").addEventListener("click", openConvert);
     $("stellarLookupBtn").addEventListener("click", function () { onLookup(); });
     $("stellarLookupSdf").addEventListener("click", function () {
       if ($("stellarLookup")) $("stellarLookup").value = SDF_ACCOUNT;
@@ -635,11 +1120,28 @@
     $("stellarSendDlg").addEventListener("click", function (ev) {
       if (ev.target === $("stellarSendDlg")) closeSend();
     });
+    if ($("stellarConvertCancel")) $("stellarConvertCancel").addEventListener("click", closeConvert);
+    if ($("stellarConvertGo")) $("stellarConvertGo").addEventListener("click", onConvertGo);
+    if ($("stellarTrustGo")) $("stellarTrustGo").addEventListener("click", onTrustlineGo);
+    if ($("stellarConvertMax")) $("stellarConvertMax").addEventListener("click", onUseMaxConvert);
+    if ($("stellarConvertDlg")) $("stellarConvertDlg").addEventListener("click", function (ev) {
+      if (ev.target === $("stellarConvertDlg")) closeConvert();
+    });
+    if ($("stellarConvertAmt")) {
+      $("stellarConvertAmt").addEventListener("input", scheduleQuote);
+      $("stellarConvertAmt").addEventListener("change", scheduleQuote);
+    }
+    if ($("stellarSlippage")) {
+      $("stellarSlippage").addEventListener("input", scheduleQuote);
+      $("stellarSlippage").addEventListener("change", scheduleQuote);
+    }
     $("stellarDest").addEventListener("blur", lookupDestDomain);
     $("stellarDest").addEventListener("input", function () { state.destHomeDomain = ""; updateMemoWarn(); });
     $("stellarMemo").addEventListener("input", updateMemoWarn);
     document.addEventListener("keydown", function (ev) {
-      if (ev.key === "Escape" && $("stellarSendDlg") && $("stellarSendDlg").classList.contains("show")) closeSend();
+      if (ev.key !== "Escape") return;
+      if ($("stellarConvertDlg") && $("stellarConvertDlg").classList.contains("show")) { closeConvert(); return; }
+      if ($("stellarSendDlg") && $("stellarSendDlg").classList.contains("show")) closeSend();
     });
     try {
       if (kit() && kit().StellarWalletsKit) {

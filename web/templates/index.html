@@ -491,7 +491,15 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
 .stellar-warn{margin:8px 0 0;font:600 12px/1.45 var(--sans);color:#1a1206;background:#ffd84d;border-radius:8px;padding:8px 10px}
 .stellar-warn.strong{background:#ffb627}
 .stellar-warn[hidden]{display:none}
-@media(max-width:680px){.stellar-actions .btn,.stellar-lookup .btn{flex:1 1 100%}}
+.stellar-live{margin-top:8px;border:1px solid var(--lime);border-radius:8px;padding:8px 10px;background:#15120d}
+.stellar-live small{display:block;font:700 10px var(--mono);letter-spacing:1px;text-transform:uppercase;color:#d8ccb1}
+.stellar-live b{display:block;font:800 16px var(--mono);color:var(--text);margin-top:2px}
+.stellar-live p{margin:4px 0 0;font:12px/1.45 var(--sans);color:var(--text)}
+.stellar-quote{display:grid;grid-template-columns:1fr;gap:6px;margin-top:10px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#15120d}
+.stellar-quote small{display:block;font:700 10px var(--mono);letter-spacing:1px;text-transform:uppercase;color:#d8ccb1}
+.stellar-quote b{display:block;font:800 15px var(--mono);color:var(--text);word-break:break-word}
+.stellar-convert-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+@media(max-width:680px){.stellar-actions .btn,.stellar-lookup .btn,.stellar-convert-actions .btn{flex:1 1 100%}}
 </style>
 </head>
 <body>
@@ -555,11 +563,12 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
             <span class="stellar-lbl" id="stellarLbl">Stellar wallet</span>
             <label class="stellar-net"><input type="checkbox" id="stellarTestnet"> Testnet</label>
           </div>
-          <p class="stellar-note" id="stellarNote">Balances are shown only. They do not change the virtual trading balance. Alpha Hive never asks for or stores your secret key. Simulation · demo funds for the hive itself.</p>
+          <p class="stellar-note" id="stellarNote">Balances are shown only. They do not change the virtual trading balance. Convert XLM to USDC swaps on the Stellar DEX; the USDC stays in your wallet as a read-only Live session balance and is not used for trading yet. Alpha Hive never asks for or stores your secret key. Simulation · demo funds for the hive itself.</p>
           <div class="stellar-actions">
             <button class="btn" id="stellarConnect">Connect wallet</button>
             <button class="btn ghost sm" id="stellarDisconnect" hidden>Disconnect</button>
             <button class="btn ghost sm" id="stellarSend" hidden>Send</button>
+            <button class="btn ghost sm" id="stellarConvert" hidden>Convert XLM to USDC</button>
           </div>
           <div class="stellar-stat" id="stellarStat" role="status" aria-live="polite">Not connected</div>
           <div id="stellarBalances" hidden>
@@ -572,6 +581,11 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
               <div><small>Approx. USD</small><b id="stellarUsd">—</b></div>
             </div>
             <div id="stellarOtherWrap" hidden><div class="label">Other balances</div><ul class="stellar-other" id="stellarOther"></ul></div>
+            <div class="stellar-live" id="stellarLiveBox" hidden>
+              <small>Live session balance (Stellar DEX)</small>
+              <b id="stellarLiveUsdc">—</b>
+              <p id="stellarLiveNote">Read-only for now. This USDC is not used for trading yet. Live trades will use Stellar DEX pairs only.</p>
+            </div>
             <div class="stellar-actions"><button class="btn ghost sm" id="stellarUseBal" hidden>Use this USD value as the starting virtual balance</button></div>
           </div>
           <div class="stellar-lookup">
@@ -663,6 +677,30 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
     <p class="stellar-warn" id="stellarMemoWarn">If you are sending to an exchange or hosted wallet, a memo is usually required. Funds can be lost without it.</p>
     <div class="actions" style="margin-top:14px"><button class="btn" id="stellarSendGo">Sign in wallet</button><button class="btn ghost" id="stellarSendCancel">Cancel</button></div>
     <p class="stellar-send-msg" id="stellarSendMsg" role="status"></p>
+  </div>
+</div>
+<div class="stellar-send" id="stellarConvertDlg" role="dialog" aria-modal="true" aria-labelledby="stellarConvertTitle" hidden>
+  <div class="stellar-send-card">
+    <h3 id="stellarConvertTitle">Convert XLM to USDC</h3>
+    <p class="stellar-note">Swaps on the Stellar DEX. Your wallet signs each transaction. Alpha Hive never sees your secret key. The resulting USDC stays in your wallet as the Live session balance; it is not used for trading yet.</p>
+    <p class="stellar-send-net" id="stellarConvertNet">Network: Public</p>
+    <div class="fld"><label for="stellarConvertAmt">Amount of XLM to convert</label><input id="stellarConvertAmt" type="number" min="0" step="any" inputmode="decimal" aria-label="Amount of XLM to convert"></div>
+    <div class="stellar-actions"><button type="button" class="btn ghost sm" id="stellarConvertMax">Use max spendable</button></div>
+    <p class="stellar-stat" id="stellarConvertSpendable"></p>
+    <div class="fld"><label for="stellarSlippage">Slippage (default 0.5%)</label><input id="stellarSlippage" type="number" min="0" max="5" step="0.1" value="0.5" aria-label="Slippage percent"></div>
+    <div class="stellar-quote" id="stellarQuote" hidden>
+      <div><small>Estimated USDC out</small><b id="stellarQuoteOut">—</b></div>
+      <div><small>Route</small><b id="stellarQuoteRoute">—</b></div>
+      <div><small>Min received</small><b id="stellarQuoteMin">—</b></div>
+    </div>
+    <p class="stellar-note" id="stellarConvertReserve">A Stellar account must keep a reserve of 0.5 XLM per entry (the account itself holds 1 XLM). Don't convert your entire XLM balance or the account can become unusable.</p>
+    <p class="stellar-warn" id="stellarTrustWarn" hidden>This account has no USDC trustline yet. Add one (your wallet will sign) before converting.</p>
+    <div class="actions stellar-convert-actions">
+      <button class="btn" id="stellarTrustGo" type="button" hidden>Add USDC trustline</button>
+      <button class="btn" id="stellarConvertGo" type="button">Sign convert in wallet</button>
+      <button class="btn ghost" id="stellarConvertCancel" type="button">Cancel</button>
+    </div>
+    <p class="stellar-send-msg" id="stellarConvertMsg" role="status"></p>
   </div>
 </div>
 <div class="flash" id="flash"></div>
