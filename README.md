@@ -2,8 +2,8 @@
 
 **Live site:** https://yogibear1323.github.io/alpha-hive/ · **Terminal:** https://yogibear1323.github.io/alpha-hive/terminal/
 
-> Educational simulation on free public prices (Coinbase Exchange, Kraken fallback) with a virtual
-> balance. Fictional EXMP/EXMQ packets remain only as a labelled "Practice (fictional)" option. It places no real orders, connects to no trading
+> Educational simulation on live Stellar DEX prices (official Horizon API) plus Coinbase Exchange / Kraken
+> for other tokens, with a virtual balance. Fictional EXMP/EXMQ packets remain only as a labelled "Practice (fictional)" option. It places no real orders, connects to no trading
 > account, and is not financial advice.
 
 `index.html` is the landing page, which explains the project, and `terminal/index.html` is the terminal itself. Each is a single, self-contained HTML file (no CDNs); the homepage videos and posters live in `assets/video/`. Add `?session`, `?fast` or `?offline` to the terminal address. Pick a
@@ -21,9 +21,10 @@ explainer, both labelled *Simulation · demo funds* and recorded on the Queen de
 workers reporting back, Risk as the guard). The sizzle autoplays muted on loop (not under reduced motion); press **Sound on**
 or use the controls to hear it. Narration is neural TTS; the music and sound effects are synthesized, with no samples.
 
-- **Live coins (default):** single runs fetch real hourly and one-minute candles for the selected coin.
-- **Ticker tape:** live USD prices and 24h change for your token list, refreshed every 10 s, marked LIVE;
-  it says "Offline" instead of showing fake tickers if both feeds fail.
+- **Stellar DEX markets:** the terminal lists XLM/USDC, EURC/USDC, XLM/EURC, SHX/XLM, yXLM/XLM, AQUA/XLM, PYUSD/USDC and yUSDC/USDC with last price, 24h change and volume, spread and top-of-book depth from the official Stellar Horizon API (`horizon.stellar.org`), refreshed every 20 seconds. StellarChain.io is linked per asset but is not the live source (its public market snapshots were stale and browser calls are blocked by CORS). A failed fetch shows “Live data unavailable” rather than invented prices. Simulation bots can read these prices; no real orders are submitted. Adapter tests: `node --test tests/test_stellar_dex_markets.js`.
+- **Live coins (default):** single runs can use a Stellar DEX pair (Horizon) or another live coin (Coinbase Exchange / Kraken candles).
+- **Ticker tape:** live Stellar DEX last prices and 24h change, refreshed every 20 s, marked LIVE;
+  it says "Live data unavailable" instead of showing fake tickers if Horizon cannot be reached.
 - **Status labels:** a header chip, the Queen's call, the position panel and the round tape show
   `LONG ▲ BUY` (green) or `SHORT ▼ SELL` (red), or WAIT/SKIP, reset every round; each analyst shows its own
   lean (bullish/bearish/neutral). "simulation only" is a separate tag.
