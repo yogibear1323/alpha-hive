@@ -49,14 +49,18 @@ class GuardState:
             d = {}
         return d if d.get("day") == utc_day(self.clock()) else {}
 
-    def daily_status(self, equity, today_net=None) -> dict:
-        """Record the day's starting equity on first sight; latch the stop once the loss hits the limit."""
+    def daily_status(self, equity, today_net=None, use_equity: bool = True) -> dict:
+        """Record the day's starting equity on first sight; latch the stop once the loss hits the limit.
+
+        use_equity=False counts only today_net (trading P&L), so deposits, withdrawals and
+        conversions do not move the stop. Equity is still recorded for the percentage.
+        """
         d = self._day()
         if not d and isinstance(equity, (int, float)):
             d = {"day": utc_day(self.clock()), "start_equity": float(equity), "stopped": False}
         start = d.get("start_equity")
         loss = 0.0
-        if isinstance(start, (int, float)) and start > 0 and isinstance(equity, (int, float)):
+        if use_equity and isinstance(start, (int, float)) and start > 0 and isinstance(equity, (int, float)):
             loss = max(0.0, start - float(equity))
         if isinstance(today_net, (int, float)) and today_net < 0:
             loss = max(loss, -float(today_net))
@@ -74,11 +78,19 @@ class GuardState:
                 "limit_usd": usd_cap, "stopped": bool(d.get("stopped"))}
 
     # ---- pre-trade ----
-    def pre_trade(self, equity, today_net, open_positions: int) -> dict:
+    def check_latches(self) -> None:
+        """Read-only: kill switch and an already-latched daily stop. Writes nothing."""
         if self.kill_engaged():
             raise Blocked("kill_switch", "Kill switch is engaged: no new orders. Release it on this machine with "
                                          "`python -m bridge release-kill`.")
-        daily = self.daily_status(equity, today_net)
+        if self._day().get("stopped"):
+            raise Blocked("daily_loss_stop", "Daily loss stop hit: no new orders until the next UTC day.")
+
+    def pre_trade(self, equity, today_net, open_positions: int, use_equity: bool = True) -> dict:
+        if self.kill_engaged():
+            raise Blocked("kill_switch", "Kill switch is engaged: no new orders. Release it on this machine with "
+                                         "`python -m bridge release-kill`.")
+        daily = self.daily_status(equity, today_net, use_equity=use_equity)
         if daily["stopped"]:
             cap = f"{daily['loss_pct']}% >= {daily['limit_pct']}%"
             if daily.get("limit_usd") and daily["loss_usd"] >= daily["limit_usd"]:

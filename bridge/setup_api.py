@@ -9,7 +9,10 @@ from /unlock.
 from __future__ import annotations
 
 import time
+from decimal import ROUND_DOWN, Decimal
 from typing import Literal, Optional
+
+import httpx
 
 from fastapi import Depends, Header, HTTPException
 from pydantic import BaseModel, Field
@@ -27,6 +30,9 @@ from bridge.stellar_dex import (
     sanitize_out, usdc_issuer, horizon_url, normalize_network,
     build_change_trust_xdr, build_path_payment_xdr, sign_xdr, submit_xdr,
     is_secret_key,
+)
+from bridge.stellar_orders import (
+    MAX_SLIPPAGE_PCT, Desk, Horizon, Ledger, OrderError, balances as dex_balances, pnl_summary,
 )
 
 
@@ -98,6 +104,13 @@ class StellarOrderIn(BaseModel):
     client_ref: str = Field(default="", max_length=60)
     signer: Literal["bot", "wallet"] = "bot"
     dry_run: bool = False
+    order_type: Literal["market", "limit"] = "market"
+    limit_price: Optional[float] = None
+    slippage_pct: Optional[float] = 0.5
+
+
+class StellarKillIn(BaseModel):
+    reason: str = Field(default="", max_length=200)
 
 
 def _http_locked(e: LockedOut) -> HTTPException:
@@ -455,8 +468,8 @@ def register(app, settings, st, sessions, challenges, unlock_guard, require_auth
         out["destination"] = body.destination
         return sanitize_out(out)
 
-    @app.post("/stellar/mode", dependencies=[Depends(require_auth)])
-    def stellar_mode(body: StellarModeIn):
+    @app.post("/stellar/mode")
+    def stellar_mode(body: StellarModeIn, who: str = Depends(require_auth)):
         if body.mode == "OFF":
             st["stellar_armed"] = False
             st["stellar_testnet_armed"] = False
@@ -464,6 +477,8 @@ def register(app, settings, st, sessions, challenges, unlock_guard, require_auth
         if body.mode == "TESTNET":
             if normalize_network(settings.stellar_network) != "testnet":
                 raise HTTPException(400, "Bridge STELLAR_NETWORK is not testnet. Use LIVE on public only after arming.")
+            if stellar_guard.kill_engaged():
+                raise HTTPException(423, "Kill switch is engaged. Release it on this machine: python -m bridge release-kill")
             st["stellar_testnet_armed"] = True
             st["stellar_armed"] = False
             audit({"result": "stellar_testnet_armed"})
@@ -473,6 +488,8 @@ def register(app, settings, st, sessions, challenges, unlock_guard, require_auth
             raise HTTPException(400, "LIVE arm is for STELLAR_NETWORK=public. Use TESTNET on testnet.")
         if not settings.allow_live:
             raise HTTPException(403, "LIVE is off: set ALPHA_HIVE_ALLOW_LIVE=1 in bridge/.env and restart.")
+        if who != "session":
+            raise HTTPException(403, "Arming mainnet needs an unlocked session (passphrase or wallet), not the CLI token.")
         if body.confirm != LIVE_CONFIRM_PHRASE:
             raise HTTPException(400, f"To arm LIVE send confirm='{LIVE_CONFIRM_PHRASE}'.")
         if stellar_guard.kill_engaged():
@@ -481,11 +498,84 @@ def register(app, settings, st, sessions, challenges, unlock_guard, require_auth
         audit({"result": "stellar_live_armed"})
         return {"ok": True, "stellar_armed": True, "stellar_testnet_armed": False, "network": "public"}
 
+    # ------------------------------------------------------------ Live session order desk
+    def _net():
+        return normalize_network(settings.stellar_network)
+
+    def _live_ok() -> bool:
+        """May the desk submit a NEW order right now? Independent of the Queen and the page."""
+        if not sessions.has_any():
+            _disarm()
+            return False
+        if stellar_guard.kill_engaged():
+            return False
+        if _net() == "testnet":
+            return bool(st["stellar_testnet_armed"])
+        return bool(settings.allow_live and st["stellar_armed"])
+
+    def _cancel_ok() -> bool:
+        """Cancelling only removes risk: testnet always; mainnet only when ALPHA_HIVE_ALLOW_LIVE=1."""
+        return _net() == "testnet" or bool(settings.allow_live)
+
+    def _desk():
+        pub = st.get("bot_public") or ""
+        if not is_valid_address(pub):
+            return None
+        hz = st.get("horizon_api") or Horizon(_net())
+        return Desk(_net(), pub, hz, Ledger(settings.state_dir, _net()), audit)
+
+    def _blocked(code: str, msg: str, status: int = 409):
+        return HTTPException(status, {"blocked": code, "reason": msg})
+
+    def _mode_label() -> str:
+        if _net() == "public":
+            return "LIVE" if (settings.allow_live and st["stellar_armed"]) else "PREVIEW"
+        return "TESTNET" if st["stellar_testnet_armed"] else "PREVIEW"
+
+    def _snapshot(desk, refresh: bool = True) -> dict:
+        out = {"network": _net(), "mode": _mode_label(), "kill_switch": stellar_guard.kill_engaged(),
+               "stellar_armed": st["stellar_armed"], "stellar_testnet_armed": st["stellar_testnet_armed"],
+               "limits": {"max_position_usd": settings.stellar_limits.max_position_usd,
+                          "daily_loss_stop_usd": settings.stellar_limits.daily_loss_stop_usd,
+                          "max_open_offers": settings.stellar_limits.max_open_positions,
+                          "spot_only": True},
+               "bot_account": st.get("bot_public") or None, "orders": [], "fills": [], "open_offers": [],
+               "pnl": None, "daily": None, "error": None}
+        if desk is None:
+            out["error"] = "No dedicated bot account. Run python -m bridge create-bot-account --allowlist G..."
+            return out
+        try:
+            if refresh:
+                desk.refresh()
+            px = desk.prices()
+            acc = desk.h.account(desk.public)
+            data = desk.ledger.load()
+            pnl = pnl_summary(data, px["mid"])
+            out["pnl"] = pnl
+            out["prices"] = {k: (float(v) if v is not None else None) for k, v in px.items()}
+            if acc:
+                b = dex_balances(acc, _net())
+                out["balances"] = {k: (str(v) if not isinstance(v, bool) else v) for k, v in b.items()}
+                eq = float(desk.equity(acc, px["mid"]))
+                out["equity_usd"] = round(eq, 4)
+                out["daily"] = stellar_guard.daily_status(eq, pnl["today_pnl_usd"], use_equity=False)
+            out["open_offers"] = [{"id": o.get("id"), "selling": (o.get("selling") or {}).get("asset_code") or "XLM",
+                                   "buying": (o.get("buying") or {}).get("asset_code") or "XLM",
+                                   "amount": o.get("amount"), "price": o.get("price")}
+                                  for o in desk.h.account_offers(desk.public)]
+        except (httpx.HTTPError, OrderError) as e:
+            out["error"] = f"Horizon: {e}"
+            data = desk.ledger.load()
+        out["orders"] = list(reversed(data["orders"]))[:50]
+        out["fills"] = list(reversed(data["fills"]))[:50]
+        return out
+
     @app.post("/stellar/orders", dependencies=[Depends(require_auth)])
     def stellar_orders(body: StellarOrderIn):
         sym = body.symbol.strip().upper().replace("_", "-").replace("/", "-")
         if sym not in {"XLM", "XLM-USDC", "USDC", "USDC-XLM"}:
             raise HTTPException(400, "Live session trades XLM/USDC on the Stellar DEX only.")
+        # 1. The risk guard's verdict comes first; the Queen cannot overrule it.
         risk_status = (body.risk or {}).get("status")
         if risk_status not in ("approve", "reduce"):
             raise HTTPException(403, "Risk guard did not approve this call.")
@@ -494,48 +584,176 @@ def register(app, settings, st, sessions, challenges, unlock_guard, require_auth
             raise HTTPException(403, "Queen call does not match a buy.")
         if body.side == "sell" and qcall not in {"SHORT", "SELL"}:
             raise HTTPException(403, "Queen call does not match a sell.")
-        if body.side == "sell":
-            # Spot USDC-funded book is long-only unless the account holds XLM to sell.
-            pub = st.get("bot_public") if body.signer == "bot" else (st.get("allowlist") or "")
-            held = "0"
-            if is_valid_address(pub):
-                info = _account(pub)
-                if info.get("ok"):
-                    held = _balances(info["account"])["xlm"]
+        risk_pct = body.risk_pct
+        ceiling = (body.risk or {}).get("ceiling_pct")
+        if isinstance(ceiling, (int, float)) and risk_pct is not None:
+            risk_pct = min(risk_pct, float(ceiling))
+        net = _net()
+        slip = body.slippage_pct if body.slippage_pct is not None else 0.5
+        if not (0 < slip <= MAX_SLIPPAGE_PCT):
+            raise HTTPException(400, f"slippage_pct must be in (0, {MAX_SLIPPAGE_PCT}].")
+        if body.order_type == "limit" and body.limit_price is not None and body.limit_price <= 0:
+            raise HTTPException(400, "limit_price must be > 0.")
+        desk = _desk()
+        submit = (not body.dry_run) and body.signer == "bot" and desk is not None and _live_ok()
+
+        if not submit:
+            # Preview only: size the plan, never touch the network. Same gates as before.
+            if body.side == "sell":
+                pub = st.get("bot_public") if body.signer == "bot" else (st.get("allowlist") or "")
+                held = "0"
+                if is_valid_address(pub):
+                    info = _account(pub)
+                    if info.get("ok"):
+                        held = _balances(info["account"])["xlm"]
+                try:
+                    xlm_held = float(held)
+                except (TypeError, ValueError):
+                    xlm_held = 0.0
+                if xlm_held <= 0:
+                    raise HTTPException(403, "Stellar DEX spot is long-only unless the account holds XLM to sell.")
+            equity = body.balance if body.balance is not None else 0.0
             try:
-                xlm_held = float(held)
-            except (TypeError, ValueError):
-                xlm_held = 0.0
-            if xlm_held <= 0:
-                raise HTTPException(403, "Stellar DEX spot is long-only unless the account holds XLM to sell.")
-        net = settings.stellar_network
-        equity = body.balance
-        if equity is None:
-            equity = 0.0
-        try:
-            stellar_guard.pre_trade(equity, None, 0)
-        except Blocked as e:
-            raise HTTPException(403, str(e))
-        entry = body.entry if body.entry is not None else body.entry_ref
-        details = {"lotSize": 1.0, "lotStep": 0.0000001, "minLot": 0.0000001, "leverage": 1}
-        try:
-            plan = sizing.plan(balance=equity, side=body.side, entry=entry, stop=body.stop,
-                               target=body.target, risk_pct=body.risk_pct, limits=settings.stellar_limits,
-                               details=details, entry_ref=body.entry_ref)
-        except Blocked as e:
-            raise HTTPException(403, str(e))
-        preview = not can_submit(net, settings.allow_live, st["stellar_armed"])
-        if body.dry_run or preview:
-            audit({"result": "stellar_preview", "plan": {"side": plan["side"], "units": plan["units"],
-                                                          "notional_usd": plan["notional_usd"]}})
-            return {"ok": True, "preview": True, "submitted": False, "mode": "PREVIEW",
+                # Read-only: a page-supplied balance must never set or trip the day's baseline.
+                stellar_guard.check_latches()
+            except Blocked as e:
+                raise HTTPException(403, str(e))
+            entry = body.entry if body.entry is not None else body.entry_ref
+            details = {"lotSize": 1.0, "lotStep": 0.0000001, "minLot": 0.0000001, "leverage": 1}
+            try:
+                plan = sizing.plan(balance=equity, side=body.side, entry=entry, stop=body.stop,
+                                   target=body.target, risk_pct=risk_pct, limits=settings.stellar_limits,
+                                   details=details, entry_ref=body.entry_ref)
+            except Blocked as e:
+                raise HTTPException(403, str(e))
+            why = ("dry run" if body.dry_run else "wallet signer is preview-only for automated orders"
+                   if body.signer != "bot" else "no bot account" if desk is None
+                   else "kill switch engaged" if stellar_guard.kill_engaged()
+                   else "Live session not armed")
+            audit({"result": "stellar_preview", "why": why,
+                   "plan": {"side": plan["side"], "units": plan["units"], "notional_usd": plan["notional_usd"]}})
+            return {"ok": True, "preview": True, "submitted": False, "mode": "PREVIEW", "why": why,
                     "network": net, "plan": plan, "symbol": "XLM-USDC"}
-        # Testnet (or armed mainnet) would build+sign+submit a path payment here. The preview
-        # path is the default; live submit is gated by can_submit.
-        audit({"result": "stellar_order", "plan": {"side": plan["side"], "units": plan["units"],
-                                                    "notional_usd": plan["notional_usd"]}})
-        return {"ok": True, "preview": False, "submitted": False, "mode": "TESTNET",
-                "network": net, "plan": plan, "symbol": "XLM-USDC"}
+
+        # 2. Submission path: every number comes from Horizon and the bridge, not the page.
+        ref = {"side": body.side, "client_ref": body.client_ref}
+        try:
+            acc = desk.account()
+            px = desk.prices()
+            entry = px["ask"] if body.side == "buy" else px["bid"]
+            if not entry:
+                raise Blocked("no_book", "The XLM/USDC order book has no price on that side right now.")
+            data = desk.ledger.load()
+            pnl = pnl_summary(data, px["mid"])
+            bal = dex_balances(acc, net)
+            equity = float(desk.equity(acc, px["mid"]))
+            open_offers = desk.h.account_offers(desk.public)
+            try:
+                stellar_guard.pre_trade(equity, pnl["today_pnl_usd"], len(open_offers), use_equity=False)
+            except Blocked as b:
+                if b.code == "daily_loss_stop" and open_offers and _cancel_ok():
+                    try:
+                        desk.cancel(secret=st.get("bot_secret") or "", live_ok=True, reason="daily loss stop")
+                    except Exception:  # noqa: BLE001 - best effort, the stop still holds
+                        pass
+                raise
+            balance = float(bal["usdc_spendable"]) if body.side == "buy" else equity
+            details = {"lotSize": 1.0, "lotStep": 0.0000001, "minLot": 0.0000001, "leverage": 1}
+            plan = sizing.plan(balance=balance, side=body.side, entry=float(entry), stop=body.stop,
+                               target=body.target, risk_pct=risk_pct, limits=settings.stellar_limits,
+                               details=details, entry_ref=body.entry_ref)
+            units = Decimal(str(plan["units"]))
+            lim = Decimal(str(settings.stellar_limits.max_position_usd))
+            if body.side == "buy":
+                resting = sum((Decimal(str(o.get("amount") or 0)) for o in open_offers
+                               if (o.get("selling") or {}).get("asset_code") == "USDC"), Decimal(0))
+                held = max(Decimal(0), Decimal(str(pnl["net_xlm"]))) * entry
+                room = lim - held - resting
+                if room < Decimal("0.01"):
+                    raise Blocked("max_position", f"Position ${float(held + resting):.2f} is at the "
+                                                  f"${float(lim):.0f} cap: no more buys.")
+                if units * entry > room:
+                    units = (room / entry).quantize(Decimal("0.0000001"), rounding=ROUND_DOWN)
+                    plan["capped"] = True
+            else:
+                if bal["xlm_spendable"] <= 0:
+                    raise Blocked("spot_only", "Spot only: the bot account has no spare XLM to sell (no shorting).")
+                if units > bal["xlm_spendable"]:
+                    units = bal["xlm_spendable"].quantize(Decimal("0.0000001"), rounding=ROUND_DOWN)
+                    plan["capped"] = True
+            if units <= 0:
+                raise Blocked("below_min_lot", "Order size rounds to zero; the bridge never rounds up.")
+            plan["units"] = float(units)
+            plan["notional_usd"] = round(float(units * entry), 4)
+            limit_price = Decimal(str(body.limit_price)) if body.limit_price is not None else None
+            order = desk.place(side=body.side, units=units, order_type=body.order_type, entry=entry,
+                               slippage_pct=slip, limit_price=limit_price, secret=st.get("bot_secret") or "",
+                               live_ok=_live_ok(), meta={"client_ref": body.client_ref, "queen": qcall,
+                                                          "risk": risk_status,
+                                                          "plan": {"units": plan["units"],
+                                                                   "notional_usd": plan["notional_usd"],
+                                                                   "stop": body.stop, "target": body.target}})
+        except Blocked as b:
+            audit({**ref, "result": "stellar_blocked", "code": b.code, "reason": str(b)})
+            raise _blocked(b.code, str(b), 423 if b.code == "kill_switch" else 409)
+        except OrderError as e:
+            audit({**ref, "result": "stellar_blocked", "code": e.code, "reason": str(e)})
+            raise _blocked(e.code, str(e))
+        except httpx.HTTPError as e:
+            raise HTTPException(502, f"Horizon: {e}")
+        return {"ok": order.get("status") != "failed", "preview": False,
+                "submitted": order.get("status") != "failed", "mode": _mode_label(), "network": net,
+                "symbol": "XLM-USDC", "plan": plan, "order": order}
+
+    @app.get("/stellar/orders", dependencies=[Depends(require_auth)])
+    def stellar_orders_list(refresh: bool = True):
+        return sanitize_out(_snapshot(_desk(), refresh=refresh))
+
+    @app.post("/stellar/orders/{order_id}/cancel", dependencies=[Depends(require_auth)])
+    def stellar_order_cancel(order_id: str):
+        desk = _desk()
+        if desk is None:
+            raise HTTPException(403, "No dedicated bot account is configured on this bridge.")
+        rec = next((o for o in desk.ledger.load()["orders"] if o["id"] == order_id), None)
+        if not rec or not rec.get("offer_id"):
+            raise HTTPException(404, "No open offer for that order.")
+        if not _cancel_ok():
+            raise HTTPException(403, "Mainnet cancels need ALPHA_HIVE_ALLOW_LIVE=1.")
+        try:
+            res = desk.cancel(secret=st.get("bot_secret") or "", live_ok=True, offer_ids=[rec["offer_id"]],
+                              reason="cancel from terminal")
+        except OrderError as e:
+            raise _blocked(e.code, str(e))
+        return res
+
+    @app.post("/stellar/cancel-all", dependencies=[Depends(require_auth)])
+    def stellar_cancel_all():
+        desk = _desk()
+        if desk is None:
+            raise HTTPException(403, "No dedicated bot account is configured on this bridge.")
+        if not _cancel_ok():
+            raise HTTPException(403, "Mainnet cancels need ALPHA_HIVE_ALLOW_LIVE=1.")
+        try:
+            return desk.cancel(secret=st.get("bot_secret") or "", live_ok=True, reason="cancel all")
+        except OrderError as e:
+            raise _blocked(e.code, str(e))
+
+    @app.post("/stellar/kill", dependencies=[Depends(require_auth)])
+    def stellar_kill(body: StellarKillIn):
+        """Kill switch: latch (no new orders anywhere), disarm, cancel every open bot offer."""
+        stellar_guard.engage_kill(body.reason or "Live session kill switch")
+        _disarm()
+        out = {"ok": True, "kill_switch": True, "disarmed": True, "cancel": None,
+               "release": "python -m bridge release-kill (on this machine)"}
+        desk = _desk()
+        if desk is not None and _cancel_ok():
+            try:
+                out["cancel"] = desk.cancel(secret=st.get("bot_secret") or "", live_ok=True, reason="kill switch")
+            except (OrderError, httpx.HTTPError) as e:
+                out["cancel"] = {"ok": False, "error": str(e)}
+        audit({"result": "stellar_kill", "cancelled": (out["cancel"] or {}).get("cancelled")})
+        return out
+
 
     # expose disarm for idle expiry in require_auth
     st["_disarm"] = _disarm

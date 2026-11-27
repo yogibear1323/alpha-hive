@@ -166,8 +166,8 @@ stays available as the alternative.
 **Use a separate trading account with only what you are willing to risk, never your main
 wallet.** Only create or enter a key at `yogibear1323.github.io/alpha-hive`. If you lose
 the key, it cannot be recovered. The key session defaults to **testnet**; flipping to
-Public shows a warning. Automated Live session order submission is **not** wired to this
-key — Live real-money trading stays gated on the local bridge as before.
+Public shows a warning. Automated Live session orders are **never** signed with this key:
+they are signed only by the dedicated bot account on the local bridge (see below).
 
 ### Local unlock, Fund panel, and Live session
 
@@ -210,6 +210,25 @@ to unlock a session, fund a dedicated bot account, or arm Live session.
    unlocked. Mainnet also needs `ALPHA_HIVE_ALLOW_LIVE=1`, a restart, an unlocked session, and a typed
    confirm: `I UNDERSTAND THIS IS REAL MONEY` (not a JS `confirm()` click). Default is preview/testnet;
    this repo does not submit mainnet orders in tests.
+8. **Live orders (Stellar DEX).** Once armed, each Live session round on **XLM** whose Risk verdict is
+   *approve* is sent to `POST /stellar/orders`. The bridge re-checks Risk and the Queen's call, reads the
+   bot account and the XLM/USDC book from Horizon itself, sizes the order inside the caps, then builds,
+   signs (bot account secret from `bridge/.env`, nothing else) and submits it:
+   * **market** (default): `pathPaymentStrictSend` to the bot's own address, 0.5% slippage floor on the
+     minimum received (max 2%), refused if the path price is more than 2% worse than the book;
+   * **limit**: `manageBuyOffer` (buy XLM with USDC) or `manageSellOffer` (sell XLM); a resting offer shows
+     under **Open offers** with **Cancel**.
+   Spot only: a SELL only sells spare XLM the bot holds (never below reserve + 1 XLM), no shorting.
+   The **$25** cap counts XLM already bought plus resting buy offers; one resting offer at a time.
+   The **$5** daily loss stop uses the marked-to-market P&L of the day's fills; when it hits, the bridge
+   cancels resting offers and refuses new orders until the next UTC day. **Kill switch** (button or
+   `POST /stellar/kill`) cancels every open bot offer, disarms, and latches until
+   `python -m bridge release-kill`. Logout or idle disarms; with no unlocked session nothing is submitted.
+   Orders, fills, P&L and the ledger live in `bridge/state/stellar_ledger_<network>.json` (no secrets);
+   `GET /stellar/orders` returns them with stellar.expert transaction links.
+   Tests: `python -m pytest -q tests/test_stellar_orders.py` (mocked Horizon) and the opt-in real testnet
+   run `ALPHA_HIVE_TESTNET_E2E=1 python -m pytest -q -s tests/test_stellar_orders_testnet_e2e.py`
+   (Friendbot throwaway bot account; never mainnet).
 
 StellarTerm.com is listed next to the wallet examples as a **non-clickable** note: it is a web exchange,
 not a Wallets Kit connector, and it does not connect to Alpha Hive. The official site is
