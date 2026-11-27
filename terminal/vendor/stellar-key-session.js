@@ -4,6 +4,9 @@
  * The key lives in a closure in this process only. This module does not write
  * it to the page, the network, or any browser store, and it does not put it
  * in a URL or a cross-origin message. Wipe on logout, page hide, and idle.
+ * generateAccount uses Keypair.random() (crypto.getRandomValues) and returns
+ * the secret once to the caller so it can be shown and saved; it does not
+ * sign the session in until createAccount or signIn holds the key.
  *
  * Node tests can load this file directly. The browser attaches it as
  * AlphaHiveKeySession after the Stellar kit script.
@@ -129,6 +132,49 @@
     return publicState();
   }
 
+  // Keypair.random() uses crypto.getRandomValues in the browser
+  // (crypto.randomBytes in Node). This module never holds the
+  // returned secret until createAccount or signIn is called.
+  function generateAccount(opts) {
+    opts = opts || {};
+    var L;
+    try { L = libs(); } catch (e) {
+      return { ok: false, error: "no_toolkit" };
+    }
+    if (!L.Keypair || typeof L.Keypair.random !== "function") {
+      return { ok: false, error: "no_random" };
+    }
+    var kp = L.Keypair.random();
+    var address = kp.publicKey();
+    var secret = kp.secret();
+    if (!isValidAddress(address) || !isValidSecret(secret)) {
+      return { ok: false, error: "bad_key" };
+    }
+    if (publicFromSecret(secret) !== address) {
+      return { ok: false, error: "key_mismatch" };
+    }
+    return {
+      ok: true,
+      address: address,
+      secret: secret,
+      network: normalizeNetwork(opts.network || "testnet")
+    };
+  }
+
+  function formatBackup(address, secret, network) {
+    var net = normalizeNetwork(network || "testnet");
+    return [
+      "Alpha Hive Stellar account",
+      "Network: " + net,
+      "Public address: " + (address || ""),
+      "Secret key: " + (secret || ""),
+      "",
+      "Keep this file private. Alpha Hive does not store this key.",
+      "If you lose the secret key, it cannot be recovered.",
+      "Use a separate trading account, never your main wallet."
+    ].join("\n");
+  }
+
   function createAccount(opts) {
     opts = opts || {};
     var address = (opts.address || "").trim();
@@ -199,6 +245,8 @@
     isValidAddress: isValidAddress,
     isValidSecret: isValidSecret,
     publicFromSecret: publicFromSecret,
+    generateAccount: generateAccount,
+    formatBackup: formatBackup,
     createAccount: createAccount,
     signIn: signIn,
     wipe: wipe,

@@ -660,7 +660,7 @@
         state.spendable = 0;
         state.usd = null;
         var why = acc.error === "not_found"
-          ? "No account on " + (NETWORKS[state.network] || NETWORKS.public).label + " for " + shortenAddress(state.address)
+          ? "No account on " + (NETWORKS[state.network] || NETWORKS.public).label + " for " + shortenAddress(state.address) + ". A new Stellar account does not exist on-chain until it is funded with XLM (about 1 XLM plus 0.5 XLM per trustline). On testnet, use Fund with Friendbot. On Public, send XLM to this address or use the Fund your account panel."
           : "Could not read balances (" + (acc.error || "error") + ")";
         setStat("err", why);
         renderBalances();

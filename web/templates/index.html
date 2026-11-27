@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; media-src 'self'; connect-src 'self' https://horizon.stellar.org https://horizon-testnet.stellar.org https://api.exchange.coinbase.com https://api.kraken.com http://127.0.0.1:8765 http://localhost:8765 http://127.0.0.1:8642 http://localhost:8642; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; worker-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; media-src 'self'; connect-src 'self' https://horizon.stellar.org https://horizon-testnet.stellar.org https://friendbot.stellar.org https://api.exchange.coinbase.com https://api.kraken.com http://127.0.0.1:8765 http://localhost:8765 http://127.0.0.1:8642 http://localhost:8642; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; worker-src 'none'">
 <meta name="description" content="Alpha Hive — one Queen, five bots, one hive: an AI trading hive led by a Queen bot, with an independent Risk guard. An educational simulation on live public prices with a virtual balance. No real orders.">
 <link rel="icon" href="data:,">
 <title>Alpha Hive · One Queen. Five bots. One hive. · Simulation</title>
@@ -512,10 +512,11 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
 body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff8c42;outline-offset:4px}
 .hive-overlay{position:fixed;inset:0;z-index:80;background:rgba(10,8,6,.82);display:flex;align-items:center;justify-content:center;padding:20px}
 .hive-overlay[hidden]{display:none !important}
-.hive-overlay-card{width:min(520px,100%);background:linear-gradient(180deg,rgba(38,32,23,.98),rgba(20,18,15,.98));border:1px solid rgba(255,182,39,.4);border-radius:14px;padding:22px 24px;color:var(--text)}
+.hive-overlay-card{width:min(560px,100%);max-height:min(92vh,760px);overflow:auto;background:linear-gradient(180deg,rgba(38,32,23,.98),rgba(20,18,15,.98));border:1px solid rgba(255,182,39,.4);border-radius:14px;padding:22px 24px;color:var(--text)}
 .hive-overlay-card h2{margin:0 0 10px}
 .hive-overlay-card label{display:block;font:700 12px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--mute);margin:12px 0 6px}
 .hive-overlay-card input[type=password],.hive-overlay-card input[type=text]{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:rgba(0,0,0,.4);color:var(--text);font:15px var(--mono)}
+.hive-overlay-card input[type=checkbox]{width:18px;height:18px;margin:2px 0 0;flex:none;accent-color:var(--cyan)}
 .hive-overlay-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
 .wallet-note{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;color:var(--text);background:rgba(0,0,0,.35);font:14px/1.5 var(--sans)}
 .wallet-note .lbl{display:block;margin-bottom:4px;font:700 13px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--mute)}
@@ -537,7 +538,11 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
 .hive-key-tabs button{flex:1}
 .hive-key-row{display:flex;gap:8px;align-items:stretch}
 .hive-key-row input{flex:1;min-width:0;font:16px/1.4 var(--mono);letter-spacing:.02em;padding:12px 14px}
-#hiveAccountShow{flex:none;min-width:7rem}
+#hiveAccountShow,#hiveAccountCopyAddr,#hiveAccountCopySecret,#hiveAccountHideSecret,#hiveAccountDownload,#hiveAccountFriendbot{flex:none;min-width:7rem}
+.hive-key-value{display:block;flex:1;min-width:0;word-break:break-all;font:13px/1.45 var(--mono);padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:rgba(0,0,0,.4);color:var(--text)}
+.hive-key-field-lbl{display:block;font:700 12px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--mute);margin:12px 0 6px}
+.hive-key-check{display:flex;gap:10px;align-items:flex-start;margin:16px 0 0;font:700 14px/1.45 var(--sans);cursor:pointer;color:var(--text);text-transform:none;letter-spacing:0}
+.hive-key-fund{margin-top:12px}
 .hive-net-warn{color:#ffd84d;font:700 13px/1.45 var(--sans);margin:8px 0 0}
 
 </style>
@@ -574,25 +579,50 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
 <div class="hive-overlay" id="hiveAccountOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="hiveAccountTitle">
   <div class="hive-overlay-card">
     <h2 id="hiveAccountTitle">Alpha Hive account</h2>
-    <p class="stellar-note">Create an account by entering your Stellar public address and key, and we check that they match. Later, sign in with the key only; the address is derived from it. The key is held in memory on this page only and is never stored. Network starts on testnet.</p>
+    <p class="stellar-note" id="hiveAccountIntro">Create an Alpha Hive account to generate a fresh Stellar public address and secret key in this browser. Sign in later with the same key. The key is held in memory on this page only and is never stored. Network starts on testnet.</p>
     <p class="hive-key-warn" role="note">Use a separate trading account with only what you’re willing to risk, never your main wallet. Alpha Hive never stores your key; if you lose it, it can’t be recovered.</p>
-    <p class="hive-key-warn" role="note">Only enter your key at yogibear1323.github.io/alpha-hive.</p>
-    <div class="hive-key-tabs" role="tablist">
+    <p class="hive-key-warn" role="note">Only create or enter a key at yogibear1323.github.io/alpha-hive.</p>
+    <div class="hive-key-tabs" role="tablist" id="hiveAccountTabs">
       <button class="btn" id="hiveAccountTabCreate" type="button" aria-selected="true">Create account</button>
       <button class="btn ghost sm" id="hiveAccountTabSign" type="button" aria-selected="false">Sign in</button>
     </div>
-    <div id="hiveAccountCreateFields">
-      <label for="hiveAccountAddr">Stellar public address</label>
-      <input id="hiveAccountAddr" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" inputmode="text" placeholder="Public address (starts with G)" aria-label="Stellar public address for Alpha Hive account">
+    <div id="hiveAccountCreateStart">
+      <p class="stellar-note">Click <b>Create Alpha Hive account</b> to generate a new random Stellar keypair here, using secure browser randomness. A new Stellar account does not exist on-chain until it is funded with XLM (the 1 XLM minimum reserve, plus 0.5 XLM for each trustline such as USDC). Don’t close or refresh this page until you have saved the key.</p>
     </div>
-    <label for="hiveAccountSecret">Account key</label>
-    <div class="hive-key-row">
-      <input id="hiveAccountSecret" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" maxlength="56" placeholder="Paste the key here (56 characters)" aria-label="Alpha Hive account secret key">
-      <button class="btn ghost sm" id="hiveAccountShow" type="button" aria-pressed="false">Show</button>
+    <div id="hiveAccountReveal" hidden>
+      <p class="stellar-note">Save this key now. Alpha Hive holds it in memory only for this session. If you close this tab, refresh, or lose the key, it cannot be recovered.</p>
+      <p class="hive-key-field-lbl" id="hiveAccountNewAddrLbl">Public address</p>
+      <div class="hive-key-row">
+        <code id="hiveAccountNewAddr" class="hive-key-value" aria-labelledby="hiveAccountNewAddrLbl"></code>
+        <button class="btn ghost sm" id="hiveAccountCopyAddr" type="button">Copy</button>
+      </div>
+      <p class="hive-key-field-lbl" id="hiveAccountNewSecretLbl">Secret key</p>
+      <div class="hive-key-row">
+        <code id="hiveAccountNewSecret" class="hive-key-value" aria-labelledby="hiveAccountNewSecretLbl"></code>
+        <button class="btn ghost sm" id="hiveAccountCopySecret" type="button">Copy</button>
+        <button class="btn ghost sm" id="hiveAccountHideSecret" type="button" aria-pressed="false">Hide</button>
+      </div>
+      <div class="hive-overlay-actions">
+        <button class="btn ghost sm" id="hiveAccountDownload" type="button">Download / save key</button>
+      </div>
+      <div class="hive-key-fund">
+        <p class="stellar-note" id="hiveAccountFundNote">A new Stellar account does not exist on-chain until it is funded with XLM (about 1 XLM minimum reserve, plus 0.5 XLM per trustline such as USDC). This session starts on testnet.</p>
+        <button class="btn" id="hiveAccountFriendbot" type="button">Fund with Friendbot</button>
+        <p class="stellar-note" id="hiveAccountPublicFund" hidden>On the Public network, send XLM to the address above. After you continue, use the <b>Fund your account</b> panel for the deposit address and QR.</p>
+      </div>
+      <label class="hive-key-check" for="hiveAccountSaved"><input id="hiveAccountSaved" type="checkbox"> I’ve saved my secret key — it can’t be recovered</label>
+    </div>
+    <div id="hiveAccountSignFields" hidden>
+      <label for="hiveAccountSecret">Account key</label>
+      <div class="hive-key-row">
+        <input id="hiveAccountSecret" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" maxlength="56" placeholder="Paste the key here (56 characters)" aria-label="Alpha Hive account secret key">
+        <button class="btn ghost sm" id="hiveAccountShow" type="button" aria-pressed="false">Show</button>
+      </div>
     </div>
     <p class="gate-msg" id="hiveAccountMsg" role="status"></p>
     <div class="hive-overlay-actions">
-      <button class="btn" id="hiveAccountGo" type="button">Create account</button>
+      <button class="btn" id="hiveAccountGo" type="button">Create Alpha Hive account</button>
+      <button class="btn" id="hiveAccountContinue" type="button" hidden disabled>Continue</button>
       <button class="btn ghost sm" id="hiveAccountCancel" type="button">Cancel</button>
     </div>
   </div>
@@ -649,6 +679,7 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
           <div class="stellar-actions">
             <button class="btn" id="stellarConnect">Connect wallet</button>
             <button class="btn ghost sm" id="hiveAccountBtn" type="button">Create account / Sign in</button>
+            <button class="btn ghost sm" id="stellarFriendbot" type="button" hidden>Fund with Friendbot</button>
             <button class="btn ghost sm" id="stellarDisconnect" hidden>Disconnect</button>
             <button class="btn ghost sm" id="stellarSend" hidden>Send</button>
             <button class="btn ghost sm" id="stellarConvert" hidden>Convert XLM to USDC</button>
@@ -676,7 +707,7 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
             <button class="btn ghost sm" id="stellarLookupBtn">Look up</button>
             <button class="btn ghost sm" id="stellarLookupSdf">Look up SDF</button>
           </div>
-          <p class="stellar-sec">Security: wallet connect is the safer default (Varial, xBull, LOBSTR, Albedo, Hana). An optional Alpha Hive account sign-in can hold a key in memory only, never stored. Use a separate trading account, never your main wallet, and only enter a key on this official Alpha Hive page.</p>
+          <p class="stellar-sec">Security: wallet connect is the safer default (Varial, xBull, LOBSTR, Albedo, Hana). Create account generates a fresh key in this browser; sign-in uses that same key. The key is held in memory only and is never stored. Use a separate trading account, never your main wallet, and only create or enter a key on this official Alpha Hive page.</p>
           <div class="wallet-note" id="stellarTermNote" role="note">
             <span class="lbl">StellarTerm.com · not a wallet · not a connect option</span>
             <a href="https://stellarterm.com" rel="noopener noreferrer">StellarTerm.com</a>
@@ -1583,7 +1614,12 @@ function sleepStop(ms){ return new Promise(res=>{ const t0=Date.now(); const iv=
 let S=null, sessState="idle";
 // ---- Alpha Hive account (in-memory key; never stored) ----
 const HiveAccount=(()=>{
+  let pending=null; // {address, secret, network} shown on the reveal step only; never stored
+  let secretShown=true;
+  let wantSignup=false;
+  const FRIENDBOT="https://friendbot.stellar.org";
   function ks(){ return window.AlphaHiveKeySession; }
+  function msg(t){ if($("hiveAccountMsg")) $("hiveAccountMsg").textContent=t||""; }
   function paint(){
     const s=ks(); const on=!!(s&&s.isSignedIn());
     const chip=$("keyChip"), out=$("keyLogoutBtn");
@@ -1593,28 +1629,77 @@ const HiveAccount=(()=>{
     if(on && net){ net.checked = s.network()==="testnet"; }
     const warn=$("stellarNetWarn");
     if(warn) warn.hidden=!(on && s.network()==="public");
+    const fb=$("stellarFriendbot");
+    if(fb) fb.hidden=!(on && s.network()==="testnet");
+  }
+  function showReveal(on){
+    const start=$("hiveAccountCreateStart"), rev=$("hiveAccountReveal");
+    const go=$("hiveAccountGo"), cont=$("hiveAccountContinue");
+    const tabs=$("hiveAccountTabs"), intro=$("hiveAccountIntro");
+    if(start) start.hidden=on;
+    if(rev) rev.hidden=!on;
+    if(go) go.hidden=on;
+    if(cont){ cont.hidden=!on; cont.disabled=true; }
+    if(tabs) tabs.hidden=on;
+    if(intro) intro.hidden=on;
+    const saved=$("hiveAccountSaved"); if(saved) saved.checked=false;
+  }
+  function paintPending(){
+    if(!pending) return;
+    if($("hiveAccountNewAddr")) $("hiveAccountNewAddr").textContent=pending.address;
+    const el=$("hiveAccountNewSecret");
+    if(el) el.textContent=secretShown?pending.secret:"••••••••••••••••••••••••••••••••••••••••••••••••••••••••";
+    const hide=$("hiveAccountHideSecret");
+    if(hide){ hide.textContent=secretShown?"Hide":"Show"; hide.setAttribute("aria-pressed",secretShown?"false":"true"); }
+    const isPub=pending.network==="public";
+    if($("hiveAccountFriendbot")) $("hiveAccountFriendbot").hidden=isPub;
+    if($("hiveAccountPublicFund")) $("hiveAccountPublicFund").hidden=!isPub;
+    if($("hiveAccountFundNote")) $("hiveAccountFundNote").textContent=isPub
+      ? "A new Stellar account does not exist on-chain until it is funded with XLM (about 1 XLM minimum reserve, plus 0.5 XLM per trustline such as USDC). You are on the Public network."
+      : "A new Stellar account does not exist on-chain until it is funded with XLM (about 1 XLM minimum reserve, plus 0.5 XLM per trustline such as USDC). This session starts on testnet.";
+  }
+  function clearPending(){
+    pending=null; secretShown=true;
+    if($("hiveAccountNewAddr")) $("hiveAccountNewAddr").textContent="";
+    if($("hiveAccountNewSecret")) $("hiveAccountNewSecret").textContent="";
+    const saved=$("hiveAccountSaved"); if(saved) saved.checked=false;
+    if($("hiveAccountContinue")) $("hiveAccountContinue").disabled=true;
   }
   function setTab(create){
-    const c=$("hiveAccountTabCreate"), si=$("hiveAccountTabSign"), box=$("hiveAccountCreateFields"), go=$("hiveAccountGo");
+    if(!create && pending && !window.confirm("You will lose this unsaved key if you have not saved it. Switch to Sign in anyway?")) return;
+    if(!create) clearPending();
+    const c=$("hiveAccountTabCreate"), si=$("hiveAccountTabSign");
+    const start=$("hiveAccountCreateStart"), sign=$("hiveAccountSignFields"), go=$("hiveAccountGo");
     if(c){ c.className=create?"btn":"btn ghost sm"; c.setAttribute("aria-selected",create?"true":"false"); }
     if(si){ si.className=create?"btn ghost sm":"btn"; si.setAttribute("aria-selected",create?"true":"false"); }
-    if(box) box.hidden=!create;
-    if(go) go.textContent=create?"Create account":"Sign in";
-    if($("hiveAccountMsg")) $("hiveAccountMsg").textContent="";
+    if(start) start.hidden=!create;
+    if(sign) sign.hidden=create;
+    showReveal(false);
+    if(go){ go.hidden=false; go.textContent=create?"Create Alpha Hive account":"Sign in"; }
+    msg("");
+    if(create && $("hiveAccountGo")) $("hiveAccountGo").focus();
+    else if($("hiveAccountSecret")) $("hiveAccountSecret").focus();
   }
-  function open(){
+  function open(opts){
+    opts=opts||{};
     const ov=$("hiveAccountOverlay"); if(!ov) return;
-    setTab(true);
-    const a=$("hiveAccountAddr"), s=$("hiveAccountSecret");
-    if(a) a.value=""; if(s){ s.value=""; s.type="password"; }
+    clearPending();
+    const s=$("hiveAccountSecret");
+    if(s){ s.value=""; s.type="password"; }
     if($("hiveAccountShow")){ $("hiveAccountShow").textContent="Show"; $("hiveAccountShow").setAttribute("aria-pressed","false"); }
-    if($("hiveAccountMsg")) $("hiveAccountMsg").textContent="";
-    ov.hidden=false; if(a) a.focus();
+    msg("");
+    ov.hidden=false;
+    setTab(opts.signin?false:true);
+    if(opts.generate) generate();
   }
-  function close(){
+  function close(force){
+    if(pending && !force){
+      if(!window.confirm("You will lose this key if you have not saved it. Cancel anyway?")) return;
+    }
     const ov=$("hiveAccountOverlay"); if(ov) ov.hidden=true;
     const s=$("hiveAccountSecret"); if(s){ s.value=""; s.type="password"; }
-    const a=$("hiveAccountAddr"); if(a) a.value="";
+    clearPending();
+    showReveal(false);
   }
   function toggleShow(){
     const s=$("hiveAccountSecret"), b=$("hiveAccountShow"); if(!s||!b) return;
@@ -1623,30 +1708,123 @@ const HiveAccount=(()=>{
     b.textContent=show?"Hide":"Show";
     b.setAttribute("aria-pressed",show?"true":"false");
   }
-  function submit(){
-    const s=ks(); const msg=$("hiveAccountMsg");
-    if(!s){ if(msg) msg.textContent="The account module did not load."; return; }
-    const create=$("hiveAccountCreateFields") && !$("hiveAccountCreateFields").hidden;
-    const secretEl=$("hiveAccountSecret"); const addrEl=$("hiveAccountAddr");
-    const secret=secretEl?secretEl.value:"";
-    const address=addrEl?addrEl.value:"";
-    let r;
+  function toggleRevealSecret(){
+    secretShown=!secretShown;
+    paintPending();
+  }
+  async function copyText(text, okMsg){
     try{
-      r = create ? s.createAccount({address, secret, network:"testnet"})
-                 : s.signIn({secret, network:"testnet"});
-    }catch(e){ if(msg) msg.textContent="Could not sign in."; if(secretEl) secretEl.value=""; return; }
-    if(secretEl) secretEl.value="";
-    if(addrEl) addrEl.value="";
+      if(navigator.clipboard&&navigator.clipboard.writeText){ await navigator.clipboard.writeText(text); msg(okMsg||"Copied."); return; }
+    }catch(e){}
+    try{
+      const ta=document.createElement("textarea");
+      ta.value=text; ta.setAttribute("readonly",""); ta.style.position="fixed"; ta.style.left="-9999px";
+      document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+      msg(okMsg||"Copied.");
+    }catch(e){ msg("Could not copy. Select the value and copy it yourself."); }
+  }
+  function downloadKey(){
+    if(!pending) return;
+    const s=ks();
+    const body=s&&s.formatBackup?s.formatBackup(pending.address,pending.secret,pending.network)
+      :("Public address: "+pending.address+"\nSecret key: "+pending.secret+"\n");
+    const a=document.createElement("a");
+    a.href="data:text/plain;charset=utf-8,"+encodeURIComponent(body);
+    a.download="alpha-hive-stellar-key.txt";
+    a.rel="noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    msg("Key file downloaded. Keep it private and offline.");
+  }
+  function generate(){
+    const s=ks();
+    if(!s||typeof s.generateAccount!=="function"){ msg("The account module is still loading…"); wantSignup=true; return; }
+    let r;
+    try{ r=s.generateAccount({network:"testnet"}); }
+    catch(e){ msg("Could not generate a key."); return; }
+    if(!r||!r.ok){ msg("Could not generate a key."); return; }
+    wantSignup=false;
+    pending={address:r.address, secret:r.secret, network:r.network||"testnet"};
+    secretShown=true;
+    showReveal(true);
+    paintPending();
+    msg("Save this key before you continue. Don’t refresh or close the tab first.");
+    if($("hiveAccountCopyAddr")) $("hiveAccountCopyAddr").focus();
+  }
+  function onSavedChange(){
+    const ok=!!($("hiveAccountSaved")&&$("hiveAccountSaved").checked&&pending);
+    if($("hiveAccountContinue")) $("hiveAccountContinue").disabled=!ok;
+  }
+  function finishSignIn(r){
     if(!r||!r.ok){
       const err=r&&r.error;
-      if(msg) msg.textContent = err==="key_mismatch" ? "That key does not match the public address."
+      msg(err==="key_mismatch" ? "That key does not match the public address."
         : err==="bad_address" ? "Enter a valid public address (starts with G, 56 characters)."
-        : "Enter a valid account key.";
-      return;
+        : "Enter a valid account key.");
+      return false;
     }
-    close(); paint();
+    close(true); paint();
     const W=window.AlphaHiveStellarWallet;
     if(W&&W.applyKeySession) W.applyKeySession();
+    try{
+      const u=new URL(location.href);
+      if(u.searchParams.has("signup")||u.searchParams.has("signin")){
+        u.searchParams.delete("signup"); u.searchParams.delete("signin");
+        history.replaceState({}, "", u.pathname+u.search+u.hash);
+      }
+    }catch(e){}
+    if(r.network==="public") showFundForAddress(r.address);
+    return true;
+  }
+  function showFundForAddress(address){
+    const panel=$("fundPanel");
+    if(!panel||!address) return;
+    panel.hidden=false;
+    if($("fundIntro")) $("fundIntro").textContent="This is your Alpha Hive account’s public address. A brand-new account does not exist on-chain until it receives at least 1 XLM (2+ XLM plus 0.5 XLM for a USDC trustline is recommended). No memo is needed. Deposit from any wallet or exchange, then swap to USDC.";
+    if($("fundAddr")) $("fundAddr").textContent=address;
+    if($("fundCopy")) $("fundCopy").hidden=false;
+    if($("fundStat")) $("fundStat").textContent="Send XLM to this address to fund the account. A QR is also shown here when you run the local bridge Fund panel.";
+    try{ panel.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){}
+  }
+  function continueToTerminal(){
+    if(!pending){ msg("Generate an account first."); return; }
+    if(!($("hiveAccountSaved")&&$("hiveAccountSaved").checked)){ msg("Confirm that you have saved your secret key first."); return; }
+    const s=ks();
+    if(!s){ msg("The account module did not load."); return; }
+    let r;
+    try{ r=s.createAccount({address:pending.address, secret:pending.secret, network:pending.network||"testnet"}); }
+    catch(e){ msg("Could not sign in."); return; }
+    finishSignIn(r);
+  }
+  function submit(){
+    const sign=$("hiveAccountSignFields") && !$("hiveAccountSignFields").hidden;
+    if(!sign){ generate(); return; }
+    const s=ks();
+    if(!s){ msg("The account module did not load."); return; }
+    const secretEl=$("hiveAccountSecret");
+    const secret=secretEl?secretEl.value:"";
+    let r;
+    try{ r=s.signIn({secret, network:"testnet"}); }
+    catch(e){ msg("Could not sign in."); if(secretEl) secretEl.value=""; return; }
+    if(secretEl) secretEl.value="";
+    finishSignIn(r);
+  }
+  async function fundFriendbot(address){
+    const addr=address||(pending&&pending.address)||(ks()&&ks().address&&ks().address());
+    if(!addr){ msg("No address to fund."); return; }
+    msg("Requesting testnet XLM from Friendbot…");
+    try{
+      const res=await fetch(FRIENDBOT+"?addr="+encodeURIComponent(addr));
+      if(res.ok){ msg("Testnet account funded with Friendbot. You can continue after you save the key."); }
+      else{
+        const body=await res.text().catch(()=> "");
+        if(/already/i.test(body)||/op_already_exists/i.test(body)||/create_account/i.test(body)) msg("This testnet account is already funded.");
+        else msg("Friendbot could not fund this address right now. Try again in a moment.");
+      }
+      const W=window.AlphaHiveStellarWallet;
+      if(W&&W.applyKeySession&&ks()&&ks().isSignedIn()) W.applyKeySession();
+    }catch(e){ msg("Could not reach Friendbot. Check your connection and try again."); }
   }
   function logout(){
     const s=ks(); if(s) s.logout();
@@ -1654,21 +1832,35 @@ const HiveAccount=(()=>{
     const W=window.AlphaHiveStellarWallet;
     if(W&&W.disconnect) W.disconnect();
   }
+  function onVendorsReady(){
+    const s=ks(); if(s&&s.onChange) s.onChange(()=>paint());
+    paint();
+    if(wantSignup){ wantSignup=false; generate(); }
+  }
   function init(){
     paint();
-    if($("hiveAccountBtn")) $("hiveAccountBtn").onclick=open;
-    if($("hiveAccountCancel")) $("hiveAccountCancel").onclick=close;
+    if($("hiveAccountBtn")) $("hiveAccountBtn").onclick=()=>open();
+    if($("hiveAccountCancel")) $("hiveAccountCancel").onclick=()=>close();
     if($("hiveAccountGo")) $("hiveAccountGo").onclick=submit;
+    if($("hiveAccountContinue")) $("hiveAccountContinue").onclick=continueToTerminal;
     if($("hiveAccountShow")) $("hiveAccountShow").onclick=toggleShow;
+    if($("hiveAccountHideSecret")) $("hiveAccountHideSecret").onclick=toggleRevealSecret;
+    if($("hiveAccountCopyAddr")) $("hiveAccountCopyAddr").onclick=()=>{ if(pending) copyText(pending.address,"Public address copied."); };
+    if($("hiveAccountCopySecret")) $("hiveAccountCopySecret").onclick=()=>{ if(pending) copyText(pending.secret,"Secret key copied. Keep it private."); };
+    if($("hiveAccountDownload")) $("hiveAccountDownload").onclick=downloadKey;
+    if($("hiveAccountSaved")) $("hiveAccountSaved").onchange=onSavedChange;
+    if($("hiveAccountFriendbot")) $("hiveAccountFriendbot").onclick=()=>fundFriendbot();
+    if($("stellarFriendbot")) $("stellarFriendbot").onclick=()=>fundFriendbot();
     if($("hiveAccountTabCreate")) $("hiveAccountTabCreate").onclick=()=>setTab(true);
     if($("hiveAccountTabSign")) $("hiveAccountTabSign").onclick=()=>setTab(false);
     if($("keyLogoutBtn")) $("keyLogoutBtn").onclick=logout;
     if($("hiveAccountOverlay")) $("hiveAccountOverlay").addEventListener("click",e=>{ if(e.target.id==="hiveAccountOverlay") close(); });
     if($("hiveAccountSecret")) $("hiveAccountSecret").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); submit(); }});
-    const s=ks(); if(s&&s.onChange) s.onChange(()=>paint());
-    if(new URLSearchParams(location.search).has("signin")) setTimeout(open,200);
+    const params=new URLSearchParams(location.search);
+    if(params.has("signup")) setTimeout(()=>open({generate:true}),200);
+    else if(params.has("signin")) setTimeout(()=>open({signin:true}),200);
   }
-  return {init,open,close,logout,paint};
+  return {init,open,close,logout,paint,onVendorsReady,generate};
 })();
 window.G6_HIVE_ACCOUNT=HiveAccount;
 
@@ -2436,6 +2628,7 @@ window.addEventListener("resize",()=>{ if(!running) drawChart(currentPacket,char
   function tryFile(i,j){
     if(i>=files.length){
       if(window.AlphaHiveStellarWallet && window.AlphaHiveStellarWallet.mount) window.AlphaHiveStellarWallet.mount();
+      if(window.G6_HIVE_ACCOUNT && window.G6_HIVE_ACCOUNT.onVendorsReady) window.G6_HIVE_ACCOUNT.onVendorsReady();
       return;
     }
     if(j>=bases.length){ console.warn("Alpha Hive: missing vendor/"+files[i]); tryFile(i+1,0); return; }

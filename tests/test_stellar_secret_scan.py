@@ -146,3 +146,25 @@ def test_pages_have_csp_on_key_holding_document():
     assert "unsafe-eval" not in text
     assert "horizon.stellar.org" in text
     assert "horizon-testnet.stellar.org" in text
+    assert "friendbot.stellar.org" in text
+
+
+def test_homepage_create_deep_links_before_any_key():
+    for rel in ("index.html", "web/landing.html"):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        assert "Runs on the Stellar network." in text
+        assert "terminal/?signup=1" in text
+        assert "terminal/?signin=1" in text
+        assert "Create Alpha Hive account" in text
+        # The homepage must not collect a key; generation happens on the terminal page.
+        assert 'id="hiveAccountSecret"' not in text
+        assert "SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" not in text
+
+
+def test_terminal_signup_query_does_not_carry_a_key():
+    text = (ROOT / "terminal" / "index.html").read_text(encoding="utf-8")
+    assert 'params.has("signup")' in text
+    assert 'params.has("signin")' in text
+    assert "generateAccount" in text
+    assert "Fund with Friendbot" in text
+    assert "I've saved my secret key" in text or "I’ve saved my secret key" in text

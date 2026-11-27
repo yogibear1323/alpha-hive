@@ -101,6 +101,48 @@ describe("address and key match", () => {
   });
 });
 
+describe("generateAccount", () => {
+  it("makes a fresh random keypair that matches, without signing in", () => {
+    const StellarSdk = loadSdk();
+    if (!StellarSdk) {
+      assert.ok(true, "skip: stellar-sdk is not installed in tools/stellar-kit");
+      return;
+    }
+    delete require.cache[require.resolve(MOD)];
+    const ks = require(MOD);
+    const a = ks.generateAccount({ network: "testnet" });
+    const b = ks.generateAccount({ network: "testnet" });
+    assert.equal(a.ok, true);
+    assert.equal(b.ok, true);
+    assert.equal(ks.isValidAddress(a.address), true);
+    assert.equal(ks.isValidSecret(a.secret), true);
+    assert.equal(ks.publicFromSecret(a.secret), a.address);
+    assert.equal(a.network, "testnet");
+    assert.notEqual(a.address, b.address);
+    assert.notEqual(a.secret, b.secret);
+    // Generation must not hold the key until createAccount / signIn.
+    assert.equal(ks.isSignedIn(), false);
+    assert.equal(ks.address(), "");
+    const snap = ks.state();
+    assert.equal("seed" in snap || "secret" in snap, false);
+    const blob = JSON.stringify(snap);
+    assert.equal(/S[A-Z2-7]{55}/.test(blob), false);
+    if (!ks.formatBackup(a.address, a.secret, "testnet").includes(a.address)) {
+      assert.fail("backup text missing the public address");
+    }
+    if (!ks.formatBackup(a.address, a.secret, "testnet").includes(a.secret)) {
+      assert.fail("backup text missing the secret key");
+    }
+    const held = ks.createAccount({ address: a.address, secret: a.secret, network: "testnet" });
+    assert.equal(held.ok, true);
+    assert.equal(held.address, a.address);
+    assert.equal(ks.isSignedIn(), true);
+    const after = JSON.stringify(ks.state());
+    assert.equal(/S[A-Z2-7]{55}/.test(after), false);
+    ks.logout();
+  });
+});
+
 describe("wipe on logout and idle", () => {
   it("logout drops the session so signing fails", () => {
     const StellarSdk = loadSdk();

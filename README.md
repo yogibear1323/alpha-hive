@@ -144,20 +144,29 @@ used by the page.
 
 ### Alpha Hive account (optional in-memory key)
 
-The homepage **Create account / Sign in** button opens the official terminal sign-in panel
-(`terminal/?signin=1`) *before* any key is entered, so a key never crosses a page load.
-Create account asks for a public G address and the key and checks that they match; later
-sign-in uses the key only and derives the address. The key is held in JavaScript memory
-only, never in `localStorage`, `sessionStorage`, cookies, IndexedDB, the URL, or
-`postMessage`. It is wiped on **Log out**, tab close, and after 15 minutes idle. Send and
-Convert can be signed with that in-memory key after an explicit confirm dialog. Wallet
-connect stays available as the alternative.
+The homepage **Create Alpha Hive account** button deep-links to the official terminal
+(`terminal/?signup=1`) *before* any key exists, so a key never crosses a page load.
+On that page, Create generates a fresh random Stellar keypair in the browser
+(`Keypair.random()`, which uses `crypto.getRandomValues`). The new public address and
+secret key are shown so you can copy or download a plain `.txt` backup. You must tick
+**I've saved my secret key — it can't be recovered** before **Continue**, which then
+signs you into the terminal with that account. Returning users use **Sign in**
+(`terminal/?signin=1`) and paste the same key; the address is derived from it.
+
+The key is held in JavaScript memory only, never in `localStorage`, `sessionStorage`,
+cookies, IndexedDB, the URL, or `postMessage`. It is wiped on **Log out**, tab close,
+and after 15 minutes idle. A new Stellar account does not exist on-chain until it is
+funded with XLM (the 1 XLM minimum reserve, plus 0.5 XLM for each trustline such as
+USDC). On testnet, **Fund with Friendbot** can create and fund the account; on Public,
+use the **Fund your account** panel for the deposit address and QR. Send and Convert
+can be signed with the in-memory key after an explicit confirm dialog. Wallet connect
+stays available as the alternative.
 
 **Use a separate trading account with only what you are willing to risk, never your main
-wallet.** Only enter a key at `yogibear1323.github.io/alpha-hive`. If you lose the key, it
-cannot be recovered. The key session defaults to **testnet**; flipping to Public shows a
-warning. Automated Live session order submission is **not** wired to this key — Live
-real-money trading stays gated on the local bridge as before.
+wallet.** Only create or enter a key at `yogibear1323.github.io/alpha-hive`. If you lose
+the key, it cannot be recovered. The key session defaults to **testnet**; flipping to
+Public shows a warning. Automated Live session order submission is **not** wired to this
+key — Live real-money trading stays gated on the local bridge as before.
 
 ### Local unlock, Fund panel, and Live session
 

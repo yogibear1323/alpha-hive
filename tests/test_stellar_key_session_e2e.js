@@ -46,29 +46,33 @@ async function fund(publicKey) {
 }
 
 describe("testnet key-session sign+submit e2e (throwaway keypair only)", () => {
-  it("signs a self-payment with the in-memory key and submits on testnet only", async () => {
+  it("generates a key, funds it, stays signed in, logs out, and signs back in on testnet only", async () => {
     const StellarSdk = loadSdk();
     if (!StellarSdk) {
       assert.ok(true, "skip: stellar-sdk is not installed in tools/stellar-kit");
       return;
     }
-    const { Keypair, Horizon, TransactionBuilder, Transaction, Operation, Asset, Networks } = StellarSdk;
+    const { Horizon, TransactionBuilder, Transaction, Operation, Asset, Networks } = StellarSdk;
     assert.equal(HORIZON_TESTNET.includes("testnet"), true);
     assert.equal(PUBLIC_HORIZON.includes("testnet"), false);
 
     delete require.cache[require.resolve(MOD)];
     const ks = require(MOD);
-    const keypair = Keypair.random();
-    const publicKey = keypair.publicKey();
-    // Do not print or write keypair.secret().
-    const created = ks.createAccount({ address: publicKey, secret: keypair.secret(), network: "testnet" });
+    const generated = ks.generateAccount({ network: "testnet" });
+    assert.equal(generated.ok, true);
+    const publicKey = generated.address;
+    // Do not print or write generated.secret.
+    assert.equal(ks.isSignedIn(), false);
+    const created = ks.createAccount({ address: publicKey, secret: generated.secret, network: "testnet" });
     assert.equal(created.ok, true);
     assert.equal(created.address, publicKey);
+    assert.equal(ks.isSignedIn(), true);
     assert.equal(ks.network(), "testnet");
 
     await fund(publicKey);
     const server = new Horizon.Server(HORIZON_TESTNET);
     const account = await server.loadAccount(publicKey);
+    assert.ok(account && (account.account_id === publicKey || account.id), "expected a funded testnet account");
     const fee = await server.fetchBaseFee();
     const tx = new TransactionBuilder(account, { fee: String(fee), networkPassphrase: Networks.TESTNET })
       .addOperation(Operation.payment({ destination: publicKey, asset: Asset.native(), amount: "1" }))
@@ -81,6 +85,14 @@ describe("testnet key-session sign+submit e2e (throwaway keypair only)", () => {
     const res = await server.submitTransaction(signedTx);
     const hash = res && (res.hash || res.id);
     assert.ok(hash && String(hash).length > 8, "expected a submission hash");
+
+    ks.logout();
+    assert.equal(ks.isSignedIn(), false);
+    assert.equal(ks.address(), "");
+    const again = ks.signIn({ secret: generated.secret, network: "testnet" });
+    assert.equal(again.ok, true);
+    assert.equal(again.address, publicKey);
+    assert.equal(ks.isSignedIn(), true);
     ks.logout();
     assert.equal(ks.isSignedIn(), false);
   });
