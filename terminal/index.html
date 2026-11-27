@@ -510,9 +510,9 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
 .mbtn.live.on{color:#1a1206;background:linear-gradient(180deg,#ff8c42,#e23d3d);box-shadow:0 0 18px rgba(226,61,61,.45);border-color:transparent}
 .mbtn.live.on .livebadge{background:#1a1206;color:#ffd4a8}
 body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff8c42;outline-offset:4px}
-.hive-overlay{position:fixed;inset:0;z-index:80;background:rgba(10,8,6,.82);display:flex;align-items:center;justify-content:center;padding:20px}
+.hive-overlay{position:fixed;inset:0;z-index:80;background:rgba(10,8,6,.82);display:flex;align-items:safe center;justify-content:center;padding:20px;overflow:auto}
 .hive-overlay[hidden]{display:none !important}
-.hive-overlay-card{width:min(560px,100%);max-height:min(92vh,760px);overflow:auto;background:linear-gradient(180deg,rgba(38,32,23,.98),rgba(20,18,15,.98));border:1px solid rgba(255,182,39,.4);border-radius:14px;padding:22px 24px;color:var(--text)}
+.hive-overlay-card{width:min(560px,100%);max-height:calc(100vh - 40px);overflow:auto;background:linear-gradient(180deg,rgba(38,32,23,.98),rgba(20,18,15,.98));border:1px solid rgba(255,182,39,.4);border-radius:14px;padding:22px 24px;color:var(--text)}
 .hive-overlay-card h2{margin:0 0 10px}
 .hive-overlay-card label{display:block;font:700 12px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--mute);margin:12px 0 6px}
 .hive-overlay-card input[type=password],.hive-overlay-card input[type=text]{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:rgba(0,0,0,.4);color:var(--text);font:15px var(--mono)}
@@ -543,6 +543,15 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
 .hive-key-field-lbl{display:block;font:700 12px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--mute);margin:12px 0 6px}
 .hive-key-check{display:flex;gap:10px;align-items:flex-start;margin:16px 0 0;font:700 14px/1.45 var(--sans);cursor:pointer;color:var(--text);text-transform:none;letter-spacing:0}
 .hive-key-fund{margin-top:12px}
+@media(max-width:600px){
+  .hive-overlay{padding:10px;align-items:flex-start}
+  .hive-overlay-card{max-height:calc(100vh - 20px);padding:16px 14px}
+  .hive-key-warn{margin:8px 0;padding:8px 10px;font:700 13px/1.45 var(--sans)}
+  .hive-key-row{flex-wrap:wrap}
+  .hive-key-value{flex:1 0 100%}
+  .hive-key-row .btn{flex:1 1 auto;min-width:0}
+}
+
 .hive-net-warn{color:#ffd84d;font:700 13px/1.45 var(--sans);margin:8px 0 0}
 
 
