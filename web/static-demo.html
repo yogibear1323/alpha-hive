@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; media-src 'self'; connect-src 'self' https://horizon.stellar.org https://horizon-testnet.stellar.org https://api.exchange.coinbase.com https://api.kraken.com http://127.0.0.1:8765 http://localhost:8765 http://127.0.0.1:8642 http://localhost:8642; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; worker-src 'none'">
 <meta name="description" content="Alpha Hive — one Queen, five bots, one hive: an AI trading hive led by a Queen bot, with an independent Risk guard. An educational simulation on live public prices with a virtual balance. No real orders.">
 <link rel="icon" href="data:,">
 <title>Alpha Hive · One Queen. Five bots. One hive. · Simulation</title>
@@ -529,6 +530,16 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
 .live-arm-box input{width:100%;padding:8px 10px;border-radius:8px;border:1px solid #ff8c42;background:rgba(0,0,0,.4);color:var(--text);font:14px var(--mono)}
 .gate-msg{font:12px/1.45 var(--sans);color:var(--amber);margin:8px 0 0}
 
+
+.chip.keysign{color:#8fe388;border-color:#8fe388;text-transform:none;letter-spacing:.5px}
+.hive-key-warn{color:#ff8a8a;font:700 14px/1.5 var(--sans);margin:10px 0;padding:10px 12px;border:1px solid #ff6b6b;border-radius:8px;background:rgba(255,60,60,.08)}
+.hive-key-tabs{display:flex;gap:8px;margin:12px 0}
+.hive-key-tabs button{flex:1}
+.hive-key-row{display:flex;gap:8px;align-items:stretch}
+.hive-key-row input{flex:1;min-width:0;font:16px/1.4 var(--mono);letter-spacing:.02em;padding:12px 14px}
+#hiveAccountShow{flex:none;min-width:7rem}
+.hive-net-warn{color:#ffd84d;font:700 13px/1.45 var(--sans);margin:8px 0 0}
+
 </style>
 </head>
 <body>
@@ -541,7 +552,7 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
       <svg class="logo" viewBox="0 0 40 40" fill="none" stroke="#ffb627" stroke-width="2"><polygon points="20,2 36,11 36,29 20,38 4,29 4,11"/><polygon points="20,11 27,15 27,23 20,27 13,23 13,15" stroke="#ff8c42" stroke-width="1.6"/><circle cx="20" cy="19" r="2.4" fill="#ffd84d" stroke="none"/></svg>
       <div><h1>Alpha <span>Hive</span></h1><small>ONE QUEEN · FIVE BOTS · ONE HIVE · ♛ QUEEN · SCOUT · NEWS · SENTIMENT · CHARTS · 🛡 RISK GUARD</small></div>
     </div>
-    <div class="chips"><span class="chip sim">Simulation only</span><span class="chip live" id="modeChip">Offline mock</span><span class="chip run" id="runChip">● Idle</span><span class="chip dir" id="dirChip" aria-live="polite">◇ no call yet</span><span class="chip guard" id="guardChip" hidden>⚠ Balance unavailable · trading disabled</span><span class="chip feed" id="feedChip">Feed: —</span><span class="chip lock" id="lockChip">Locked</span><button class="chip motion" id="unlockBtn" type="button">Unlock</button><button class="chip motion" id="logoutBtn" type="button" hidden>Log out</button><a class="chip motion" id="homeLink" href="../" hidden>⌂ Home</a><button class="chip motion" id="motionBtn" title="Toggle animations">Motion: full</button></div>
+    <div class="chips"><span class="chip sim">Simulation only</span><span class="chip live" id="modeChip">Offline mock</span><span class="chip run" id="runChip">● Idle</span><span class="chip dir" id="dirChip" aria-live="polite">◇ no call yet</span><span class="chip guard" id="guardChip" hidden>⚠ Balance unavailable · trading disabled</span><span class="chip feed" id="feedChip">Feed: —</span><span class="chip lock" id="lockChip">Locked</span><button class="chip motion" id="unlockBtn" type="button">Unlock</button><button class="chip motion" id="logoutBtn" type="button" hidden>Log out</button><span class="chip keysign" id="keyChip" hidden>Signed in: —</span><button class="chip motion" id="keyLogoutBtn" type="button" hidden>Log out</button><a class="chip motion" id="homeLink" href="../" hidden>⌂ Home</a><button class="chip motion" id="motionBtn" title="Toggle animations">Motion: full</button></div>
   </div>
   <div class="ticker"><div class="tag" id="tapeTag">◌ LIVE PRICES · connecting…</div><div class="tape"><div class="tape-inner" id="tape"></div></div></div>
 </header>
@@ -557,6 +568,32 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
       <button class="btn" id="unlockGo" type="button">Unlock</button>
       <button class="btn ghost sm" id="unlockWalletBtn" type="button">Unlock with wallet</button>
       <button class="btn ghost sm" id="unlockCancel" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="hive-overlay" id="hiveAccountOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="hiveAccountTitle">
+  <div class="hive-overlay-card">
+    <h2 id="hiveAccountTitle">Alpha Hive account</h2>
+    <p class="stellar-note">Create an account by entering your Stellar public address and key, and we check that they match. Later, sign in with the key only; the address is derived from it. The key is held in memory on this page only and is never stored. Network starts on testnet.</p>
+    <p class="hive-key-warn" role="note">Use a separate trading account with only what you’re willing to risk, never your main wallet. Alpha Hive never stores your key; if you lose it, it can’t be recovered.</p>
+    <p class="hive-key-warn" role="note">Only enter your key at yogibear1323.github.io/alpha-hive.</p>
+    <div class="hive-key-tabs" role="tablist">
+      <button class="btn" id="hiveAccountTabCreate" type="button" aria-selected="true">Create account</button>
+      <button class="btn ghost sm" id="hiveAccountTabSign" type="button" aria-selected="false">Sign in</button>
+    </div>
+    <div id="hiveAccountCreateFields">
+      <label for="hiveAccountAddr">Stellar public address</label>
+      <input id="hiveAccountAddr" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" inputmode="text" placeholder="Public address (starts with G)" aria-label="Stellar public address for Alpha Hive account">
+    </div>
+    <label for="hiveAccountSecret">Account key</label>
+    <div class="hive-key-row">
+      <input id="hiveAccountSecret" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" maxlength="56" placeholder="Paste the key here (56 characters)" aria-label="Alpha Hive account secret key">
+      <button class="btn ghost sm" id="hiveAccountShow" type="button" aria-pressed="false">Show</button>
+    </div>
+    <p class="gate-msg" id="hiveAccountMsg" role="status"></p>
+    <div class="hive-overlay-actions">
+      <button class="btn" id="hiveAccountGo" type="button">Create account</button>
+      <button class="btn ghost sm" id="hiveAccountCancel" type="button">Cancel</button>
     </div>
   </div>
 </div>
@@ -606,10 +643,12 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
           <div class="stellar-head">
             <span class="stellar-lbl" id="stellarLbl">Stellar wallet</span>
             <label class="stellar-net"><input type="checkbox" id="stellarTestnet"> Testnet</label>
+            <span class="hive-net-warn" id="stellarNetWarn" hidden>Public network uses real funds. Use a small dedicated trading account only.</span>
           </div>
           <p class="stellar-note" id="stellarNote">Balances do not change the virtual Demo balance. Convert XLM to USDC swaps on the Stellar DEX; that USDC is the Live session balance. Live session trades XLM/USDC on the Stellar DEX only, through the local bridge, after you unlock. Wallet-approval mode is semi-automatic (your wallet signs). A dedicated bot account (optional, key only in bridge/.env) can be bridge-signed. Alpha Hive never asks for or stores your secret key.</p>
           <div class="stellar-actions">
             <button class="btn" id="stellarConnect">Connect wallet</button>
+            <button class="btn ghost sm" id="hiveAccountBtn" type="button">Create account / Sign in</button>
             <button class="btn ghost sm" id="stellarDisconnect" hidden>Disconnect</button>
             <button class="btn ghost sm" id="stellarSend" hidden>Send</button>
             <button class="btn ghost sm" id="stellarConvert" hidden>Convert XLM to USDC</button>
@@ -637,7 +676,7 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
             <button class="btn ghost sm" id="stellarLookupBtn">Look up</button>
             <button class="btn ghost sm" id="stellarLookupSdf">Look up SDF</button>
           </div>
-          <p class="stellar-sec">Security: never type a Stellar secret key (it starts with S) into a website, including this one. Connect with Varial (formerly Freighter), xBull, LOBSTR, Albedo, Hana or another wallet instead.</p>
+          <p class="stellar-sec">Security: wallet connect is the safer default (Varial, xBull, LOBSTR, Albedo, Hana). An optional Alpha Hive account sign-in can hold a key in memory only, never stored. Use a separate trading account, never your main wallet, and only enter a key on this official Alpha Hive page.</p>
           <div class="wallet-note" id="stellarTermNote" role="note">
             <span class="lbl">StellarTerm.com · not a wallet · not a connect option</span>
             <a href="https://stellarterm.com" rel="noopener noreferrer">StellarTerm.com</a>
@@ -1542,7 +1581,99 @@ window.G6_TIMER=TT;
 function whyOf(how){ return /margin/.test(how)?"MARGIN CALL":/stop hit/.test(how)?"STOP HIT":/target/.test(how)?"TARGET HIT":/user/.test(how)?"STOPPED BY USER":"WINDOW ENDED"; }
 function sleepStop(ms){ return new Promise(res=>{ const t0=Date.now(); const iv=setInterval(()=>{ if(sessionStop||Date.now()-t0>=ms){ clearInterval(iv); res(); } },50); }); }
 let S=null, sessState="idle";
+// ---- Alpha Hive account (in-memory key; never stored) ----
+const HiveAccount=(()=>{
+  function ks(){ return window.AlphaHiveKeySession; }
+  function paint(){
+    const s=ks(); const on=!!(s&&s.isSignedIn());
+    const chip=$("keyChip"), out=$("keyLogoutBtn");
+    if(chip){ chip.hidden=!on; if(on) chip.textContent="Signed in: "+s.shorten(s.address()); }
+    if(out) out.hidden=!on;
+    const net=$("stellarTestnet");
+    if(on && net){ net.checked = s.network()==="testnet"; }
+    const warn=$("stellarNetWarn");
+    if(warn) warn.hidden=!(on && s.network()==="public");
+  }
+  function setTab(create){
+    const c=$("hiveAccountTabCreate"), si=$("hiveAccountTabSign"), box=$("hiveAccountCreateFields"), go=$("hiveAccountGo");
+    if(c){ c.className=create?"btn":"btn ghost sm"; c.setAttribute("aria-selected",create?"true":"false"); }
+    if(si){ si.className=create?"btn ghost sm":"btn"; si.setAttribute("aria-selected",create?"true":"false"); }
+    if(box) box.hidden=!create;
+    if(go) go.textContent=create?"Create account":"Sign in";
+    if($("hiveAccountMsg")) $("hiveAccountMsg").textContent="";
+  }
+  function open(){
+    const ov=$("hiveAccountOverlay"); if(!ov) return;
+    setTab(true);
+    const a=$("hiveAccountAddr"), s=$("hiveAccountSecret");
+    if(a) a.value=""; if(s){ s.value=""; s.type="password"; }
+    if($("hiveAccountShow")){ $("hiveAccountShow").textContent="Show"; $("hiveAccountShow").setAttribute("aria-pressed","false"); }
+    if($("hiveAccountMsg")) $("hiveAccountMsg").textContent="";
+    ov.hidden=false; if(a) a.focus();
+  }
+  function close(){
+    const ov=$("hiveAccountOverlay"); if(ov) ov.hidden=true;
+    const s=$("hiveAccountSecret"); if(s){ s.value=""; s.type="password"; }
+    const a=$("hiveAccountAddr"); if(a) a.value="";
+  }
+  function toggleShow(){
+    const s=$("hiveAccountSecret"), b=$("hiveAccountShow"); if(!s||!b) return;
+    const show=s.type==="password";
+    s.type=show?"text":"password";
+    b.textContent=show?"Hide":"Show";
+    b.setAttribute("aria-pressed",show?"true":"false");
+  }
+  function submit(){
+    const s=ks(); const msg=$("hiveAccountMsg");
+    if(!s){ if(msg) msg.textContent="The account module did not load."; return; }
+    const create=$("hiveAccountCreateFields") && !$("hiveAccountCreateFields").hidden;
+    const secretEl=$("hiveAccountSecret"); const addrEl=$("hiveAccountAddr");
+    const secret=secretEl?secretEl.value:"";
+    const address=addrEl?addrEl.value:"";
+    let r;
+    try{
+      r = create ? s.createAccount({address, secret, network:"testnet"})
+                 : s.signIn({secret, network:"testnet"});
+    }catch(e){ if(msg) msg.textContent="Could not sign in."; if(secretEl) secretEl.value=""; return; }
+    if(secretEl) secretEl.value="";
+    if(addrEl) addrEl.value="";
+    if(!r||!r.ok){
+      const err=r&&r.error;
+      if(msg) msg.textContent = err==="key_mismatch" ? "That key does not match the public address."
+        : err==="bad_address" ? "Enter a valid public address (starts with G, 56 characters)."
+        : "Enter a valid account key.";
+      return;
+    }
+    close(); paint();
+    const W=window.AlphaHiveStellarWallet;
+    if(W&&W.applyKeySession) W.applyKeySession();
+  }
+  function logout(){
+    const s=ks(); if(s) s.logout();
+    paint();
+    const W=window.AlphaHiveStellarWallet;
+    if(W&&W.disconnect) W.disconnect();
+  }
+  function init(){
+    paint();
+    if($("hiveAccountBtn")) $("hiveAccountBtn").onclick=open;
+    if($("hiveAccountCancel")) $("hiveAccountCancel").onclick=close;
+    if($("hiveAccountGo")) $("hiveAccountGo").onclick=submit;
+    if($("hiveAccountShow")) $("hiveAccountShow").onclick=toggleShow;
+    if($("hiveAccountTabCreate")) $("hiveAccountTabCreate").onclick=()=>setTab(true);
+    if($("hiveAccountTabSign")) $("hiveAccountTabSign").onclick=()=>setTab(false);
+    if($("keyLogoutBtn")) $("keyLogoutBtn").onclick=logout;
+    if($("hiveAccountOverlay")) $("hiveAccountOverlay").addEventListener("click",e=>{ if(e.target.id==="hiveAccountOverlay") close(); });
+    if($("hiveAccountSecret")) $("hiveAccountSecret").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); submit(); }});
+    const s=ks(); if(s&&s.onChange) s.onChange(()=>paint());
+    if(new URLSearchParams(location.search).has("signin")) setTimeout(open,200);
+  }
+  return {init,open,close,logout,paint};
+})();
+window.G6_HIVE_ACCOUNT=HiveAccount;
+
 // ---- Local session unlock (passphrase today; wallet-signature hook is ready) ----
+
 const Auth=(()=>{ const st={token:null,idleMs:300000,timer:null,status:null,public:false};
   const PUBLIC=/(^|\.)github\.io$/i.test(location.hostname)||!/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   st.public=PUBLIC;
@@ -1678,8 +1809,18 @@ const Auth=(()=>{ const st={token:null,idleMs:300000,timer:null,status:null,publ
     if($("unlockOverlay")) $("unlockOverlay").addEventListener("click",e=>{ if(e.target.id==="unlockOverlay") closeUnlock(); });
     ["click","keydown","pointerdown"].forEach(ev=>document.addEventListener(ev,()=>{ if(st.token) bumpIdle(); },{passive:true}));
     // Connect stays available while locked so a wallet can sign an unlock challenge.
-    gateClick("stellarSend","Unlock to send from the connected wallet.");
-    gateClick("stellarConvert","Unlock to convert XLM to USDC.");
+    // Send/Convert with an in-memory Alpha Hive account do not need the local bridge unlock.
+    function gateUnlessKey(id, msg){
+      const el=$(id); if(!el) return;
+      el.addEventListener("click", ev=>{
+        if(window.AlphaHiveKeySession&&AlphaHiveKeySession.isSignedIn()) return;
+        if(PUBLIC){ ev.preventDefault(); ev.stopImmediatePropagation(); needBridge(); return; }
+        if(!st.token){ ev.preventDefault(); ev.stopImmediatePropagation(); openUnlock(msg); }
+        else bumpIdle();
+      }, true);
+    }
+    gateUnlessKey("stellarSend","Unlock to send from the connected wallet, or sign in with an Alpha Hive account.");
+    gateUnlessKey("stellarConvert","Unlock to convert XLM to USDC, or sign in with an Alpha Hive account.");
     gateClick("bridgeConnect","Unlock to connect a broker through the local bridge.");
     if($("fundCopy")) $("fundCopy").onclick=async()=>{ const a=$("fundAddr")&&$("fundAddr").textContent; if(a&&a.startsWith("G")){ try{ await navigator.clipboard.writeText(a); if($("fundStat")) $("fundStat").textContent="Address copied."; }catch(e){} } };
     if($("fundWatch")) $("fundWatch").onclick=()=>checkDeposit(true);
@@ -1966,7 +2107,7 @@ async function showSummary(start,end,rows,trades,wins,seed){
     if(p>=1) break; await sleep(30); }
 }
 $("closeSum").onclick=()=>$("summary").classList.remove("show");
-$("startSess").onclick=runLoop; if(window.G6_AUTH) Auth.init(); Broker.init(); Score.init();
+$("startSess").onclick=runLoop; if(window.G6_HIVE_ACCOUNT) HiveAccount.init(); if(window.G6_AUTH) Auth.init(); Broker.init(); Score.init();
 $("stopSess").onclick=stopSession;
 $("resetSess").onclick=resetSession;
 $("sumBtn").onclick=()=>{ if(S&&S.rows.length) showSummary(S.start,S.bal,S.rows,S.trades,S.wins,S.feed==="live"?"live public prices from "+(Feed.source||"Coinbase Exchange"):"seed "+S.seed); };
@@ -2281,7 +2422,7 @@ window.addEventListener("resize",()=>{ if(!running) drawChart(currentPacket,char
 <script>
 /* stellar wallet loader — local vendor files only, no CDNs */
 (function(){
-  var files=["stellar-wallets-kit.js","stellar-wallet.js"];
+  var files=["stellar-wallets-kit.js","stellar-key-session.js","stellar-wallet.js"];
   var bases=["vendor/","../terminal/vendor/","../vendor/"];
   function loadOne(src){
     return new Promise(function(res,rej){

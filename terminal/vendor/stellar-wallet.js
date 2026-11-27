@@ -448,7 +448,8 @@
     mount: mount,
     getAddress: function () { return (state && state.address) || ""; },
     isConnected: function () { return !!(state && state.connected); },
-    disconnect: function () { if (typeof onDisconnect === "function") onDisconnect(); }
+    disconnect: function () { if (typeof onDisconnect === "function") onDisconnect(); },
+    applyKeySession: applyKeySession
   };
 
   var mounted = false;
@@ -579,9 +580,28 @@
     }
   }
 
+  function canSign() {
+    return !!state.address && (state.source === "wallet" || state.source === "key");
+  }
+
+  function keyActive() {
+    var S = root.AlphaHiveKeySession;
+    return !!(S && S.isSignedIn() && S.address() && S.address() === state.address);
+  }
+
+  function confirmKeySign(details) {
+    var net = state.network === "testnet" ? "TESTNET" : "PUBLIC (real funds)";
+    return window.confirm(
+      "Sign this " + net + " transaction with your in-memory Alpha Hive account key?\n\n" +
+      "From: " + state.address + "\n" +
+      (details || "") + "\n\n" +
+      "The key stays in memory only and is not stored."
+    );
+  }
+
   function clearWallet(disconnectKit) {
     state.connected = false;
-    if (state.source === "wallet") {
+    if (state.source === "wallet" || state.source === "key") {
       state.address = "";
       state.source = "";
       state.balances = null;
@@ -601,16 +621,30 @@
     }
   }
 
-  function setConnected(address) {
+  function setConnected(address, source) {
+    source = source || "wallet";
+    if (source === "wallet" && root.AlphaHiveKeySession && root.AlphaHiveKeySession.isSignedIn()) {
+      try { root.AlphaHiveKeySession.logout(); } catch (e) {}
+    }
     state.connected = true;
     state.address = address;
-    state.source = "wallet";
-    $("stellarConnect").hidden = true;
+    state.source = source;
+    $("stellarConnect").hidden = source === "key" ? false : true;
     $("stellarDisconnect").hidden = false;
     $("stellarSend").hidden = false;
     if ($("stellarConvert")) $("stellarConvert").hidden = false;
-    setStat("ok", "Connected \u00b7 " + shortenAddress(address));
+    setStat("ok", (source === "key" ? "Signed in \u00b7 " : "Connected \u00b7 ") + shortenAddress(address));
     return refreshShown();
+  }
+
+  function applyKeySession() {
+    var S = root.AlphaHiveKeySession;
+    if (!S || !S.isSignedIn()) return Promise.resolve();
+    state.network = S.network() === "public" ? "public" : "testnet";
+    if ($("stellarTestnet")) $("stellarTestnet").checked = state.network === "testnet";
+    var warn = $("stellarNetWarn");
+    if (warn) warn.hidden = state.network !== "public";
+    return setConnected(S.address(), "key");
   }
 
   function refreshShown() {
@@ -662,6 +696,9 @@
   }
 
   function onDisconnect() {
+    if (state.source === "key" && root.AlphaHiveKeySession && root.AlphaHiveKeySession.isSignedIn()) {
+      try { root.AlphaHiveKeySession.logout(); } catch (e) {}
+    }
     clearWallet(true);
   }
 
@@ -732,12 +769,16 @@
   }
 
   function openSend() {
-    if (state.source !== "wallet" || !state.address) return;
+    if (!canSign()) return;
     fillSendAssets();
     $("stellarDest").value = "";
     $("stellarAmt").value = "";
     $("stellarMemo").value = "";
     $("stellarSendMsg").textContent = "";
+    if ($("stellarSendTitle")) {
+      $("stellarSendTitle").textContent = state.source === "key" ? "Send from Alpha Hive account" : "Send from connected wallet";
+    }
+    if ($("stellarSendGo")) $("stellarSendGo").textContent = keyActive() ? "Sign and submit" : "Sign in wallet";
     $("stellarSendNet").textContent = "Network: " + (NETWORKS[state.network] || NETWORKS.public).label +
       " \u00b7 From " + shortenAddress(state.address);
     state.destHomeDomain = "";
@@ -801,6 +842,19 @@
         else if (check.memo.type === "text") builder.addMemo(K.Memo.text(check.memo.value));
         builder.setTimeout(180);
         var tx = builder.build();
+        if (keyActive()) {
+          var sendBits = "Send " + amount + " " + asset.code + " to " + dest;
+          if (memoVal) sendBits += "\nMemo: " + memoVal;
+          if (!confirmKeySign(sendBits)) {
+            msg.textContent = "Signature cancelled.";
+            return null;
+          }
+          msg.textContent = "Signing\u2026";
+          var signedXdr = root.AlphaHiveKeySession.signXDR(tx.toXDR(), passphrase);
+          var signedTx = new K.Transaction(signedXdr, passphrase);
+          msg.textContent = "Submitting to Horizon\u2026";
+          return server.submitTransaction(signedTx);
+        }
         msg.textContent = "Waiting for your wallet to sign\u2026";
         return K.StellarWalletsKit.signTransaction(tx.toXDR(), { address: state.address, networkPassphrase: passphrase }).then(function (signed) {
           var xdr = signed && signed.signedTxXdr;
@@ -915,7 +969,7 @@
   }
 
   function openConvert() {
-    if (state.source !== "wallet" || !state.address) return;
+    if (!canSign()) return;
     if ($("stellarConvertAmt")) $("stellarConvertAmt").value = "";
     if ($("stellarSlippage")) $("stellarSlippage").value = String(DEFAULT_SLIPPAGE_PCT);
     if ($("stellarConvertMsg")) $("stellarConvertMsg").textContent = "";
@@ -956,7 +1010,8 @@
     runQuote();
   }
 
-  function signAndSubmit(operations, pendingMsg, okMsg) {
+  function signAndSubmit(operations, pendingMsg, okMsg, details) {
+    signAndSubmit._details = details || "";
     var msg = $("stellarConvertMsg");
     var K = kit();
     if (!K || !K.Horizon || !K.TransactionBuilder) {
@@ -972,6 +1027,17 @@
         for (var i = 0; i < operations.length; i++) builder.addOperation(operations[i]);
         builder.setTimeout(180);
         var tx = builder.build();
+        if (keyActive()) {
+          if (!confirmKeySign(signAndSubmit._details || "Review the transaction details above.")) {
+            if (msg) msg.textContent = "Signature cancelled.";
+            return null;
+          }
+          if (msg) msg.textContent = "Signing\u2026";
+          var signedXdr = root.AlphaHiveKeySession.signXDR(tx.toXDR(), passphrase);
+          var signedTx = new K.Transaction(signedXdr, passphrase);
+          if (msg) msg.textContent = "Submitting to Horizon\u2026";
+          return server.submitTransaction(signedTx);
+        }
         if (msg) msg.textContent = "Waiting for your wallet to sign\u2026";
         return K.StellarWalletsKit.signTransaction(tx.toXDR(), { address: state.address, networkPassphrase: passphrase }).then(function (signed) {
           var xdr = signed && signed.signedTxXdr;
@@ -1018,7 +1084,8 @@
     signAndSubmit(
       [K.Operation.changeTrust({ asset: asset })],
       "Building USDC trustline\u2026",
-      "USDC trustline added."
+      "USDC trustline added.",
+      "Add a USDC trustline on " + (state.network === "testnet" ? "TESTNET" : "PUBLIC") + "."
     );
   }
 
@@ -1084,14 +1151,28 @@
       return signAndSubmit(
         [op],
         "Building path payment\u2026",
-        "Converted to " + usdcLabel(state.network) + ". Live session balance updated."
+        "Converted to " + usdcLabel(state.network) + ". Live session balance updated.",
+        "Convert " + normalizeAmount(amtRaw) + " XLM to " + usdcLabel(state.network) + ", min received " + q.destMin + "."
       );
     });
   }
 
   function onNetworkToggle() {
-    var test = $("stellarTestnet") && $("stellarTestnet").checked;
+    var box = $("stellarTestnet");
+    var test = box && box.checked;
+    if (!test && root.AlphaHiveKeySession && root.AlphaHiveKeySession.isSignedIn()) {
+      var ok = window.confirm("Switch to the Public Stellar network? This uses real funds. Only continue with a small dedicated trading account, never your main wallet.");
+      if (!ok) {
+        if (box) box.checked = true;
+        return;
+      }
+      root.AlphaHiveKeySession.setNetwork("public");
+    } else if (root.AlphaHiveKeySession && root.AlphaHiveKeySession.isSignedIn()) {
+      root.AlphaHiveKeySession.setNetwork("testnet");
+    }
     state.network = test ? "testnet" : "public";
+    var warn = $("stellarNetWarn");
+    if (warn) warn.hidden = !!test;
     if (state.kitReady) {
       try { ensureKit(); } catch (e) {}
     }

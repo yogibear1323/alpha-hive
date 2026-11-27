@@ -1,8 +1,8 @@
-"""Scan terminal pages and our wallet JS for any Stellar secret-key input.
+"""Scan terminal pages and wallet JS for unsafe Stellar secret-key handling.
 
-A Stellar secret key starts with S. Alpha Hive must never show a field that
-asks the user to type one. The existing broker 'bridge token' password field
-is unrelated and is allowed.
+A Stellar secret key starts with S. The only allowed key field is the
+optional in-memory Alpha Hive account input (id=hiveAccountSecret). It must
+never be written to web storage, cookies, a URL, or a cross-origin message.
 """
 from __future__ import annotations
 
@@ -19,8 +19,9 @@ PAGES = [
     ROOT / "web" / "static-demo.html",
 ]
 OUR_JS = ROOT / "terminal" / "vendor" / "stellar-wallet.js"
+KEY_SESSION = ROOT / "terminal" / "vendor" / "stellar-key-session.js"
+ALLOWED_SECRET_IDS = {"hiveAccountSecret"}
 
-# Inputs that look like they collect a Stellar secret key (starts with S).
 SECRET_ATTR = re.compile(
     r"(secret[_\s-]*key|secret[_\s-]*seed|stellar[_\s-]*secret|private[_\s-]*key|"
     r"secret[_\s-]*phrase|seed[_\s-]*phrase|spending[_\s-]*key)",
@@ -31,6 +32,14 @@ SECRET_PLACEHOLDER = re.compile(
     re.I,
 )
 INPUT_TAG = re.compile(r"<(input|textarea)\b[^>]*>", re.I | re.S)
+STORE_APIS = (
+    "localStorage",
+    "sessionStorage",
+    "indexedDB",
+    "openDatabase",
+    "document.cookie",
+    "postMessage",
+)
 
 
 @pytest.mark.parametrize("path", PAGES, ids=lambda p: p.name)
@@ -39,25 +48,40 @@ def test_pages_exist_and_mention_wallet(path: Path):
     text = path.read_text(encoding="utf-8")
     assert "stellarConnect" in text
     assert "stellarLookup" in text
-    assert "never type a Stellar secret key" in text or "never type a Stellar secret key" in text.lower()
+    low = text.lower()
+    assert "never your main wallet" in low
+    assert "yogibear1323.github.io/alpha-hive" in low
+    assert "never stores your key" in low or "never stores your key" in text.lower()
 
 
 @pytest.mark.parametrize("path", PAGES, ids=lambda p: p.name)
-def test_no_secret_key_inputs_in_pages(path: Path):
+def test_only_allowed_secret_key_input(path: Path):
     text = path.read_text(encoding="utf-8")
     offenders = []
-    for tag in INPUT_TAG.findall(text) if False else INPUT_TAG.finditer(text):
+    found_allowed = False
+    for tag in INPUT_TAG.finditer(text):
         raw = tag.group(0)
-        # Skip the existing local-bridge token field (not a Stellar secret).
         if re.search(r'id=["\']bridgeTok["\']', raw):
+            continue
+        ident = re.search(r'id=["\']([^"\']+)["\']', raw)
+        allowed = ident and ident.group(1) in ALLOWED_SECRET_IDS
+        if allowed:
+            found_allowed = True
+            assert re.search(r'type=["\']password["\']', raw, re.I), raw
+            assert re.search(r'autocomplete=["\']off["\']', raw, re.I), raw
+            assert re.search(r'spellcheck=["\']false["\']', raw, re.I), raw
+            assert re.search(r'autocapitalize=["\']off["\']', raw, re.I), raw
+            ph = re.search(r"""placeholder\s*=\s*(['"])(.*?)\1""", raw, re.I | re.S)
+            if ph:
+                assert not re.match(r"S[A-Z0-9]", ph.group(2).strip()), raw
             continue
         if SECRET_PLACEHOLDER.search(raw) or SECRET_ATTR.search(raw):
             offenders.append(raw)
-        # An S... placeholder is always a secret-key tell, even without those words.
         ph = re.search(r"""placeholder\s*=\s*(['"])(.*?)\1""", raw, re.I | re.S)
         if ph and re.match(r"S[A-Z0-9]", ph.group(2).strip()):
             offenders.append(raw)
-    assert offenders == [], f"{path} has secret-key-like inputs: {offenders}"
+    assert offenders == [], f"{path} has extra secret-key-like inputs: {offenders}"
+    assert found_allowed, f"{path} is missing the hiveAccountSecret field"
 
 
 def test_wallet_js_has_no_secret_key_input():
@@ -71,13 +95,11 @@ def test_wallet_js_has_no_secret_key_input():
         ph = re.search(r"""placeholder\s*=\s*(['"])(.*?)\1""", raw, re.I | re.S)
         if ph:
             assert not re.match(r"S[A-Z0-9]", ph.group(2).strip()), raw
-    # Must refuse secret-shaped strings as a "public" address.
     assert "starts with G" in text or "G[A-Z2-7]" in text
 
 
 def test_public_address_lookup_is_g_not_s():
     html = (ROOT / "web" / "templates" / "index.html").read_text(encoding="utf-8")
-    # The lookup field is for public G... addresses only.
     assert re.search(r'id="stellarLookup"', html)
     field = re.search(r'<input[^>]*id="stellarLookup"[^>]*>', html)
     assert field, "missing lookup input"
@@ -87,3 +109,40 @@ def test_public_address_lookup_is_g_not_s():
     assert ph, raw
     assert not re.match(r"S[A-Z0-9]", ph.group(2).strip())
     assert "G" in ph.group(2)
+
+
+def test_key_session_module_never_uses_storage_apis():
+    assert KEY_SESSION.is_file()
+    text = KEY_SESSION.read_text(encoding="utf-8")
+    hits = [w for w in STORE_APIS if w in text]
+    assert hits == [], f"key-session mentions store APIs: {hits}"
+    # Must not persist via location or cross-page query
+    assert not re.search(r"location\s*\.\s*(search|hash|href)\s*=", text)
+
+
+@pytest.mark.parametrize("path", PAGES, ids=lambda p: p.name)
+def test_secret_field_is_not_written_to_storage(path: Path):
+    text = path.read_text(encoding="utf-8")
+    # The in-memory field may be read into a local var named secret, then cleared.
+    # It must never be handed to a browser store or a URL.
+    patterns = [
+        r"localStorage[\s\S]{0,120}hiveAccountSecret",
+        r"sessionStorage[\s\S]{0,120}hiveAccountSecret",
+        r"indexedDB[\s\S]{0,120}hiveAccountSecret",
+        r"document\.cookie[\s\S]{0,80}hiveAccountSecret",
+        r"hiveAccountSecret[\s\S]{0,120}localStorage",
+        r"hiveAccountSecret[\s\S]{0,120}sessionStorage",
+    ]
+    hits = [pat for pat in patterns if re.search(pat, text)]
+    assert hits == []
+    assert re.search(r"secretEl\.value\s*=\s*[\"']{2}", text) or re.search(
+        r"hiveAccountSecret[^\n]{0,80}\.value\s*=\s*[\"']{2}", text
+    ), "sign-in must clear the key field after parsing"
+
+
+def test_pages_have_csp_on_key_holding_document():
+    text = (ROOT / "web" / "templates" / "index.html").read_text(encoding="utf-8")
+    assert "Content-Security-Policy" in text
+    assert "unsafe-eval" not in text
+    assert "horizon.stellar.org" in text
+    assert "horizon-testnet.stellar.org" in text

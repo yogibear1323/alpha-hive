@@ -1,7 +1,9 @@
 /**
  * Browser IIFE bundle entry for Alpha Hive.
  * Exposes window.AlphaHiveStellarKit — the Wallets Kit plus Stellar SDK pieces
- * needed to look up accounts and build a payment. No secret-key handling.
+ * needed to look up accounts, build a payment, and (when the in-memory
+ * Alpha Hive account path is used) sign a transaction. The kit does not
+ * store keys; holding a key is the key-session module's job, in RAM only.
  */
 import { StellarWalletsKit } from "@creit.tech/stellar-wallets-kit/sdk";
 import { defaultModules } from "@creit.tech/stellar-wallets-kit/modules/utils";
@@ -10,6 +12,7 @@ import {
   Account,
   Asset,
   Horizon,
+  Keypair,
   Memo,
   Networks as SdkNetworks,
   Operation,
@@ -44,6 +47,7 @@ window.AlphaHiveStellarKit = {
   SwkAppDarkTheme,
   hiveTheme,
   Horizon,
+  Keypair,
   Account,
   Asset,
   Memo,

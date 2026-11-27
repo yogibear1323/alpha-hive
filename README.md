@@ -142,6 +142,23 @@ local bridge (no Coinbase transfer). Unit tests cover the quote and min-received
 uses Friendbot and a throwaway testnet keypair in that script only; it never submits on mainnet and is not
 used by the page.
 
+### Alpha Hive account (optional in-memory key)
+
+The homepage **Create account / Sign in** button opens the official terminal sign-in panel
+(`terminal/?signin=1`) *before* any key is entered, so a key never crosses a page load.
+Create account asks for a public G address and the key and checks that they match; later
+sign-in uses the key only and derives the address. The key is held in JavaScript memory
+only, never in `localStorage`, `sessionStorage`, cookies, IndexedDB, the URL, or
+`postMessage`. It is wiped on **Log out**, tab close, and after 15 minutes idle. Send and
+Convert can be signed with that in-memory key after an explicit confirm dialog. Wallet
+connect stays available as the alternative.
+
+**Use a separate trading account with only what you are willing to risk, never your main
+wallet.** Only enter a key at `yogibear1323.github.io/alpha-hive`. If you lose the key, it
+cannot be recovered. The key session defaults to **testnet**; flipping to Public shows a
+warning. Automated Live session order submission is **not** wired to this key — Live
+real-money trading stays gated on the local bridge as before.
+
 ### Local unlock, Fund panel, and Live session
 
 The public GitHub Pages site stays **simulation only**. Run the terminal and the bridge on your computer
