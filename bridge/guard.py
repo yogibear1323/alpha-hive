@@ -23,9 +23,9 @@ def utc_day(now: float | None = None) -> str:
 
 
 class GuardState:
-    def __init__(self, state_dir: Path, limits, kill_env: bool = False, clock=time.time):
+    def __init__(self, state_dir: Path, limits, kill_env: bool = False, clock=time.time, day_name: str = "daily.json"):
         self.dir = Path(state_dir); self.limits = limits; self.kill_env = kill_env; self.clock = clock
-        self.kill_file = self.dir / "KILL_SWITCH"; self.day_file = self.dir / "daily.json"
+        self.kill_file = self.dir / "KILL_SWITCH"; self.day_file = self.dir / day_name
 
     # ---- kill switch ----
     def kill_engaged(self) -> bool:

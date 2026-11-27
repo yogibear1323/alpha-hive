@@ -445,7 +445,10 @@
     validateConvert: validateConvert,
     fetchAccount: fetchAccount,
     fetchXlmUsd: fetchXlmUsd,
-    mount: mount
+    mount: mount,
+    getAddress: function () { return (state && state.address) || ""; },
+    isConnected: function () { return !!(state && state.connected); },
+    disconnect: function () { if (typeof onDisconnect === "function") onDisconnect(); }
   };
 
   var mounted = false;

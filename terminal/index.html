@@ -500,6 +500,35 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
 .stellar-quote b{display:block;font:800 15px var(--mono);color:var(--text);word-break:break-word}
 .stellar-convert-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 @media(max-width:680px){.stellar-actions .btn,.stellar-lookup .btn,.stellar-convert-actions .btn{flex:1 1 100%}}
+
+[hidden]{display:none !important}
+.chip.lock{color:var(--amber);border-color:var(--amber)}
+.chip.lock.on{color:#8fe388;border-color:#8fe388}
+.mbtn.live{border:1px solid #ff8c42;color:#ffd4a8;background:rgba(255,80,40,.12)}
+.mbtn.live .livebadge{display:inline-block;margin-left:6px;font:800 9px var(--mono);letter-spacing:1px;padding:1px 6px;border-radius:999px;background:#e23d3d;color:#fff8f0}
+.mbtn.live.on{color:#1a1206;background:linear-gradient(180deg,#ff8c42,#e23d3d);box-shadow:0 0 18px rgba(226,61,61,.45);border-color:transparent}
+.mbtn.live.on .livebadge{background:#1a1206;color:#ffd4a8}
+body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff8c42;outline-offset:4px}
+.hive-overlay{position:fixed;inset:0;z-index:80;background:rgba(10,8,6,.82);display:flex;align-items:center;justify-content:center;padding:20px}
+.hive-overlay[hidden]{display:none !important}
+.hive-overlay-card{width:min(520px,100%);background:linear-gradient(180deg,rgba(38,32,23,.98),rgba(20,18,15,.98));border:1px solid rgba(255,182,39,.4);border-radius:14px;padding:22px 24px;color:var(--text)}
+.hive-overlay-card h2{margin:0 0 10px}
+.hive-overlay-card label{display:block;font:700 12px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--mute);margin:12px 0 6px}
+.hive-overlay-card input[type=password],.hive-overlay-card input[type=text]{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:rgba(0,0,0,.4);color:var(--text);font:15px var(--mono)}
+.hive-overlay-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.wallet-note{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;color:var(--text);background:rgba(0,0,0,.35);font:14px/1.5 var(--sans)}
+.wallet-note .lbl{display:block;margin-bottom:4px;font:700 13px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--mute)}
+.wallet-note a{color:var(--honey)}
+.fund-panel{margin-top:16px;padding:16px 16px 18px;border:1px solid rgba(255,182,39,.3);border-radius:12px;background:rgba(0,0,0,.25)}
+.fund-panel h3{margin:0 0 8px;font:800 15px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--honey)}
+.fund-addr{font:13px/1.4 var(--mono);word-break:break-all;color:var(--text)}
+.fund-qr{width:148px;height:148px;margin:12px 0;background:#f4ead4;border-radius:8px;padding:8px}
+.fund-qr svg{width:100%;height:100%;display:block}
+.live-arm-box{margin-top:14px;padding:14px;border:1px solid #ff8c42;border-radius:10px;background:rgba(226,61,61,.08)}
+.live-arm-box label{display:block;font:700 12px var(--mono);margin:8px 0 6px;color:var(--text)}
+.live-arm-box input{width:100%;padding:8px 10px;border-radius:8px;border:1px solid #ff8c42;background:rgba(0,0,0,.4);color:var(--text);font:14px var(--mono)}
+.gate-msg{font:12px/1.45 var(--sans);color:var(--amber);margin:8px 0 0}
+
 </style>
 </head>
 <body>
@@ -512,17 +541,32 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
       <svg class="logo" viewBox="0 0 40 40" fill="none" stroke="#ffb627" stroke-width="2"><polygon points="20,2 36,11 36,29 20,38 4,29 4,11"/><polygon points="20,11 27,15 27,23 20,27 13,23 13,15" stroke="#ff8c42" stroke-width="1.6"/><circle cx="20" cy="19" r="2.4" fill="#ffd84d" stroke="none"/></svg>
       <div><h1>Alpha <span>Hive</span></h1><small>ONE QUEEN · FIVE BOTS · ONE HIVE · ♛ QUEEN · SCOUT · NEWS · SENTIMENT · CHARTS · 🛡 RISK GUARD</small></div>
     </div>
-    <div class="chips"><span class="chip sim">Simulation only</span><span class="chip live" id="modeChip">Offline mock</span><span class="chip run" id="runChip">● Idle</span><span class="chip dir" id="dirChip" aria-live="polite">◇ no call yet</span><span class="chip guard" id="guardChip" hidden>⚠ Balance unavailable · trading disabled</span><span class="chip feed" id="feedChip">Feed: —</span><a class="chip motion" id="homeLink" href="../" hidden>⌂ Home</a><button class="chip motion" id="motionBtn" title="Toggle animations">Motion: full</button></div>
+    <div class="chips"><span class="chip sim">Simulation only</span><span class="chip live" id="modeChip">Offline mock</span><span class="chip run" id="runChip">● Idle</span><span class="chip dir" id="dirChip" aria-live="polite">◇ no call yet</span><span class="chip guard" id="guardChip" hidden>⚠ Balance unavailable · trading disabled</span><span class="chip feed" id="feedChip">Feed: —</span><span class="chip lock" id="lockChip">Locked</span><button class="chip motion" id="unlockBtn" type="button">Unlock</button><button class="chip motion" id="logoutBtn" type="button" hidden>Log out</button><a class="chip motion" id="homeLink" href="../" hidden>⌂ Home</a><button class="chip motion" id="motionBtn" title="Toggle animations">Motion: full</button></div>
   </div>
   <div class="ticker"><div class="tag" id="tapeTag">◌ LIVE PRICES · connecting…</div><div class="tape"><div class="tape-inner" id="tape"></div></div></div>
 </header>
 
+<div class="hive-overlay" id="unlockOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="unlockTitle">
+  <div class="hive-overlay-card">
+    <h2 id="unlockTitle">Unlock Alpha Hive</h2>
+    <p class="stellar-note">This unlocks a short-lived session with the local bridge. The passphrase never leaves this machine. A wallet-signed challenge (SEP-10 style) can issue the same session, alongside or instead of a passphrase, once you connect a wallet and the kit can sign the challenge.</p>
+    <p class="gate-msg" id="unlockMsg" role="status"></p>
+    <label for="unlockPass">Unlock passphrase</label>
+    <input id="unlockPass" type="password" autocomplete="current-password" maxlength="200" aria-label="Unlock passphrase">
+    <div class="hive-overlay-actions">
+      <button class="btn" id="unlockGo" type="button">Unlock</button>
+      <button class="btn ghost sm" id="unlockWalletBtn" type="button">Unlock with wallet</button>
+      <button class="btn ghost sm" id="unlockCancel" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
 <main>
+
   <div class="hiveband" aria-hidden="true"><canvas id="hiveband"></canvas></div>
   <div class="console">
     <div class="card">
       <h2>Mission control</h2>
-      <div class="modes"><button class="mbtn on" id="modeSingle">Single run</button><button class="mbtn" id="modeSession">Demo session</button></div>
+      <div class="modes"><button class="mbtn on" id="modeSingle">Single run</button><button class="mbtn" id="modeSession">Demo session</button><button class="mbtn live" id="modeLive" type="button">Live session <span class="livebadge">LIVE</span></button></div>
       <div class="single-only">
       <div class="picker" id="picker"></div>
       <div class="label" id="pktLabel"></div>
@@ -551,11 +595,11 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
           <label id="brokerLbl" for="brokerSel">Broker</label>
           <select id="brokerSel"><option value="sim">Simulation</option><option value="demo">Crucial demo</option><option value="coinbase">Coinbase (live)</option></select>
           <input id="bridgeUrl" type="url" value="http://127.0.0.1:8765" spellcheck="false" aria-label="Bridge URL (must be localhost)">
-          <input id="bridgeTok" type="password" placeholder="Bridge token" autocomplete="off" aria-label="Bridge token from bridge/.env">
+          <input id="bridgeTok" type="password" hidden autocomplete="off" aria-label="Bridge token from bridge/.env">
           <button class="btn ghost sm" id="bridgeConnect">Connect</button>
           <span class="bstat" id="brokerStat" role="status" aria-live="polite">Simulation · no broker</span>
           <label class="livearm" id="liveRow" hidden><input type="checkbox" id="liveArm"> Arm LIVE · real money</label>
-          <div class="bnote" id="brokerNote">Simulation is the default. “Crucial demo” mirrors Risk-approved live-price calls to a TradeLocker <b>demo</b> account. “Coinbase (live)” uses Coinbase Advanced Trade and stays in <b>preview-only</b> (no real orders) until you arm LIVE; Coinbase spot is long-only (no shorts). Both need the local bridge.</div>
+          <div class="bnote" id="brokerNote">Simulation is the default. “Crucial demo” and “Coinbase (live)” need the local bridge and an unlocked session (passphrase or a wallet-signed challenge). Coinbase stays in <b>preview-only</b> until you arm LIVE; Coinbase spot is long-only. The bridge token is no longer pasted into this page.</div>
         </div>
 
         <div class="stellar" id="stellarBox" role="region" aria-labelledby="stellarLbl">
@@ -563,7 +607,7 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
             <span class="stellar-lbl" id="stellarLbl">Stellar wallet</span>
             <label class="stellar-net"><input type="checkbox" id="stellarTestnet"> Testnet</label>
           </div>
-          <p class="stellar-note" id="stellarNote">Balances are shown only. They do not change the virtual trading balance. Convert XLM to USDC swaps on the Stellar DEX; the USDC stays in your wallet as a read-only Live session balance and is not used for trading yet. Alpha Hive never asks for or stores your secret key. Simulation · demo funds for the hive itself.</p>
+          <p class="stellar-note" id="stellarNote">Balances do not change the virtual Demo balance. Convert XLM to USDC swaps on the Stellar DEX; that USDC is the Live session balance. Live session trades XLM/USDC on the Stellar DEX only, through the local bridge, after you unlock. Wallet-approval mode is semi-automatic (your wallet signs). A dedicated bot account (optional, key only in bridge/.env) can be bridge-signed. Alpha Hive never asks for or stores your secret key.</p>
           <div class="stellar-actions">
             <button class="btn" id="stellarConnect">Connect wallet</button>
             <button class="btn ghost sm" id="stellarDisconnect" hidden>Disconnect</button>
@@ -584,7 +628,7 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
             <div class="stellar-live" id="stellarLiveBox" hidden>
               <small>Live session balance (Stellar DEX)</small>
               <b id="stellarLiveUsdc">—</b>
-              <p id="stellarLiveNote">Read-only for now. This USDC is not used for trading yet. Live trades will use Stellar DEX pairs only.</p>
+              <p id="stellarLiveNote">This USDC is the Live session balance. Live session trades XLM/USDC on the Stellar DEX only, after you unlock and arm Live. Caps start at $25 max position and $5 daily loss.</p>
             </div>
             <div class="stellar-actions"><button class="btn ghost sm" id="stellarUseBal" hidden>Use this USD value as the starting virtual balance</button></div>
           </div>
@@ -594,6 +638,35 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
             <button class="btn ghost sm" id="stellarLookupSdf">Look up SDF</button>
           </div>
           <p class="stellar-sec">Security: never type a Stellar secret key (it starts with S) into a website, including this one. Connect with Varial (formerly Freighter), xBull, LOBSTR, Albedo, Hana or another wallet instead.</p>
+          <div class="wallet-note" id="stellarTermNote" role="note">
+            <span class="lbl">StellarTerm.com · not a wallet · not a connect option</span>
+            <a href="https://stellarterm.com" rel="noopener noreferrer">StellarTerm.com</a>
+            is a web exchange that works with the same wallets (Varial, LOBSTR, xBull, Albedo). Use it to trade manually; it doesn’t connect to Alpha Hive. It is not in the Stellar Wallets Kit, so this button row cannot click-to-connect it. Use the official site only, not look-alike addresses.
+          </div>
+          <p class="gate-msg" id="stellarGate" hidden>Unlock the local session to Send, Convert, or arm Live session. Connecting a wallet is allowed while locked so you can unlock with a wallet-signed challenge. On the public site, run the local bridge to use Live session or the Fund panel.</p>
+        </div>
+        <div class="fund-panel" id="fundPanel" hidden>
+          <h3>Fund your account</h3>
+          <p class="stellar-note" id="fundIntro">This is the dedicated bot account’s public address, if one is configured on the local bridge. A brand-new account does not exist on-chain until it receives at least 1 XLM (2+ XLM plus 0.5 XLM for a USDC trustline is recommended). No memo is needed. Deposit from any wallet or exchange, then swap to USDC.</p>
+          <div class="fund-addr" id="fundAddr">No bot account configured. Connect your own wallet and use Convert, or create a bot account with <code>python -m bridge create-bot-account</code>.</div>
+          <button class="btn ghost sm" id="fundCopy" type="button" hidden>Copy address</button>
+          <div class="fund-qr" id="fundQr" hidden></div>
+          <p class="stellar-stat" id="fundStat" role="status">Waiting for the local bridge.</p>
+          <div class="stellar-convert-actions">
+            <button class="btn" id="fundWatch" type="button" hidden>Check for deposit</button>
+            <button class="btn" id="fundSwap" type="button" hidden>Swap to USDC</button>
+          </div>
+          <div class="live-arm-box" id="liveArmBox" hidden>
+            <p class="stellar-note">Live session trades XLM/USDC on the Stellar DEX only. Risk guard, kill switch and a $5 daily loss stop stay in the bridge and cannot be overruled. Default network is testnet. Mainnet also needs <code>ALPHA_HIVE_ALLOW_LIVE=1</code>, an unlocked session, and the typed confirm below.</p>
+            <p class="stellar-stat" id="liveArmStat" role="status"></p>
+            <button class="btn" id="liveTestnetBtn" type="button" hidden>Arm testnet session</button>
+            <label for="liveConfirm" id="liveConfirmLbl" hidden>Type I UNDERSTAND THIS IS REAL MONEY to arm mainnet Live session</label>
+            <input id="liveConfirm" type="text" hidden autocomplete="off" spellcheck="false" aria-label="Type the confirmation phrase to arm mainnet Live session">
+            <div class="stellar-convert-actions">
+              <button class="btn" id="liveArmBtn" type="button" hidden>Arm Live session</button>
+              <button class="btn ghost sm" id="liveDisarmBtn" type="button" hidden>Disarm</button>
+            </div>
+          </div>
         </div>
         <div class="label" id="sessHelp">Live rounds read real recent candles for each selected token. The ♛ Queen goes <b class="dir long">▲ LONG</b> (BUY) when the analysts expect a rise and <b class="dir short">▼ SHORT</b> (SELL/SHORT) when charts, sentiment and news are bearish, only after the Risk gate fully approves; a “reduce” becomes WAIT and never flips direction. Each trade risks the effective % of the <b>current</b> balance: the average of the active bots’ risk settings, never above the Risk bot’s %. Notional size = risk $ ÷ stop distance, capped at balance × <b>virtual leverage</b> and the optional max position cap, so a stop-out loses about the risk $; margin used = notional ÷ leverage. Longs: stop below, target above; shorts: stop above, target below, P&amp;L = size × (1 − exit/entry). Virtual margin call: a loss can never exceed the balance; the trade closes at the balance limit and later rounds SKIP. Live prices are polled every 3 s for the trade window. Virtual leverage · simulation only, no real orders.</div>
         <div class="actions" id="sessControls"><button class="btn" id="startSess">▶ Run demo session</button><button class="btn stop" id="stopSess" disabled>■ Stop</button><button class="btn ghost" id="resetSess">Reset</button><button class="btn ghost" id="sumBtn" disabled>Summary</button></div>
@@ -682,7 +755,7 @@ body.reduced .ttimer.pulse,body.reduced .tt-in.pulse{animation:none}
 <div class="stellar-send" id="stellarConvertDlg" role="dialog" aria-modal="true" aria-labelledby="stellarConvertTitle" hidden>
   <div class="stellar-send-card">
     <h3 id="stellarConvertTitle">Convert XLM to USDC</h3>
-    <p class="stellar-note">Swaps on the Stellar DEX. Your wallet signs each transaction. Alpha Hive never sees your secret key. The resulting USDC stays in your wallet as the Live session balance; it is not used for trading yet.</p>
+    <p class="stellar-note">Swaps on the Stellar DEX. Your wallet signs each transaction. Alpha Hive never sees your secret key. The resulting USDC is the Live session balance. Live session trades XLM/USDC on the Stellar DEX only, after you unlock and arm Live.</p>
     <p class="stellar-send-net" id="stellarConvertNet">Network: Public</p>
     <div class="fld"><label for="stellarConvertAmt">Amount of XLM to convert</label><input id="stellarConvertAmt" type="number" min="0" step="any" inputmode="decimal" aria-label="Amount of XLM to convert"></div>
     <div class="stellar-actions"><button type="button" class="btn ghost sm" id="stellarConvertMax">Use max spendable</button></div>
@@ -1469,7 +1542,159 @@ window.G6_TIMER=TT;
 function whyOf(how){ return /margin/.test(how)?"MARGIN CALL":/stop hit/.test(how)?"STOP HIT":/target/.test(how)?"TARGET HIT":/user/.test(how)?"STOPPED BY USER":"WINDOW ENDED"; }
 function sleepStop(ms){ return new Promise(res=>{ const t0=Date.now(); const iv=setInterval(()=>{ if(sessionStop||Date.now()-t0>=ms){ clearInterval(iv); res(); } },50); }); }
 let S=null, sessState="idle";
-// ---- Broker bridge (local only). Credentials live in bridge/.env; this page only holds the bridge token. ----
+// ---- Local session unlock (passphrase today; wallet-signature hook is ready) ----
+const Auth=(()=>{ const st={token:null,idleMs:300000,timer:null,status:null,public:false};
+  const PUBLIC=/(^|\.)github\.io$/i.test(location.hostname)||!/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  st.public=PUBLIC;
+  const LIVE_PHRASE="I UNDERSTAND THIS IS REAL MONEY";
+  const isLocal=u=>{ try{ const x=new URL(u); return x.protocol==="http:"&&/^(localhost|127\.0\.0\.1)$/.test(x.hostname); }catch(e){ return false; } };
+  function paint(){ const locked=!st.token; const chip=$("lockChip"), un=$("unlockBtn"), lo=$("logoutBtn");
+    if(chip){ chip.textContent=locked?"Locked":"Unlocked"; chip.classList.toggle("on",!locked); }
+    if(un) un.hidden=!locked; if(lo) lo.hidden=locked;
+    const gate=$("stellarGate"); if(gate){ gate.hidden=PUBLIC?false: !locked; if(PUBLIC) gate.textContent="Run the local bridge to use Live session, the Fund panel, or broker connect. Wallet connect still works here for read-only balances."; }
+    document.body.classList.toggle("session-unlocked",!!st.token);
+    if($("fundPanel") && document.body.classList.contains("live-session")) $("fundPanel").hidden=false;
+    if($("liveArmBox")) $("liveArmBox").hidden=!(st.token && document.body.classList.contains("live-session"));
+  }
+  function bumpIdle(){ if(!st.token) return; clearTimeout(st.timer); st.timer=setTimeout(()=>{ logout("idle"); }, st.idleMs); }
+  async function call(path,opt={}){
+    const u=(($("bridgeUrl")&&$("bridgeUrl").value)||"http://127.0.0.1:8765").replace(/\/+$/,"");
+    if(!isLocal(u)) throw new Error("bridge URL must be http://127.0.0.1 or http://localhost");
+    const headers={"Content-Type":"application/json"};
+    if(st.token) headers["X-Session-Token"]=st.token;
+    const r=await fetch(u+path,{...opt,headers});
+    let j={}; try{ j=await r.json(); }catch(e){}
+    if(!r.ok){ const d=j.detail; throw new Error(typeof d==="string"?d:(d&&d.reason)||("HTTP "+r.status)); }
+    return j;
+  }
+  function openUnlock(msg){ if(PUBLIC){ needBridge(); return; } const ov=$("unlockOverlay"); if(!ov) return;
+    if($("unlockMsg")) $("unlockMsg").textContent=msg||""; ov.hidden=false; const i=$("unlockPass"); if(i){ i.value=""; i.focus(); } }
+  function closeUnlock(){ const ov=$("unlockOverlay"); if(ov) ov.hidden=true; const i=$("unlockPass"); if(i) i.value=""; }
+  function needBridge(){ const g=$("stellarGate"); if(g){ g.hidden=false; g.textContent="Run the local bridge to use this."; } if($("fundStat")) $("fundStat").textContent="Run the local bridge to use this."; }
+  function setSession(tok, idleSec){ st.token=tok; if(idleSec) st.idleMs=Math.max(30,idleSec)*1000; bumpIdle(); paint(); closeUnlock(); refreshFund(); }
+  async function unlockPass(){
+    const pass=($("unlockPass")&&$("unlockPass").value)||"";
+    if($("unlockMsg")) $("unlockMsg").textContent="Unlocking…";
+    try{ const j=await call("/unlock",{method:"POST",body:JSON.stringify({passphrase:pass})}); setSession(j.token, j.expires_in); }
+    catch(e){ if($("unlockMsg")) $("unlockMsg").textContent=e.message||String(e); }
+  }
+  async function unlockWithWallet(address, signMessage){
+    if(typeof signMessage!=="function") throw new Error("Wallet-signature unlock needs a sign function for the challenge message (SEP-10 style).");
+    const ch=await call("/unlock/challenge",{method:"POST",body:JSON.stringify({address})});
+    const signature=await signMessage(ch.message);
+    const j=await call("/unlock/wallet",{method:"POST",body:JSON.stringify({address,challenge_id:ch.challenge_id,signature})});
+    setSession(j.token, j.expires_in); return j;
+  }
+  async function tryWalletUnlock(){
+    if($("unlockMsg")) $("unlockMsg").textContent="";
+    const W=window.AlphaHiveStellarWallet;
+    const addr=W&&W.getAddress&&W.getAddress();
+    if(!addr){ if($("unlockMsg")) $("unlockMsg").textContent="Connect a wallet first, then unlock with a signature. Connect is allowed while the session is locked."; return; }
+    if(!(W&&typeof W.signUnlockMessage==="function")){
+      if($("unlockMsg")) $("unlockMsg").textContent="The bridge already issues a wallet-unlock challenge (POST /unlock/challenge, then /unlock/wallet). A SEP-10 style signature from this kit will plug into Unlock with wallet; for now, set a passphrase with python -m bridge set-passphrase.";
+      return;
+    }
+    try{ await unlockWithWallet(addr, W.signUnlockMessage); }
+    catch(e){ if($("unlockMsg")) $("unlockMsg").textContent=e.message||String(e); }
+  }
+  function disconnectWallet(){ try{ const W=window.AlphaHiveStellarWallet; if(W&&W.disconnect) W.disconnect(); }catch(e){} }
+  async function logout(why){
+    const tok=st.token; st.token=null; clearTimeout(st.timer); st.timer=null;
+    try{ if(!PUBLIC) await call("/logout",{method:"POST"}); }catch(e){}
+    disconnectWallet();
+    const arm=$("liveArm"); if(arm) arm.checked=false;
+    document.body.classList.remove("live-session");
+    if($("modeLive")) $("modeLive").classList.remove("on");
+    paint(); if($("fundStat")) $("fundStat").textContent=why==="idle"?"Locked after idle. Unlock to continue.":"Logged out. Live session disarmed.";
+  }
+  function requireUnlocked(action){
+    if(PUBLIC){ needBridge(); return false; }
+    if(!st.token){ openUnlock(action||"Unlock to continue."); return false; }
+    bumpIdle(); return true;
+  }
+  async function refreshStatus(){
+    if(PUBLIC){ paint(); needBridge(); return; }
+    try{
+      const s=await call("/setup/status"); st.status=s; if(s.session_idle_seconds) st.idleMs=s.session_idle_seconds*1000;
+      if($("fundIntro") && s.bot_account) $("fundIntro").textContent="This is the dedicated bot account’s public address. A brand-new account does not exist on-chain until it receives at least 1 XLM (2+ XLM plus 0.5 XLM for a USDC trustline is recommended). No memo is needed.";
+      paint(); if(st.token) refreshFund();
+    }catch(e){ st.status=null; paint(); if($("fundStat")) $("fundStat").textContent="Bridge not running. Start it with python -m bridge."; }
+  }
+  async function refreshFund(){
+    const panel=$("fundPanel"); if(!panel||PUBLIC||!st.token) return;
+    try{
+      const s=await call("/session");
+      const bot=s.bot_account;
+      const net=s.stellar_network||"testnet";
+      if($("liveArmBox")) $("liveArmBox").hidden=!document.body.classList.contains("live-session");
+      const isPub=net==="public"||net==="mainnet";
+      if($("liveTestnetBtn")) $("liveTestnetBtn").hidden=isPub||!st.token;
+      if($("liveConfirm")) $("liveConfirm").hidden=!isPub;
+      if($("liveConfirmLbl")) $("liveConfirmLbl").hidden=!isPub;
+      if($("liveArmBtn")) $("liveArmBtn").hidden=!isPub;
+      if($("liveDisarmBtn")) $("liveDisarmBtn").hidden=false;
+      if($("liveArmStat")){
+        const bits=[];
+        if(s.stellar_testnet_armed) bits.push("Testnet session armed");
+        if(s.stellar_armed) bits.push("MAINNET Live armed");
+        if(!bits.length) bits.push("Live is off. Demo is the default.");
+        $("liveArmStat").textContent=bits.join(" · ")+" · network "+net;
+      }
+      if(!bot){ if($("fundAddr")) $("fundAddr").textContent="No bot account configured. Connect your own wallet and use Convert, or run python -m bridge create-bot-account --allowlist G…"; if($("fundCopy")) $("fundCopy").hidden=true; if($("fundQr")) $("fundQr").hidden=true; if($("fundWatch")) $("fundWatch").hidden=true; if($("fundSwap")) $("fundSwap").hidden=true; if($("fundStat")) $("fundStat").textContent="Unlocked. Optional bot account is not set."; return; }
+      if($("fundAddr")) $("fundAddr").textContent=bot.public_key;
+      if($("fundCopy")) $("fundCopy").hidden=false;
+      try{ const q=await call("/setup/bot-qr"); if(q.svg&&$("fundQr")){ $("fundQr").innerHTML=q.svg; $("fundQr").hidden=false; } }catch(e){}
+      if($("fundWatch")) $("fundWatch").hidden=false;
+      await checkDeposit(false);
+    }catch(e){ if($("fundStat")) $("fundStat").textContent=e.message||String(e); }
+  }
+  async function checkDeposit(manual){
+    try{
+      const a=await call("/stellar/account");
+      if(!a.funded){ if($("fundStat")) $("fundStat").textContent="Waiting for a deposit. The account is not on-chain yet."; if($("fundSwap")) $("fundSwap").hidden=true; return; }
+      if($("fundStat")) $("fundStat").textContent="Deposit detected · XLM "+(a.xlm||"—")+" · USDC "+(a.usdc||"—")+(a.has_usdc_trustline?"":" · no USDC trustline yet");
+      if($("fundSwap")) $("fundSwap").hidden=false;
+    }catch(e){ if(manual&&$("fundStat")) $("fundStat").textContent=e.message||String(e); }
+  }
+  async function armTestnet(){ if(!requireUnlocked("Unlock to arm a testnet session.")) return;
+    try{ const j=await call("/stellar/mode",{method:"POST",body:JSON.stringify({mode:"TESTNET"})}); if($("liveArmStat")) $("liveArmStat").textContent="Testnet session armed."; }catch(e){ if($("liveArmStat")) $("liveArmStat").textContent=e.message; } }
+  async function armLive(){ if(!requireUnlocked("Unlock to arm Live session.")) return;
+    const phrase=(($("liveConfirm")&&$("liveConfirm").value)||"").trim();
+    try{ const j=await call("/stellar/mode",{method:"POST",body:JSON.stringify({mode:"LIVE",confirm:phrase})}); if($("liveArmStat")) $("liveArmStat").textContent="MAINNET Live session armed. Real funds are at risk."; }catch(e){ if($("liveArmStat")) $("liveArmStat").textContent=e.message; } }
+  async function disarmLive(){ if(!st.token) return;
+    try{ await call("/stellar/mode",{method:"POST",body:JSON.stringify({mode:"OFF"})}); if($("liveArmStat")) $("liveArmStat").textContent="Live disarmed."; }catch(e){ if($("liveArmStat")) $("liveArmStat").textContent=e.message; } }
+  function gateClick(id, msg){
+    const el=$(id); if(!el) return;
+    el.addEventListener("click", ev=>{ if(PUBLIC){ ev.preventDefault(); ev.stopImmediatePropagation(); needBridge(); return; } if(!st.token){ ev.preventDefault(); ev.stopImmediatePropagation(); openUnlock(msg); } else bumpIdle(); }, true);
+  }
+  function init(){
+    paint();
+    if($("unlockBtn")) $("unlockBtn").onclick=()=>openUnlock("");
+    if($("logoutBtn")) $("logoutBtn").onclick=()=>logout();
+    if($("unlockGo")) $("unlockGo").onclick=unlockPass;
+    if($("unlockCancel")) $("unlockCancel").onclick=closeUnlock;
+    if($("unlockWalletBtn")) $("unlockWalletBtn").onclick=tryWalletUnlock;
+    if($("unlockPass")) $("unlockPass").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); unlockPass(); }});
+    if($("unlockOverlay")) $("unlockOverlay").addEventListener("click",e=>{ if(e.target.id==="unlockOverlay") closeUnlock(); });
+    ["click","keydown","pointerdown"].forEach(ev=>document.addEventListener(ev,()=>{ if(st.token) bumpIdle(); },{passive:true}));
+    // Connect stays available while locked so a wallet can sign an unlock challenge.
+    gateClick("stellarSend","Unlock to send from the connected wallet.");
+    gateClick("stellarConvert","Unlock to convert XLM to USDC.");
+    gateClick("bridgeConnect","Unlock to connect a broker through the local bridge.");
+    if($("fundCopy")) $("fundCopy").onclick=async()=>{ const a=$("fundAddr")&&$("fundAddr").textContent; if(a&&a.startsWith("G")){ try{ await navigator.clipboard.writeText(a); if($("fundStat")) $("fundStat").textContent="Address copied."; }catch(e){} } };
+    if($("fundWatch")) $("fundWatch").onclick=()=>checkDeposit(true);
+    if($("fundSwap")) $("fundSwap").onclick=()=>{ if(!requireUnlocked("Unlock to swap.")) return; const btn=$("stellarConvert"); if(btn&&!btn.hidden) btn.click(); else if($("fundStat")) $("fundStat").textContent="For a bot account, confirm a convert on the local bridge after a deposit is detected. For your own wallet, connect and use Convert XLM to USDC."; };
+    if($("liveTestnetBtn")) $("liveTestnetBtn").onclick=armTestnet;
+    if($("liveArmBtn")) $("liveArmBtn").onclick=armLive;
+    if($("liveDisarmBtn")) $("liveDisarmBtn").onclick=disarmLive;
+    refreshStatus();
+  }
+  return {init, token:()=>st.token, unlocked:()=>!!st.token, openUnlock, closeUnlock, logout, unlockWithWallet, requireUnlocked, public:PUBLIC, call, refreshFund, bumpIdle};
+})();
+window.G6_AUTH=Auth;
+
+// ---- Broker bridge (local only). Credentials live in bridge/.env; the page holds a session token after unlock, not the bridge token. ----
+
 const Broker=(()=>{ const st={mode:"sim",ok:false,status:null};
   const PUBLIC=/(^|\.)github\.io$/i.test(location.hostname)||!/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   const LIVE_PHRASE="I UNDERSTAND THIS IS REAL MONEY";
@@ -1477,7 +1702,8 @@ const Broker=(()=>{ const st={mode:"sim",ok:false,status:null};
   function show(txt,cls){ const e=$("brokerStat"); if(e){ e.textContent=txt; e.className="bstat "+(cls||""); } }
   async function call(path,opt={}){ const u=($("bridgeUrl").value||"").replace(/\/+$/,"");
     if(!isLocal(u)) throw new Error("bridge URL must be http://127.0.0.1 or http://localhost");
-    const r=await fetch(u+path,{...opt,headers:{"Content-Type":"application/json","X-Bridge-Token":$("bridgeTok").value||""}});
+    const headers={"Content-Type":"application/json"}; if(window.G6_AUTH&&G6_AUTH.token()) headers["X-Session-Token"]=G6_AUTH.token(); else if($("bridgeTok")&&$("bridgeTok").value) headers["X-Bridge-Token"]=$("bridgeTok").value;
+    const r=await fetch(u+path,{...opt,headers});
     let j={}; try{ j=await r.json(); }catch(e){}
     if(!r.ok){ const d=j.detail; throw new Error(typeof d==="string"?d:(d&&d.reason)||("HTTP "+r.status)); } return j; }
   async function connect(){ if(PUBLIC) return; show("connecting…","warn");
@@ -1493,8 +1719,8 @@ const Broker=(()=>{ const st={mode:"sim",ok:false,status:null};
         show(`${who} ${env} · acct ${a.id||"—"} · ${money(+a.balance||0)} · ${s.mode}${s.kill_switch?" · KILL SWITCH ON":""}`, s.kill_switch?"err":(s.mode==="PREVIEW"?"warn":"ok")); }
     }catch(e){ st.ok=false; show("not connected · "+e.message,"err"); } }
   function init(){ const sel=$("brokerSel"); if(!sel) return;
-    if(PUBLIC){ ["brokerSel","bridgeUrl","bridgeTok","bridgeConnect"].forEach(id=>$(id).disabled=true);
-      $("brokerNote").innerHTML="Public site: <b>simulation only</b>. To use Crucial demo or Coinbase, run the terminal locally (<code>python web/app.py</code>) and start the bridge (<code>python -m bridge</code>); see the README."; show("Simulation · public site",""); return; }
+    if(PUBLIC){ ["brokerSel","bridgeUrl","bridgeTok","bridgeConnect"].forEach(id=>{ const el=$(id); if(el) el.disabled=true; });
+      $("brokerNote").innerHTML="Public site: <b>simulation only</b>. Run the local bridge to use this (unlock a session, then Crucial demo or Coinbase). See the README."; show("Simulation · public site",""); return; }
     sel.addEventListener("change",()=>{ st.mode=sel.value; if(st.mode==="sim"){ st.ok=false; show("Simulation · no broker",""); } else connect(); });
     $("bridgeConnect").addEventListener("click",()=>{ if(sel.value==="sim"){ show("Pick Crucial demo or Coinbase (live) first","warn"); return; } st.mode=sel.value; connect(); });
     $("liveArm").addEventListener("change",async e=>{ const on=e.target.checked;
@@ -1579,7 +1805,7 @@ function setSessState(st){ sessState=st;
   $("startSess").disabled = run || st==="complete";
   $("startSess").textContent = st==="stopped" ? "▶ Resume" : st==="complete" ? "✔ Complete" : "▶ Run demo session";
   $("stopSess").disabled = st!=="running"; $("resetSess").disabled = run; $("sumBtn").disabled = run || !(S&&S.rows.length);
-  ["runBtn","resetBtn","modeSingle","modeSession","inBal"].forEach(id=>$(id).disabled = run || (id==="inBal" && !!S));
+  ["runBtn","resetBtn","modeSingle","modeSession","modeLive","inBal"].forEach(id=>$(id).disabled = run || (id==="inBal" && !!S));
   ["inFeed","inSeed"].forEach(id=>$(id).disabled = run || !!S);
 }
 function newSession(){
@@ -1740,7 +1966,7 @@ async function showSummary(start,end,rows,trades,wins,seed){
     if(p>=1) break; await sleep(30); }
 }
 $("closeSum").onclick=()=>$("summary").classList.remove("show");
-$("startSess").onclick=runLoop; Broker.init(); Score.init();
+$("startSess").onclick=runLoop; if(window.G6_AUTH) Auth.init(); Broker.init(); Score.init();
 $("stopSess").onclick=stopSession;
 $("resetSess").onclick=resetSession;
 $("sumBtn").onclick=()=>{ if(S&&S.rows.length) showSummary(S.start,S.bal,S.rows,S.trades,S.wins,S.feed==="live"?"live public prices from "+(Feed.source||"Coinbase Exchange"):"seed "+S.seed); };
@@ -1753,11 +1979,26 @@ $("inLev").onchange=()=>{ const v=validLev($("inLev").value)||20; $("inLev").val
 $("tokAddBtn").onclick=async()=>{ const b=$("tokAddBtn"); b.disabled=true; if(await addToken($("tokIn").value)) $("tokIn").value=""; b.disabled=false; };
 $("tokIn").onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); $("tokAddBtn").click(); } };
 $("tokMajors").onclick=()=>addMajors();
-function setMode(sess){ if(running) return; document.body.classList.toggle("session-mode",sess); $("modeSession").classList.toggle("on",sess); $("modeSingle").classList.toggle("on",!sess);
-  if(sess){ if(!S){ $("balNum").textContent=money(parseFloat($("inBal").value)||10000); drawPos(null,0,"PRESS RUN DEMO SESSION"); drawEquity(1); } sessLabel(); setSessState(sessState); }
+function setMode(which){ if(running) return;
+  if(which===true) which="demo"; if(which===false) which="single";
+  if(which==="live"){
+    if(window.G6_AUTH&&G6_AUTH.public){ G6_AUTH.openUnlock(); if($("stellarGate")){ $("stellarGate").hidden=false; $("stellarGate").textContent="Run the local bridge to use this."; } return; }
+    if(window.G6_AUTH&&!G6_AUTH.unlocked()){ G6_AUTH.openUnlock("Unlock to use Live session. Real funds stay behind the risk guard, kill switch and daily loss stop."); return; }
+  }
+  const sess=which==="demo"||which==="live";
+  document.body.classList.toggle("session-mode",sess);
+  document.body.classList.toggle("live-session",which==="live");
+  $("modeSession").classList.toggle("on",which==="demo");
+  $("modeSingle").classList.toggle("on",which==="single");
+  if($("modeLive")) $("modeLive").classList.toggle("on",which==="live");
+  if($("fundPanel")) $("fundPanel").hidden=which!=="live";
+  if($("liveArmBox")) $("liveArmBox").hidden=which!=="live"||!(window.G6_AUTH&&G6_AUTH.unlocked());
+  if(sess){ if(!S){ $("balNum").textContent=money(parseFloat($("inBal").value)||10000); drawPos(null,0,which==="live"?"LIVE SESSION · XLM/USDC ON STELLAR DEX":"PRESS RUN DEMO SESSION"); drawEquity(1); } sessLabel(); setSessState(sessState); if(which==="live"&&window.G6_AUTH) G6_AUTH.refreshFund(); }
   else if(markets.length){ selectMarket(current); } }
-$("modeSingle").onclick=()=>setMode(false); $("modeSession").onclick=()=>setMode(true);
-if(new URLSearchParams(location.search).has("session")) setTimeout(()=>setMode(true),300);
+$("modeSingle").onclick=()=>setMode("single"); $("modeSession").onclick=()=>setMode("demo");
+if($("modeLive")) $("modeLive").onclick=()=>setMode("live");
+if(new URLSearchParams(location.search).has("session")) setTimeout(()=>setMode("demo"),300);
+if(new URLSearchParams(location.search).has("live")) setTimeout(()=>setMode("live"),300);
 
 
 /* ---------------------------------------------------------------- FX: particle overlay, data streams, parallax, motion toggle */

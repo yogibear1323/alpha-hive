@@ -75,6 +75,16 @@ class Settings:
     coinbase_api_key_name: str = field(default="", repr=False)
     coinbase_api_private_key: str = field(default="", repr=False)
     coinbase_symbols: dict = field(default_factory=lambda: dict(COINBASE_PRODUCTS))
+    passphrase_hash: str = field(default="", repr=False)
+    session_idle_seconds: int = 300
+    unlock_max_attempts: int = 5
+    unlock_lockout_seconds: int = 900
+    stellar_bot_secret: str = field(default="", repr=False)
+    stellar_bot_public_key: str = ""
+    stellar_withdraw_allowlist: str = ""
+    stellar_network: str = "testnet"
+    stellar_limits: Limits = field(default_factory=Limits)
+    dotenv_path: Path | None = None
 
     host = "127.0.0.1"   # never bind to anything else
 
@@ -91,6 +101,14 @@ class Settings:
     @property
     def has_coinbase_credentials(self) -> bool:
         return bool(self.coinbase_api_key_name and self.coinbase_api_private_key)
+
+    @property
+    def has_passphrase(self) -> bool:
+        return bool(self.passphrase_hash)
+
+    @property
+    def has_bot_account(self) -> bool:
+        return bool(self.stellar_bot_public_key)
 
 
 def _flag(v) -> bool:
@@ -174,6 +192,31 @@ def load_settings(env: dict | None = None, dotenv_path: Path | None = BRIDGE_DIR
         if ":" in pair:
             a, b = pair.split(":", 1)
             cb_symbols[a.strip().upper()] = b.strip()
+    stellar_net = (env.get("STELLAR_NETWORK") or "testnet").strip().lower()
+    if stellar_net in ("public", "mainnet", "live"):
+        stellar_net = "public"
+    elif stellar_net in ("testnet", "test"):
+        stellar_net = "testnet"
+    else:
+        raise SettingsError("STELLAR_NETWORK must be 'testnet' or 'public'")
+    stellar_limits = Limits(
+        max_risk_pct_per_trade=_num(env, "STELLAR_MAX_RISK_PCT_PER_TRADE",
+                                    _num(env, "MAX_RISK_PCT_PER_TRADE", 0.5)),
+        max_position_usd=_num(env, "STELLAR_MAX_POSITION_USD", 25.0),
+        max_position_pct_of_balance=_num(env, "STELLAR_MAX_POSITION_PCT_OF_BALANCE",
+                                         _num(env, "MAX_POSITION_PCT_OF_BALANCE", 20.0)),
+        daily_loss_stop_pct=_num(env, "STELLAR_DAILY_LOSS_STOP_PCT",
+                                 _num(env, "DAILY_LOSS_STOP_PCT", 2.0)),
+        max_open_positions=_num(env, "STELLAR_MAX_OPEN_POSITIONS",
+                                _num(env, "MAX_OPEN_POSITIONS", 1, int), int),
+        account_max_leverage=_num(env, "STELLAR_ACCOUNT_MAX_LEVERAGE", 1.0),
+        max_entry_drift=_num(env, "MAX_ENTRY_DRIFT", 0.5),
+        daily_loss_stop_usd=_num(env, "STELLAR_DAILY_LOSS_STOP_USD", 5.0),
+    )
+    if stellar_limits.account_max_leverage > 1.0:
+        raise SettingsError("STELLAR_ACCOUNT_MAX_LEVERAGE cannot exceed 1 (spot only)")
+    stellar_limits = stellar_limits.validate()
+
     token = (env.get("BRIDGE_TOKEN") or "").strip()
     generated = False
     if not token:
@@ -191,4 +234,13 @@ def load_settings(env: dict | None = None, dotenv_path: Path | None = BRIDGE_DIR
                     state_dir=Path(env.get("BRIDGE_STATE_DIR") or BRIDGE_DIR / "state"),
                     kill_switch_env=_flag(env.get("KILL_SWITCH")), token_generated=generated,
                     broker=broker, coinbase_api_key_name=cb_key,
-                    coinbase_api_private_key=cb_secret, coinbase_symbols=cb_symbols)
+                    coinbase_api_private_key=cb_secret, coinbase_symbols=cb_symbols,
+                    passphrase_hash=(env.get("ALPHA_HIVE_PASSPHRASE_HASH") or "").strip(),
+                    session_idle_seconds=_num(env, "ALPHA_HIVE_SESSION_IDLE_SECONDS", 300, int),
+                    unlock_max_attempts=_num(env, "ALPHA_HIVE_UNLOCK_MAX_ATTEMPTS", 5, int),
+                    unlock_lockout_seconds=_num(env, "ALPHA_HIVE_UNLOCK_LOCKOUT_SECONDS", 900, int),
+                    stellar_bot_secret=(env.get("STELLAR_BOT_SECRET") or "").strip(),
+                    stellar_bot_public_key=(env.get("STELLAR_BOT_PUBLIC_KEY") or "").strip(),
+                    stellar_withdraw_allowlist=(env.get("STELLAR_WITHDRAW_ALLOWLIST") or "").strip(),
+                    stellar_network=stellar_net, stellar_limits=stellar_limits,
+                    dotenv_path=Path(dotenv_path) if dotenv_path else None)

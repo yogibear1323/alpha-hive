@@ -108,6 +108,9 @@
     .addr{font:14px/1.5 var(--mono);color:var(--text);word-break:break-all;background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:8px;padding:12px}
     .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
     .wallets{display:flex;flex-wrap:wrap;gap:10px}
+    .wallet-note{flex:1 1 100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;color:var(--text);background:rgba(0,0,0,.35);font:14px/1.5 var(--sans)}
+    .wallet-note .lbl{display:block;margin-bottom:4px;font:700 13px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--mute)}
+    .wallet-note a{color:var(--honey)}
     .wallet{
       flex:1 1 140px;min-height:52px;padding:12px 14px;
       font:700 13px var(--mono);letter-spacing:1px;text-transform:uppercase;
@@ -222,6 +225,11 @@
           <button class="wallet" type="button" data-wallet="xBull" aria-pressed="false">xBull</button>
           <button class="wallet" type="button" data-wallet="Albedo" aria-pressed="false">Albedo</button>
           <button class="wallet" type="button" data-wallet="Hana" aria-pressed="false">Hana</button>
+          <div class="wallet-note" role="note">
+            <span class="lbl">StellarTerm.com · not a wallet · not a connect option</span>
+            <a href="https://stellarterm.com" rel="noopener noreferrer">StellarTerm.com</a>
+            is a web exchange that works with the same wallets (Varial, LOBSTR, xBull, Albedo). Use it to trade manually; it doesn’t connect to Alpha Hive. It is not in the Stellar Wallets Kit, so this preview cannot click-to-connect it. Use the official site only, not look-alike addresses.
+          </div>
         </div>
         <p class="note" id="walletStatus" style="margin-top:16px">No example wallet selected yet.</p>
         <div class="addr" id="walletAddr" hidden></div>

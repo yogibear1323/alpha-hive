@@ -136,10 +136,56 @@ USDC trustline, **Add USDC trustline** is a separate step the wallet signs first
 `pathPaymentStrictSend` to your own address, signed in your wallet and submitted to Horizon. Alpha Hive never
 asks for a secret key. The testnet toggle uses Circle's testnet USDC issuer and labels those tokens as test
 (they have no cash value). After a successful convert, the USDC balance is shown as **Live session balance
-(Stellar DEX)** — read-only for now; it is not wired into trading. Live trades, when they are added, will
-run on Stellar DEX pairs only (no Coinbase transfer). Unit tests cover the quote and min-received math
+(Stellar DEX)**. Live session trades run on the Stellar DEX only, for the XLM/USDC pair, through the
+local bridge (no Coinbase transfer). Unit tests cover the quote and min-received math
 (`node --test tests/test_stellar_wallet.js`). A testnet end-to-end script (`node --test tests/test_stellar_convert_e2e.js`)
 uses Friendbot and a throwaway testnet keypair in that script only; it never submits on mainnet and is not
 used by the page.
+
+### Local unlock, Fund panel, and Live session
+
+The public GitHub Pages site stays **simulation only**. Run the terminal and the bridge on your computer
+to unlock a session, fund a dedicated bot account, or arm Live session.
+
+1. Copy env files if you have not already: `cp .env.example .env` and `cp bridge/.env.example bridge/.env`.
+   Put a long `BRIDGE_TOKEN` in `bridge/.env` (for CLI and tests; the page no longer pastes this token).
+   Leave `STELLAR_NETWORK=testnet` and `ALPHA_HIVE_ALLOW_LIVE=0` unless you intend to arm mainnet later.
+2. Install dependencies: `pip install -r requirements.txt -r bridge/requirements.txt`.
+3. Set an unlock passphrase (hash only is saved, never printed):
+
+       python -m bridge set-passphrase
+
+   A wallet-signed challenge can issue the **same** short-lived session, alongside or instead of a
+   passphrase (`POST /unlock/challenge` then `POST /unlock/wallet`). The page hook is in place; a full
+   SEP-10 kit signature will plug into **Unlock with wallet**.
+4. Optional dedicated bot account (secret stays in `bridge/.env` only — back that file up offline or
+   bot funds are lost; never use your main wallet's secret):
+
+       python -m bridge create-bot-account --allowlist GYOURWALLET...
+
+   Withdrawals from that account are allowlisted to your wallet only.
+5. In two terminals:
+
+       python -m bridge
+       TRADING_MODE=SIMULATION_ONLY python web/app.py
+
+   Open http://127.0.0.1:8642, click **Unlock**, then **Live session**. The header shows a lock badge
+   and **Log out**. Send, Convert, broker connect and Live arm stay locked until the session is open.
+   Connecting a wallet is allowed while locked so a wallet can sign an unlock challenge later.
+   Logout or 5 minutes of idle disarms Live and disconnects the wallet.
+6. **Fund your account** (Live session, when a bot account exists) shows the public G address, a locally
+   generated QR, and a Horizon deposit watch. A new account is not on-chain until it has at least 1 XLM
+   (2+ XLM plus 0.5 XLM for a USDC trustline is recommended). No memo is needed. Then **Swap to USDC**.
+   For your own wallet (no bot account), use **Convert XLM to USDC**; your wallet signs.
+7. Live session is visually distinct (red/amber, LIVE badge). Trades are XLM/USDC only. The Risk guard,
+   kill switch (`python -m bridge release-kill` is the only release) and a **$5** daily loss stop stay
+   in the bridge and cannot be overruled. Position cap starts at **$25**. Testnet can be armed while
+   unlocked. Mainnet also needs `ALPHA_HIVE_ALLOW_LIVE=1`, a restart, an unlocked session, and a typed
+   confirm: `I UNDERSTAND THIS IS REAL MONEY` (not a JS `confirm()` click). Default is preview/testnet;
+   this repo does not submit mainnet orders in tests.
+
+StellarTerm.com is listed next to the wallet examples as a **non-clickable** note: it is a web exchange,
+not a Wallets Kit connector, and it does not connect to Alpha Hive. The official site is
+https://stellarterm.com only.
 
 

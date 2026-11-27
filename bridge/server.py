@@ -1,8 +1,11 @@
 """FastAPI bridge: the only path from the hive to a broker (TradeLocker or Coinbase). Binds 127.0.0.1 only.
 
-Every route except /health needs the X-Bridge-Token header (BRIDGE_TOKEN from bridge/.env).
-Browsers may call it only from http://localhost or http://127.0.0.1 pages (CORS), so the
-public GitHub Pages site can never reach it.
+Protected routes accept X-Session-Token (browser, after unlock) or X-Bridge-Token
+(CLI and existing tests, from BRIDGE_TOKEN in bridge/.env). /health, /setup/status,
+/unlock, /unlock/challenge, /unlock/wallet, and first-time /setup/passphrase are
+unauthenticated (unlock is rate-limited). Browsers may call it only from
+http://localhost or http://127.0.0.1 pages (CORS), so the public GitHub Pages site
+can never reach it.
 """
 from __future__ import annotations
 
@@ -70,9 +73,23 @@ def create_app(settings: Settings, client=None, guard: GuardState | None = None)
     app = FastAPI(title="Alpha Hive bridge", docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(CORSMiddleware, allow_origin_regex=LOCAL_ORIGINS, allow_credentials=False,
                        allow_methods=["GET", "POST", "PATCH", "DELETE"],
-                       allow_headers=["Content-Type", "X-Bridge-Token"])
-    st = {"client": client, "live_armed": False, "last_error": None}
+                       allow_headers=["Content-Type", "X-Bridge-Token", "X-Session-Token"])
+    st = {"client": client, "live_armed": False, "last_error": None,
+          "passphrase_hash": settings.passphrase_hash,
+          "bot_secret": settings.stellar_bot_secret,
+          "bot_public": settings.stellar_bot_public_key,
+          "allowlist": settings.stellar_withdraw_allowlist,
+          "stellar_armed": False, "stellar_testnet_armed": False}
     guard = guard or GuardState(settings.state_dir, settings.limits, settings.kill_switch_env)
+    stellar_guard = GuardState(settings.state_dir, settings.stellar_limits, settings.kill_switch_env,
+                               day_name="daily_stellar.json")
+    from bridge.session import ChallengeStore, SessionStore, UnlockGuard
+    from bridge.setup_api import register as register_setup
+    sessions = SessionStore()
+    challenges = ChallengeStore()
+    unlock_guard = UnlockGuard(settings.state_dir / "unlock.json",
+                               max_attempts=settings.unlock_max_attempts,
+                               lockout_seconds=settings.unlock_lockout_seconds)
     audit_path = settings.state_dir / "orders.jsonl"
 
     def audit(entry: dict):
@@ -96,9 +113,25 @@ def create_app(settings: Settings, client=None, guard: GuardState | None = None)
                                                  developer_api_key=settings.developer_api_key)
         return st["client"]
 
-    def token(x_bridge_token: str = Header(default="")):
-        if not hmac.compare_digest(x_bridge_token.encode(), settings.bridge_token.encode()):
-            raise HTTPException(401, "missing or wrong X-Bridge-Token")
+    def token(x_bridge_token: str = Header(default=""),
+              x_session_token: str = Header(default="", alias="X-Session-Token")):
+        """Accept a live session or the CLI bridge token. Same dependency name so existing tests keep working."""
+        if x_session_token:
+            rec = sessions.touch(x_session_token, settings.session_idle_seconds)
+            if rec:
+                return "session"
+            if not sessions.has_any():
+                disarm = st.get("_disarm")
+                if callable(disarm):
+                    disarm()
+                else:
+                    st["live_armed"] = False
+                    st["stellar_armed"] = False
+                    st["stellar_testnet_armed"] = False
+            raise HTTPException(401, "session expired or invalid")
+        if settings.bridge_token and hmac.compare_digest(x_bridge_token.encode(), settings.bridge_token.encode()):
+            return "token"
+        raise HTTPException(401, "missing or wrong session or bridge token")
 
     def broker_call(fn, *a, **kw):
         try:
@@ -283,6 +316,9 @@ def create_app(settings: Settings, client=None, guard: GuardState | None = None)
         audit({"result": "live_armed"})
         return {"mode": mode()}
 
+    register_setup(app, settings, st, sessions, challenges, unlock_guard, token, audit, stellar_guard)
     app.state.bridge = st
     app.state.guard = guard
+    app.state.sessions = sessions
+    app.state.stellar_guard = stellar_guard
     return app
