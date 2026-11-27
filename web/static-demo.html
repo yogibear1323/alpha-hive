@@ -566,7 +566,7 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
       <svg class="logo" viewBox="0 0 40 40" fill="none" stroke="#ffb627" stroke-width="2"><polygon points="20,2 36,11 36,29 20,38 4,29 4,11"/><polygon points="20,11 27,15 27,23 20,27 13,23 13,15" stroke="#ff8c42" stroke-width="1.6"/><circle cx="20" cy="19" r="2.4" fill="#ffd84d" stroke="none"/></svg>
       <div><h1>Alpha <span>Hive</span></h1><small>ONE QUEEN · FIVE BOTS · ONE HIVE · ♛ QUEEN · SCOUT · NEWS · SENTIMENT · CHARTS · 🛡 RISK GUARD</small></div>
     </div>
-    <div class="chips"><span class="chip sim">Simulation only</span><span class="chip live" id="modeChip">Offline mock</span><span class="chip run" id="runChip">● Idle</span><span class="chip dir" id="dirChip" aria-live="polite">◇ no call yet</span><span class="chip guard" id="guardChip" hidden>⚠ Balance unavailable · trading disabled</span><span class="chip feed" id="feedChip">Feed: —</span><span class="chip lock" id="lockChip">Locked</span><button class="chip motion" id="unlockBtn" type="button">Unlock</button><button class="chip motion" id="logoutBtn" type="button" hidden>Log out</button><span class="chip keysign" id="keyChip" hidden>Signed in: —</span><button class="chip motion" id="keyLogoutBtn" type="button" hidden>Log out</button><a class="chip motion" id="homeLink" href="../" hidden>⌂ Home</a><button class="chip motion" id="motionBtn" title="Toggle animations">Motion: full</button></div>
+    <div class="chips"><span class="chip sim">Simulation only</span><span class="chip live" id="modeChip">Offline mock</span><span class="chip run" id="runChip">● Idle</span><span class="chip dir" id="dirChip" aria-live="polite">◇ no call yet</span><span class="chip guard" id="guardChip" hidden>⚠ Balance unavailable · trading disabled</span><span class="chip feed" id="feedChip">Feed: —</span><span class="chip lock" id="lockChip">Locked</span><button class="chip motion" id="unlockBtn" type="button">Unlock</button><button class="chip motion" id="logoutBtn" type="button" hidden>Log out</button><button class="chip motion" id="keySignInBtn" type="button">Sign in</button><span class="chip keysign" id="keyChip" hidden>Signed in: —</span><button class="chip motion" id="keyLogoutBtn" type="button" hidden>Log out</button><a class="chip motion" id="homeLink" href="../" hidden>⌂ Home</a><button class="chip motion" id="motionBtn" title="Toggle animations">Motion: full</button></div>
   </div>
   <div class="ticker"><div class="tag" id="tapeTag">◌ LIVE PRICES · connecting…</div><div class="tape"><div class="tape-inner" id="tape"></div></div></div>
 </header>
@@ -722,9 +722,12 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
             <a href="https://stellarterm.com" rel="noopener noreferrer">StellarTerm.com</a>
             is a web exchange that works with the same wallets (Varial, LOBSTR, xBull, Albedo). Use it to trade manually; it doesn’t connect to Alpha Hive. It is not in the Stellar Wallets Kit, so this button row cannot click-to-connect it. Use the official site only, not look-alike addresses.
           </div>
-          <p class="gate-msg" id="stellarGate" hidden>Unlock the local session to Send, Convert, or arm Live session. Connecting a wallet is allowed while locked so you can unlock with a wallet-signed challenge. On the public site, run the local bridge to use Live session or the Fund panel.</p>
+          <p class="gate-msg" id="stellarGate" hidden>Unlock the local session to Send, Convert, or arm Live session. Connecting a wallet is allowed while locked so you can unlock with a wallet-signed challenge. On the public site, run the local bridge to use Live session. A signed-in Alpha Hive account can use the Fund panel here.</p>
         </div>
-        <div class="fund-panel" id="fundPanel" hidden>
+        <div class="label" id="sessHelp">Live rounds read real recent candles for each selected token. The ♛ Queen goes <b class="dir long">▲ LONG</b> (BUY) when the analysts expect a rise and <b class="dir short">▼ SHORT</b> (SELL/SHORT) when charts, sentiment and news are bearish, only after the Risk gate fully approves; a “reduce” becomes WAIT and never flips direction. Each trade risks the effective % of the <b>current</b> balance: the average of the active bots’ risk settings, never above the Risk bot’s %. Notional size = risk $ ÷ stop distance, capped at balance × <b>virtual leverage</b> and the optional max position cap, so a stop-out loses about the risk $; margin used = notional ÷ leverage. Longs: stop below, target above; shorts: stop above, target below, P&amp;L = size × (1 − exit/entry). Virtual margin call: a loss can never exceed the balance; the trade closes at the balance limit and later rounds SKIP. Live prices are polled every 3 s for the trade window. Virtual leverage · simulation only, no real orders.</div>
+        <div class="actions" id="sessControls"><button class="btn" id="startSess">▶ Run demo session</button><button class="btn stop" id="stopSess" disabled>■ Stop</button><button class="btn ghost" id="resetSess">Reset</button><button class="btn ghost" id="sumBtn" disabled>Summary</button></div>
+      </div>
+      <div class="fund-panel" id="fundPanel" hidden>
           <h3>Fund your account</h3>
           <p class="stellar-note" id="fundIntro">This is the dedicated bot account’s public address, if one is configured on the local bridge. A brand-new account does not exist on-chain until it receives at least 1 XLM (2+ XLM plus 0.5 XLM for a USDC trustline is recommended). No memo is needed. Deposit from any wallet or exchange, then swap to USDC.</p>
           <div class="fund-addr" id="fundAddr">No bot account configured. Connect your own wallet and use Convert, or create a bot account with <code>python -m bridge create-bot-account</code>.</div>
@@ -732,6 +735,7 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
           <div class="fund-qr" id="fundQr" hidden></div>
           <p class="stellar-stat" id="fundStat" role="status">Waiting for the local bridge.</p>
           <div class="stellar-convert-actions">
+            <button class="btn" id="fundFriendbot" type="button" hidden>Fund with Friendbot</button>
             <button class="btn" id="fundWatch" type="button" hidden>Check for deposit</button>
             <button class="btn" id="fundSwap" type="button" hidden>Swap to USDC</button>
           </div>
@@ -747,9 +751,7 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
             </div>
           </div>
         </div>
-        <div class="label" id="sessHelp">Live rounds read real recent candles for each selected token. The ♛ Queen goes <b class="dir long">▲ LONG</b> (BUY) when the analysts expect a rise and <b class="dir short">▼ SHORT</b> (SELL/SHORT) when charts, sentiment and news are bearish, only after the Risk gate fully approves; a “reduce” becomes WAIT and never flips direction. Each trade risks the effective % of the <b>current</b> balance: the average of the active bots’ risk settings, never above the Risk bot’s %. Notional size = risk $ ÷ stop distance, capped at balance × <b>virtual leverage</b> and the optional max position cap, so a stop-out loses about the risk $; margin used = notional ÷ leverage. Longs: stop below, target above; shorts: stop above, target below, P&amp;L = size × (1 − exit/entry). Virtual margin call: a loss can never exceed the balance; the trade closes at the balance limit and later rounds SKIP. Live prices are polled every 3 s for the trade window. Virtual leverage · simulation only, no real orders.</div>
-        <div class="actions" id="sessControls"><button class="btn" id="startSess">▶ Run demo session</button><button class="btn stop" id="stopSess" disabled>■ Stop</button><button class="btn ghost" id="resetSess">Reset</button><button class="btn ghost" id="sumBtn" disabled>Summary</button></div>
-      </div>
+
       <div class="pipeline" id="pipeline"></div>
       <div class="pipenote"><span id="queenLine" aria-live="polite">♛ The Queen tasks Scout, dispatches the workers and makes the final call.</span><br><b style="color:#8fe388">🛡 Risk is the hive's guard and answers to no one:</b> the Queen cannot override or bypass a Risk reject or reduce.</div>
       <div class="err" id="err"></div>
@@ -1631,15 +1633,17 @@ const HiveAccount=(()=>{
   function msg(t){ if($("hiveAccountMsg")) $("hiveAccountMsg").textContent=t||""; }
   function paint(){
     const s=ks(); const on=!!(s&&s.isSignedIn());
-    const chip=$("keyChip"), out=$("keyLogoutBtn");
+    const chip=$("keyChip"), out=$("keyLogoutBtn"), inn=$("keySignInBtn");
     if(chip){ chip.hidden=!on; if(on) chip.textContent="Signed in: "+s.shorten(s.address()); }
     if(out) out.hidden=!on;
+    if(inn) inn.hidden=!!on;
     const net=$("stellarTestnet");
     if(on && net){ net.checked = s.network()==="testnet"; }
     const warn=$("stellarNetWarn");
     if(warn) warn.hidden=!(on && s.network()==="public");
     const fb=$("stellarFriendbot");
     if(fb) fb.hidden=!(on && s.network()==="testnet");
+    paintFund();
   }
   function showReveal(on){
     const start=$("hiveAccountCreateStart"), rev=$("hiveAccountReveal");
@@ -1680,7 +1684,7 @@ const HiveAccount=(()=>{
     const c=$("hiveAccountTabCreate"), si=$("hiveAccountTabSign");
     const start=$("hiveAccountCreateStart"), sign=$("hiveAccountSignFields"), go=$("hiveAccountGo");
     if(c){ c.className=create?"btn":"btn ghost sm"; c.setAttribute("aria-selected",create?"true":"false"); }
-    if(si){ si.className=create?"btn ghost sm":"btn"; si.setAttribute("aria-selected",create?"true":"false"); }
+    if(si){ si.className=create?"btn ghost sm":"btn"; si.setAttribute("aria-selected",create?"false":"true"); }
     if(start) start.hidden=!create;
     if(sign) sign.hidden=create;
     showReveal(false);
@@ -1783,18 +1787,46 @@ const HiveAccount=(()=>{
         history.replaceState({}, "", u.pathname+u.search+u.hash);
       }
     }catch(e){}
-    if(r.network==="public") showFundForAddress(r.address);
+    paintFund();
     return true;
   }
-  function showFundForAddress(address){
+  function showFundForAddress(address){ paintKeyFund(address, {scroll:true}); }
+  function paintFund(){
+    const s=ks(); const on=!!(s&&s.isSignedIn());
+    if(on){ paintKeyFund(s.address()); return; }
+    const panel=$("fundPanel");
+    if(!panel) return;
+    if(document.body.classList.contains("live-session") && window.G6_AUTH && !G6_AUTH.public && G6_AUTH.unlocked && G6_AUTH.unlocked()){
+      if(G6_AUTH.refreshFund) G6_AUTH.refreshFund();
+      return;
+    }
+    panel.hidden=true;
+    if($("fundQr")){ $("fundQr").hidden=true; $("fundQr").innerHTML=""; }
+    if($("fundFriendbot")) $("fundFriendbot").hidden=true;
+  }
+  function paintKeyFund(address, opts){
+    opts=opts||{};
     const panel=$("fundPanel");
     if(!panel||!address) return;
+    const s=ks();
+    const net=s&&s.network?s.network():"testnet";
+    const test=net!=="public";
     panel.hidden=false;
-    if($("fundIntro")) $("fundIntro").textContent="This is your Alpha Hive account’s public address. A brand-new account does not exist on-chain until it receives at least 1 XLM (2+ XLM plus 0.5 XLM for a USDC trustline is recommended). No memo is needed. Deposit from any wallet or exchange, then swap to USDC.";
+    if($("fundIntro")) $("fundIntro").textContent="This is your Alpha Hive account’s public address. A brand-new account does not exist on-chain until it receives at least 1 XLM (2+ XLM plus 0.5 XLM for a USDC trustline is recommended). No memo is needed. Deposit from any wallet or exchange, then swap to USDC. On testnet you can also fund with Friendbot.";
     if($("fundAddr")) $("fundAddr").textContent=address;
     if($("fundCopy")) $("fundCopy").hidden=false;
-    if($("fundStat")) $("fundStat").textContent="Send XLM to this address to fund the account. A QR is also shown here when you run the local bridge Fund panel.";
-    try{ panel.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){}
+    if($("fundWatch")) $("fundWatch").hidden=true;
+    if($("fundSwap")) $("fundSwap").hidden=true;
+    if($("fundFriendbot")) $("fundFriendbot").hidden=!test;
+    const qr=$("fundQr");
+    if(qr){
+      const painted=window.AlphaHiveQr&&AlphaHiveQr.render&&AlphaHiveQr.render(qr, address);
+      if(!painted){ qr.hidden=true; qr.innerHTML=""; }
+    }
+    if($("fundStat")) $("fundStat").textContent=test
+      ? "Send testnet XLM to this address, or fund with Friendbot. Scan the QR from another wallet. Testnet XLM has no cash value."
+      : "Send XLM to this address from another wallet or exchange. Scan the QR. No memo is needed.";
+    if(opts.scroll){ try{ panel.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){} }
   }
   function continueToTerminal(){
     if(!pending){ msg("Generate an account first."); return; }
@@ -1825,7 +1857,13 @@ const HiveAccount=(()=>{
     msg("Requesting testnet XLM from Friendbot…");
     try{
       const res=await fetch(FRIENDBOT+"?addr="+encodeURIComponent(addr));
-      if(res.ok){ msg("Testnet account funded with Friendbot. You can continue after you save the key."); }
+      if(res.ok){
+        const signed=!!(ks()&&ks().isSignedIn&&ks().isSignedIn());
+        msg(signed?"Testnet account funded with Friendbot.":"Testnet account funded with Friendbot. You can continue after you save the key.");
+        if($("fundStat")&&signed) $("fundStat").textContent="Testnet account funded with Friendbot. Balances will refresh in a moment.";
+        const W=window.AlphaHiveStellarWallet;
+        if(W&&W.applyKeySession) W.applyKeySession();
+      }
       else{
         const body=await res.text().catch(()=> "");
         if(/already/i.test(body)||/op_already_exists/i.test(body)||/create_account/i.test(body)) msg("This testnet account is already funded.");
@@ -1849,6 +1887,7 @@ const HiveAccount=(()=>{
   function init(){
     paint();
     if($("hiveAccountBtn")) $("hiveAccountBtn").onclick=()=>open();
+    if($("keySignInBtn")) $("keySignInBtn").onclick=()=>open({signin:true});
     if($("hiveAccountCancel")) $("hiveAccountCancel").onclick=()=>close();
     if($("hiveAccountGo")) $("hiveAccountGo").onclick=submit;
     if($("hiveAccountContinue")) $("hiveAccountContinue").onclick=continueToTerminal;
@@ -1860,6 +1899,7 @@ const HiveAccount=(()=>{
     if($("hiveAccountSaved")) $("hiveAccountSaved").onchange=onSavedChange;
     if($("hiveAccountFriendbot")) $("hiveAccountFriendbot").onclick=()=>fundFriendbot();
     if($("stellarFriendbot")) $("stellarFriendbot").onclick=()=>fundFriendbot();
+    if($("fundFriendbot")) $("fundFriendbot").onclick=()=>fundFriendbot();
     if($("hiveAccountTabCreate")) $("hiveAccountTabCreate").onclick=()=>setTab(true);
     if($("hiveAccountTabSign")) $("hiveAccountTabSign").onclick=()=>setTab(false);
     if($("keyLogoutBtn")) $("keyLogoutBtn").onclick=logout;
@@ -1869,7 +1909,7 @@ const HiveAccount=(()=>{
     if(params.has("signup")) setTimeout(()=>open({generate:true}),200);
     else if(params.has("signin")) setTimeout(()=>open({signin:true}),200);
   }
-  return {init,open,close,logout,paint,onVendorsReady,generate};
+  return {init,open,close,logout,paint,paintFund,onVendorsReady,generate};
 })();
 window.G6_HIVE_ACCOUNT=HiveAccount;
 
@@ -1883,9 +1923,10 @@ const Auth=(()=>{ const st={token:null,idleMs:300000,timer:null,status:null,publ
   function paint(){ const locked=!st.token; const chip=$("lockChip"), un=$("unlockBtn"), lo=$("logoutBtn");
     if(chip){ chip.textContent=locked?"Locked":"Unlocked"; chip.classList.toggle("on",!locked); }
     if(un) un.hidden=!locked; if(lo) lo.hidden=locked;
-    const gate=$("stellarGate"); if(gate){ gate.hidden=PUBLIC?false: !locked; if(PUBLIC) gate.textContent="Run the local bridge to use Live session, the Fund panel, or broker connect. Wallet connect still works here for read-only balances."; }
+    const gate=$("stellarGate"); if(gate){ gate.hidden=PUBLIC?false: !locked; if(PUBLIC) gate.textContent="Run the local bridge to use Live session or broker connect. A signed-in Alpha Hive account can still Fund, Send and Convert here."; }
     document.body.classList.toggle("session-unlocked",!!st.token);
-    if($("fundPanel") && document.body.classList.contains("live-session")) $("fundPanel").hidden=false;
+    if(window.G6_HIVE_ACCOUNT&&G6_HIVE_ACCOUNT.paintFund) G6_HIVE_ACCOUNT.paintFund();
+    else if($("fundPanel") && document.body.classList.contains("live-session")) $("fundPanel").hidden=false;
     if($("liveArmBox")) $("liveArmBox").hidden=!(st.token && document.body.classList.contains("live-session"));
   }
   function bumpIdle(){ if(!st.token) return; clearTimeout(st.timer); st.timer=setTimeout(()=>{ logout("idle"); }, st.idleMs); }
@@ -2333,7 +2374,8 @@ function setMode(which){ if(running) return;
   $("modeSession").classList.toggle("on",which==="demo");
   $("modeSingle").classList.toggle("on",which==="single");
   if($("modeLive")) $("modeLive").classList.toggle("on",which==="live");
-  if($("fundPanel")) $("fundPanel").hidden=which!=="live";
+  if(window.G6_HIVE_ACCOUNT&&G6_HIVE_ACCOUNT.paintFund) G6_HIVE_ACCOUNT.paintFund();
+  else if($("fundPanel")) $("fundPanel").hidden=which!=="live";
   if($("liveArmBox")) $("liveArmBox").hidden=which!=="live"||!(window.G6_AUTH&&G6_AUTH.unlocked());
   if(sess){ if(!S){ $("balNum").textContent=money(parseFloat($("inBal").value)||10000); drawPos(null,0,which==="live"?"LIVE SESSION · XLM/USDC ON STELLAR DEX":"PRESS RUN DEMO SESSION"); drawEquity(1); } sessLabel(); setSessState(sessState); if(which==="live"&&window.G6_AUTH) G6_AUTH.refreshFund(); }
   else if(markets.length){ selectMarket(current); } }
@@ -2623,7 +2665,7 @@ window.addEventListener("resize",()=>{ if(!running) drawChart(currentPacket,char
 <script>
 /* stellar wallet loader — local vendor files only, no CDNs */
 (function(){
-  var files=["stellar-wallets-kit.js","stellar-key-session.js","stellar-wallet.js"];
+  var files=["stellar-wallets-kit.js","qrcode-generator.js","stellar-qr.js","stellar-key-session.js","stellar-wallet.js"];
   var bases=["vendor/","../terminal/vendor/","../vendor/"];
   function loadOne(src){
     return new Promise(function(res,rej){

@@ -406,6 +406,61 @@
     }).catch(function () { return { px: null, src: null }; });
   }
 
+
+  function isOperableSource(source) {
+    return source === "wallet" || source === "key";
+  }
+
+  function sourceStatusLabel(source) {
+    if (source === "key") return "Signed in";
+    if (source === "wallet") return "Connected";
+    return "Looked up";
+  }
+
+  function sourceCaption(source) {
+    if (source === "key") {
+      return "Signed in with an Alpha Hive account. Balances are shown only; the virtual trading balance is unchanged.";
+    }
+    if (source === "wallet") {
+      return "Connected wallet. Balances are shown only; the virtual trading balance is unchanged.";
+    }
+    return "Read-only lookup (not connected). Balances are shown only; the virtual trading balance is unchanged.";
+  }
+
+  function convertActionLabel(keySession) {
+    return keySession ? "Sign and submit" : "Sign convert in wallet";
+  }
+
+  function explorerTxUrl(network, hash) {
+    if (!hash || !/^[0-9a-fA-F]{8,128}$/.test(String(hash))) return "";
+    var net = network === "testnet" ? "testnet" : "public";
+    return "https://stellar.expert/explorer/" + net + "/tx/" + hash;
+  }
+
+  function txSuccessLinkLabel(hash) {
+    var h = String(hash || "");
+    if (h.length < 8) return h;
+    return "View on Stellar Expert (" + h.slice(0, 8) + "\u2026)";
+  }
+
+  function paintSubmitSuccess(el, okMsg, hash, network) {
+    if (!el) return;
+    el.textContent = "";
+    var text = document.createTextNode((okMsg || "Submitted.") + (hash ? " " : ""));
+    el.appendChild(text);
+    var href = explorerTxUrl(network, hash);
+    if (href) {
+      var a = document.createElement("a");
+      a.href = href;
+      a.textContent = txSuccessLinkLabel(hash);
+      a.rel = "noopener noreferrer";
+      a.target = "_blank";
+      el.appendChild(a);
+    } else if (hash) {
+      el.appendChild(document.createTextNode("Hash " + hash));
+    }
+  }
+
   var api = {
     USDC_ISSUER: USDC_ISSUER,
     USDC_ISSUER_TESTNET: USDC_ISSUER_TESTNET,
@@ -449,7 +504,14 @@
     getAddress: function () { return (state && state.address) || ""; },
     isConnected: function () { return !!(state && state.connected); },
     disconnect: function () { if (typeof onDisconnect === "function") onDisconnect(); },
-    applyKeySession: applyKeySession
+    applyKeySession: applyKeySession,
+    isOperableSource: isOperableSource,
+    sourceStatusLabel: sourceStatusLabel,
+    sourceCaption: sourceCaption,
+    convertActionLabel: convertActionLabel,
+    explorerTxUrl: explorerTxUrl,
+    txSuccessLinkLabel: txSuccessLinkLabel,
+    paintSubmitSuccess: paintSubmitSuccess
   };
 
   var mounted = false;
@@ -531,9 +593,7 @@
     }
     var srcEl = $("stellarSource");
     var feed = state.xlmSrc ? " XLM-USD from " + state.xlmSrc + "." : "";
-    srcEl.textContent = (state.source === "wallet"
-      ? "Connected wallet. Balances are shown only; the virtual trading balance is unchanged."
-      : "Read-only lookup (not connected). Balances are shown only; the virtual trading balance is unchanged.") + feed;
+    srcEl.textContent = sourceCaption(state.source) + feed;
     var ul = $("stellarOther");
     ul.innerHTML = "";
     (state.balances.others || []).forEach(function (row) {
@@ -551,16 +611,16 @@
     useBtn.hidden = !canUse;
     useBtn.disabled = !canUse || ($("inBal") && $("inBal").disabled);
     useBtn.title = "Copies the approximate USD value into the starting virtual balance. The Stellar wallet is not charged.";
-    $("stellarDisconnect").hidden = state.source !== "wallet";
-    $("stellarSend").hidden = state.source !== "wallet";
-    if ($("stellarConvert")) $("stellarConvert").hidden = state.source !== "wallet";
+    $("stellarDisconnect").hidden = !isOperableSource(state.source);
+    $("stellarSend").hidden = !isOperableSource(state.source);
+    if ($("stellarConvert")) $("stellarConvert").hidden = !isOperableSource(state.source);
     renderLiveBalance();
   }
 
   function renderLiveBalance() {
     var box = $("stellarLiveBox");
     if (!box) return;
-    var show = state.source === "wallet" && state.address && state.balances;
+    var show = isOperableSource(state.source) && state.address && state.balances;
     box.hidden = !show;
     if (!show) return;
     var usdcEl = $("stellarLiveUsdc");
@@ -649,7 +709,7 @@
 
   function refreshShown() {
     if (!state.address) return Promise.resolve();
-    setStat(state.source === "wallet" ? "ok" : "", "Loading balances\u2026");
+    setStat(isOperableSource(state.source) ? "ok" : "", "Loading balances\u2026");
     return Promise.all([fetchAccount(state.network, state.address), fetchXlmUsd()]).then(function (pair) {
       var acc = pair[0], px = pair[1];
       state.xlmPx = px.px;
@@ -671,7 +731,7 @@
       state.spendable = acc.spendableXlm || 0;
       state.homeDomain = acc.homeDomain;
       state.usd = usdValue(acc.balances, px.px);
-      setStat(state.source === "wallet" ? "ok" : "", (state.source === "wallet" ? "Connected" : "Looked up") + " \u00b7 " + shortenAddress(state.address));
+      setStat(isOperableSource(state.source) ? "ok" : "", sourceStatusLabel(state.source) + " \u00b7 " + shortenAddress(state.address));
       renderBalances();
       return acc;
     });
@@ -865,9 +925,11 @@
         });
       });
     }).then(function (res) {
-      var hash = res && (res.hash || res.id);
-      msg.textContent = hash ? "Submitted. Hash " + hash : "Submitted.";
-      refreshShown();
+      if (!res) return;
+      var hash = res.hash || res.id;
+      return refreshShown().then(function () {
+        paintSubmitSuccess(msg, "Submitted.", hash, state.network);
+      });
     }).catch(function (err) {
       var text = (err && (err.message || err.reason || err.toString())) || "Send failed.";
       if (/closed the modal|User declined|rejected|denied/i.test(text)) text = "Signature cancelled in the wallet.";
@@ -994,6 +1056,7 @@
         ? "Convert XLM to USDC (testnet)"
         : "Convert XLM to USDC";
     }
+    if ($("stellarConvertGo")) $("stellarConvertGo").textContent = convertActionLabel(keyActive());
     updateTrustUi();
     var dlg = $("stellarConvertDlg");
     if (!dlg) return;
@@ -1048,9 +1111,10 @@
         });
       });
     }).then(function (res) {
-      var hash = res && (res.hash || res.id);
-      if (msg) msg.textContent = hash ? (okMsg || "Submitted.") + " Hash " + hash : (okMsg || "Submitted.");
+      if (!res) return res;
+      var hash = res.hash || res.id;
       return refreshShown().then(function () {
+        paintSubmitSuccess(msg, okMsg || "Submitted.", hash, state.network);
         if ($("stellarConvertNet")) {
           $("stellarConvertNet").textContent = "Network: " + (NETWORKS[state.network] || NETWORKS.public).label +
             " \u00b7 From " + shortenAddress(state.address) +
@@ -1060,6 +1124,7 @@
           $("stellarConvertSpendable").textContent = "Spendable: " + formatAmount(state.spendable) +
             " XLM (XLM balance minus the Stellar reserve and a small fee cushion).";
         }
+        if ($("stellarConvertGo")) $("stellarConvertGo").textContent = convertActionLabel(keyActive());
         updateTrustUi();
         return res;
       });

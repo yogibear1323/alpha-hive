@@ -306,3 +306,43 @@ describe("validateConvert", () => {
     assert.ok(tiny.errors.includes("dest_min"));
   });
 });
+
+
+describe("key session source helpers", () => {
+  it("treats key like a connected wallet and labels it Signed in", () => {
+    assert.equal(w.isOperableSource("key"), true);
+    assert.equal(w.isOperableSource("wallet"), true);
+    assert.equal(w.isOperableSource("lookup"), false);
+    assert.equal(w.isOperableSource(""), false);
+    assert.equal(w.sourceStatusLabel("key"), "Signed in");
+    assert.equal(w.sourceStatusLabel("wallet"), "Connected");
+    assert.equal(w.sourceStatusLabel("lookup"), "Looked up");
+    assert.match(w.sourceCaption("key"), /Signed in with an Alpha Hive account/);
+    assert.match(w.sourceCaption("wallet"), /Connected wallet/);
+    assert.match(w.sourceCaption("lookup"), /Read-only lookup/);
+    assert.doesNotMatch(w.sourceCaption("key"), /Read-only lookup/);
+  });
+
+  it("uses Sign and submit for key-session convert", () => {
+    assert.equal(w.convertActionLabel(true), "Sign and submit");
+    assert.equal(w.convertActionLabel(false), "Sign convert in wallet");
+  });
+});
+
+describe("stellar.expert transaction links", () => {
+  it("builds testnet and public explorer URLs only for hex hashes", () => {
+    const hash = "4f749177c94a0123456789abcdef0123456789abcdef0123456789abcdef0123";
+    assert.equal(
+      w.explorerTxUrl("testnet", hash),
+      "https://stellar.expert/explorer/testnet/tx/" + hash
+    );
+    assert.equal(
+      w.explorerTxUrl("public", hash),
+      "https://stellar.expert/explorer/public/tx/" + hash
+    );
+    assert.equal(w.explorerTxUrl("testnet", "not-a-hash"), "");
+    assert.equal(w.explorerTxUrl("testnet", ""), "");
+    assert.equal(w.explorerTxUrl("testnet", "<script>"), "");
+    assert.match(w.txSuccessLinkLabel(hash), /View on Stellar Expert \(4f749177/);
+  });
+});
