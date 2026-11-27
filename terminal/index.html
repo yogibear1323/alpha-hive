@@ -559,7 +559,7 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
 .dextab th{color:var(--mute);font:700 10px var(--mono);letter-spacing:1px;text-transform:uppercase}
 .dextab td.num,.dextab th.num{text-align:right;font-variant-numeric:tabular-nums}
 .dextab tr.unavail td{color:var(--red)}
-.dextab button.pairbtn{background:none;border:0;color:var(--text);font:700 13px var(--mono);cursor:pointer;padding:0;text-align:left;text-decoration:underline;text-underline-offset:2px}
+.dextab button.pairbtn{display:block;background:none;border:0;color:var(--text);font:700 13px var(--mono);cursor:pointer;padding:0;text-align:left;text-decoration:underline;text-underline-offset:2px}
 .dextab button.pairbtn:hover{color:var(--cyan)}
 .dex-markets a:focus-visible,.dex-markets button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .dex-links{display:flex;flex-wrap:wrap;gap:8px}
@@ -572,7 +572,7 @@ body.live-session #stellarBox,body.live-session #fundPanel{outline:1px solid #ff
 .dex-book .bid{color:var(--lime)}
 .dex-book .ask{color:var(--red)}
 .dex-note{margin:10px 0 0;color:var(--mute);font:12px/1.5 var(--sans)}
-.dex-tog{margin-top:4px;font:11px var(--mono);color:var(--cyan);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
+.dex-tog{display:block;margin-top:4px;font:11px var(--mono);color:var(--cyan);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
 @media(max-width:680px){.dextab{min-width:640px;font-size:12px}}
 @media (prefers-reduced-motion: reduce){ .tape-inner{animation:none} }
 body.reduced .tape-inner{animation:none}
